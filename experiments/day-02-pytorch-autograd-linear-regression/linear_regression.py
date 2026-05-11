@@ -1,8 +1,7 @@
-
 """Day 2 PyTorch basics: tensors, autograd, and linear regression.
 
 Run:
-    uv run python experiments/pytorch-basics/linear_regression.py
+    uv run python experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py
 """
 
 from __future__ import annotations
@@ -11,7 +10,10 @@ import argparse
 import os
 from pathlib import Path
 
-os.environ.setdefault("MPLCONFIGDIR", str(Path(".matplotlib-cache").resolve()))
+EXPERIMENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = EXPERIMENT_DIR.parents[1]
+
+os.environ.setdefault("MPLCONFIGDIR", str((PROJECT_ROOT / ".matplotlib-cache").resolve()))
 
 import matplotlib.pyplot as plt
 import torch
@@ -105,7 +107,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.05)
     parser.add_argument("--n-samples", type=int, default=128)
     parser.add_argument("--noise-std", type=float, default=0.4)
-    parser.add_argument("--output-dir", type=Path, default=Path("experiments/pytorch-basics/outputs"))
+    parser.add_argument("--output-dir", type=Path, default=EXPERIMENT_DIR / "outputs")
     args = parser.parse_args()
 
     device = select_device()

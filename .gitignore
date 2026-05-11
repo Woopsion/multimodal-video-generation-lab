@@ -1,6 +1,7 @@
 .venv/
 .uv-cache/
 .matplotlib-cache/
+experiments/*/experiments/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/

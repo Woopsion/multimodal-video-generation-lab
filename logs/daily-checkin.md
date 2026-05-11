@@ -73,9 +73,9 @@
   - `experiments/`
   - `demos/`
 - 已创建 Day 2 实验：
-  - `experiments/pytorch-basics/linear_regression.py`
-  - `experiments/pytorch-basics/README.md`
-  - `experiments/pytorch-basics/outputs/linear_regression_result.png`
+  - `experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py`
+  - `experiments/day-02-pytorch-autograd-linear-regression/README.md`
+  - `experiments/day-02-pytorch-autograd-linear-regression/outputs/linear_regression_result.png`
 - 已新增环境说明：
   - `docs/uv-environment-setup.md`
 - 关于 uv 缓存的结论：

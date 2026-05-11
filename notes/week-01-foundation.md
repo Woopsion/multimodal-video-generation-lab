@@ -157,7 +157,7 @@ mps built: True
 
 ### 4. linear_regression.py 的作用
 
-`experiments/pytorch-basics/linear_regression.py` 是 Day 2 的第一个 PyTorch 实验。它用于理解：
+`experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py` 是 Day 2 的第一个 PyTorch 实验。它用于理解：
 
 - 张量如何参与计算。
 - `requires_grad=True` 如何开启梯度追踪。

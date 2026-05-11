@@ -447,7 +447,7 @@ loss 是什么？
 示例：
 
 ```text
-experiments/pytorch-basics/
+experiments/day-02-pytorch-autograd-linear-regression/
 experiments/pytorch-mnist/
 experiments/clip-retrieval/
 experiments/vlm-qa/
