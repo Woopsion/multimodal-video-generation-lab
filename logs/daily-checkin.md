@@ -40,3 +40,44 @@
 - 已整理 Day 1 阶段学习记录：`notes/day-01-learning-record.md`
 - 记录内容包括：Day 1 目标、学习路线理解、VLM/Diffusion/Video Generation 区分、PyTorch 角色、目录结构设计、Latent Diffusion、latent、张量、VAE 等概念。
 
+### 环境补充与 Day 2 准备
+
+- 已使用 `uv` 初始化项目环境：
+  - `uv init --bare --python 3.12 --name multimodal-video-generation-lab`
+  - `uv python pin 3.12`
+- 已生成并保留：
+  - `.python-version`
+  - `pyproject.toml`
+  - `uv.lock`
+- 已安装 PyTorch 基础阶段依赖：
+  - `torch`
+  - `torchvision`
+  - `torchaudio`
+  - `numpy`
+  - `matplotlib`
+  - `pillow`
+  - `tqdm`
+  - `scikit-learn`
+  - `jupyter`
+  - `ipykernel`
+- 当前 Mac 环境验证：
+  - Python：3.12.13
+  - PyTorch：2.11.0
+  - CUDA：不可用
+  - MPS：可用
+- MPS 理解：
+  - MPS 是 Apple Mac 上的 GPU 计算后端，类似 NVIDIA 平台上的 CUDA。
+  - 当前机器可以用 `torch.device("mps")` 跑部分 PyTorch 计算。
+- 已补齐仓库目录：
+  - `papers/`
+  - `experiments/`
+  - `demos/`
+- 已创建 Day 2 实验：
+  - `experiments/pytorch-basics/linear_regression.py`
+  - `experiments/pytorch-basics/README.md`
+  - `experiments/pytorch-basics/outputs/linear_regression_result.png`
+- 已新增环境说明：
+  - `docs/uv-environment-setup.md`
+- 关于 uv 缓存的结论：
+  - 正常终端中直接使用默认 uv 缓存即可。
+  - 只有遇到权限问题时，才临时使用 `UV_CACHE_DIR=.uv-cache`。

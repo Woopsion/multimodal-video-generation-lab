@@ -106,3 +106,88 @@ Diffusion 解决“从随机噪声生成高质量图像/视频”的问题。它
 #### Video Generation 解决什么问题？
 
 Video Generation 解决“根据文本、图片或视频条件生成连续动态画面”的问题。相比图像生成，它还要保证帧与帧之间的时间一致性、运动合理性和主体稳定性。
+
+## Day 1 补充：uv、PyTorch 与 MPS
+
+### 1. 为什么使用 uv？
+
+`uv` 用来管理本仓库的 Python 版本、虚拟环境和依赖锁定。相比直接用系统 Python，`uv` 更适合学习仓库：
+
+- 可以把 Python 固定到 3.12。
+- 可以把依赖写入 `pyproject.toml` 和 `uv.lock`。
+- 可以用 `uv run` 直接运行脚本，不必手动激活 `.venv`。
+
+本仓库采用：
+
+```bash
+uv init --bare --python 3.12 --name multimodal-video-generation-lab
+uv python pin 3.12
+```
+
+### 2. 为什么不用裸 `uv init`？
+
+裸 `uv init` 会生成默认项目骨架，例如 `main.py`、`.gitignore`、`.python-version` 等。当前仓库已经有学习计划、README 和目录规划，因此更适合使用：
+
+```bash
+uv init --bare --python 3.12
+```
+
+这样只创建 `pyproject.toml`，避免引入无关文件。
+
+### 3. MPS 是什么？
+
+MPS 是 Metal Performance Shaders，是 Apple Mac 上的 GPU 计算后端。
+
+可以这样类比：
+
+```text
+CPU  -> 普通处理器
+CUDA -> NVIDIA GPU
+MPS  -> Apple GPU
+```
+
+当前验证结果：
+
+```text
+mps: True
+mps built: True
+```
+
+说明当前 PyTorch 版本支持 MPS，并且这台 Mac 可以使用 Apple GPU。
+
+### 4. linear_regression.py 的作用
+
+`experiments/pytorch-basics/linear_regression.py` 是 Day 2 的第一个 PyTorch 实验。它用于理解：
+
+- 张量如何参与计算。
+- `requires_grad=True` 如何开启梯度追踪。
+- `loss.backward()` 如何计算梯度。
+- `optimizer.step()` 如何更新参数。
+- 一个最小训练循环长什么样。
+
+脚本会自动选择设备：
+
+```python
+if torch.cuda.is_available():
+    return torch.device("cuda")
+if torch.backends.mps.is_available():
+    return torch.device("mps")
+return torch.device("cpu")
+```
+
+也就是：
+
+```text
+优先 NVIDIA CUDA，其次 Apple MPS，最后 CPU。
+```
+
+### 5. 当前进度判断
+
+Day 1 的环境初始化已经从“发现问题”推进到“可运行 PyTorch 基础实验”：
+
+- Python 已固定到 3.12。
+- PyTorch 已安装并验证。
+- Mac MPS 可用。
+- Day 2 线性回归实验脚本已创建。
+
+下一步应正式进入 Day 2 的概念学习：张量、矩阵乘法、广播机制、计算图和自动微分。

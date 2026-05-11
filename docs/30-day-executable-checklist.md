@@ -76,9 +76,9 @@ logs/
 ### Day 2：PyTorch 张量与自动微分
 
 - [ ] 学习：张量、矩阵乘法、广播、计算图、自动微分。
-- [ ] 实践：写一个张量运算 notebook 或脚本，包含 `backward()` 示例。
-- [ ] 实践：手动实现一个线性回归训练循环。
-- [ ] 产出：`experiments/pytorch-basics/linear_regression.py`。
+- [x] 实践：写一个张量运算 notebook 或脚本，包含 `backward()` 示例。
+- [x] 实践：手动实现一个线性回归训练循环。
+- [x] 产出：`experiments/pytorch-basics/linear_regression.py`。
 - [ ] 验收：能解释 `requires_grad`、`loss.backward()`、`optimizer.step()` 的作用。
 
 ### Day 3：MNIST 完整训练脚本
@@ -359,5 +359,4 @@ logs/
 - 视频生成：ComfyUI + AnimateDiff、CogVideoX 或 Wan 轻量版本。
 - 微调：PEFT + LoRA。
 - 部署：Gradio 或 FastAPI。
-
 
