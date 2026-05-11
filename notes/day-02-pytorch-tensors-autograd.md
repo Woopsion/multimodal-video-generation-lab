@@ -754,6 +754,88 @@ optimizer.zero_grad()
 
 否则上一轮的梯度会混进这一轮，导致更新方向不干净。
 
+更具体地说，`loss.backward()` 不是“覆盖”旧梯度，而是把新梯度“加到”旧梯度上。
+
+例如第一轮：
+
+```text
+weight.grad = -12
+```
+
+第二轮如果没有执行 `optimizer.zero_grad()`，又算出一个新梯度：
+
+```text
+new weight.grad = -12
+```
+
+PyTorch 会累加成：
+
+```text
+weight.grad = -24
+```
+
+这会让 `optimizer.step()` 使用混合了旧信息的梯度，参数更新就不再只代表当前这一轮的 loss。
+
+所以标准训练顺序是：
+
+```python
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()
+```
+
+含义：
+
+```text
+清空旧梯度 -> 计算当前梯度 -> 根据当前梯度更新参数
+```
+
+## 9.1 gradient 是什么？
+
+`gradient` 就是梯度。
+
+在当前实验中，它具体指：
+
+```text
+loss 对 weight 的梯度
+loss 对 bias 的梯度
+```
+
+也就是：
+
+```text
+d loss / d weight
+d loss / d bias
+```
+
+它回答的问题是：
+
+```text
+如果 weight 增加一点，loss 会怎么变？
+如果 bias 增加一点，loss 会怎么变？
+```
+
+梯度不是参数本身，也不是 loss 本身，而是：
+
+```text
+参数应该往哪个方向调整，才能让 loss 更小。
+```
+
+PyTorch 会把梯度保存到：
+
+```python
+model.weight.grad
+model.bias.grad
+```
+
+本仓库的观察脚本：
+
+```bash
+uv run python experiments/day-02-pytorch-autograd-linear-regression/gradient_debug.py
+```
+
+就是专门用来打印 `weight.grad` 和 `bias.grad`，帮助观察梯度如何产生、如何累加、如何被 `zero_grad()` 清空。
+
 ## 10. os.environ.setdefault("MPLCONFIGDIR", ...) 是什么？
 
 这行代码不是训练逻辑：

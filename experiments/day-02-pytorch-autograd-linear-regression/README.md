@@ -6,6 +6,12 @@
 uv run python experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py
 ```
 
+观察梯度：
+
+```bash
+uv run python experiments/day-02-pytorch-autograd-linear-regression/gradient_debug.py
+```
+
 脚本内容：
 
 1. 自动选择计算设备：`cuda -> mps -> cpu`。
@@ -139,3 +145,59 @@ d loss / d bias   = 平均(2 * error_i)
 ```
 
 也就是 128 条样本一起决定这一次 `weight` 和 `bias` 应该怎么调。
+
+### `gradient_debug.py` 是干嘛的？
+
+`linear_regression.py` 是正式实验脚本，目标是训练出接近 `y = 2x + 1` 的模型。
+
+`gradient_debug.py` 是调试脚本，目标不是训练效果，而是把训练过程里看不见的东西打印出来：
+
+```text
+loss
+weight
+bias
+weight.grad
+bias.grad
+```
+
+它包含三个观察点：
+
+1. 单条样本时，验证 `d loss / d weight = 2 * error * x` 和 `d loss / d bias = 2 * error`。
+2. 连续调用两次 `backward()` 但不调用 `zero_grad()`，观察梯度会累加。
+3. 用全部 128 条样本训练几轮，观察每个 epoch 的 loss、gradient 和参数变化。
+
+### `optimizer.zero_grad()` 为什么需要？
+
+PyTorch 默认会累加梯度。
+
+如果第一轮算出：
+
+```text
+weight.grad = -12
+```
+
+第二轮不清空梯度，又算出：
+
+```text
+本轮新梯度 = -12
+```
+
+那么参数里保存的会变成：
+
+```text
+weight.grad = -24
+```
+
+这通常不是我们想要的。每一轮训练应该只根据“当前这一轮”的 loss 计算梯度，所以训练循环里要先执行：
+
+```python
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()
+```
+
+含义是：
+
+```text
+清空旧梯度 -> 计算当前梯度 -> 用当前梯度更新参数
+```
