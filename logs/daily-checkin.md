@@ -114,4 +114,35 @@
   - `loss.backward()` 负责计算梯度。
   - `optimizer.step()` 负责根据梯度更新参数。
   - `optimizer.zero_grad()` 必须在每次反向传播前清空旧梯度，否则梯度会累积。
+## Day 3 - MNIST 完整训练脚本
+
+- 日期：2026-05-12
+- 今日目标：完成一个包含训练、验证、checkpoint、加载和单张图片推理的 MNIST 分类脚本。
+- 完成内容：
+  - 新增实验目录：`experiments/day-03-mnist-classifier/`
+  - 实现训练脚本：`experiments/day-03-mnist-classifier/train.py`
+  - 补充实验说明：`experiments/day-03-mnist-classifier/README.md`
+  - 补充学习笔记：`notes/day-03-mnist-classifier.md`
+  - 更新 `.gitignore`，忽略 MNIST 原始数据目录 `experiments/*/data/`
+- 运行命令：
+  - `.\.venv\Scripts\python.exe experiments/day-03-mnist-classifier/train.py --epochs 3 --batch-size 256`
+  - `.\.venv\Scripts\python.exe experiments/day-03-mnist-classifier/train.py --infer-only --sample-index 0`
+- 训练结果：
+  - epoch 01：`train_loss 0.3686`，`val_loss 0.2010`，`val_acc 0.9397`
+  - epoch 02：`train_loss 0.1668`，`val_loss 0.1356`，`val_acc 0.9603`
+  - epoch 03：`train_loss 0.1167`，`val_loss 0.1121`，`val_acc 0.9651`
+- 推理结果：
+  - sample index：`0`
+  - true label：`7`
+  - prediction：`7`
+  - confidence：`0.9979`
+- 输出文件：
+  - `experiments/day-03-mnist-classifier/outputs/best_mnist_mlp.pt`
+  - `experiments/day-03-mnist-classifier/outputs/training_curves.png`
+  - `experiments/day-03-mnist-classifier/outputs/sample_prediction.png`
+- 今日理解：
+  - `Dataset` 提供单条样本，`DataLoader` 组织 batch。
+  - MNIST 图片进入模型时形状是 `[batch_size, 1, 28, 28]`。
+  - `CrossEntropyLoss` 适合多分类任务。
+  - 完整训练脚本需要包含训练、验证、保存、加载和推理。
 

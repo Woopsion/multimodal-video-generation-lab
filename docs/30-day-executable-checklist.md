@@ -83,11 +83,11 @@ logs/
 
 ### Day 3：MNIST 完整训练脚本
 
-- [ ] 学习：Dataset、DataLoader、训练/验证循环、checkpoint。
-- [ ] 实践：用 PyTorch 训练 MNIST 分类器。
-- [ ] 实践：保存最佳模型，并写一个单张图片推理函数。
-- [ ] 产出：`experiments/pytorch-mnist/train.py` 和训练曲线截图。
-- [ ] 验收：脚本包含训练、验证、保存、加载和推理。
+- [x] 学习：Dataset、DataLoader、训练/验证循环、checkpoint。
+- [x] 实践：用 PyTorch 训练 MNIST 分类器。
+- [x] 实践：保存最佳模型，并写一个单张图片推理函数。
+- [x] 产出：`experiments/day-03-mnist-classifier/train.py` 和训练曲线截图。
+- [x] 验收：脚本包含训练、验证、保存、加载和推理。
 
 ### Day 4：CNN 与 CIFAR-10
 
@@ -359,3 +359,4 @@ logs/
 - 视频生成：ComfyUI + AnimateDiff、CogVideoX 或 Wan 轻量版本。
 - 微调：PEFT + LoRA。
 - 部署：Gradio 或 FastAPI。
+
