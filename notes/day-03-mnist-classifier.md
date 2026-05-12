@@ -1795,27 +1795,905 @@ probabilities = torch.softmax(logits, dim=1)
 
 ---
 
-# 14. 下一步待回答的小练习
+# 14. CrossEntropyLoss、logits 和梯度的深入理解
 
-假设真实标签是 `7`。
-
-模型 A 给正确类别的概率：
+本节记录目前对 Day 3 中最关键问题的理解：
 
 ```text
-p_7 = 0.90
+CrossEntropyLoss 到底如何从 logits 计算 loss？
+loss 又如何通过梯度影响最后一层 Linear 的 weight 和 bias？
 ```
 
-模型 B 给正确类别的概率：
+---
+
+## 14.1 logits 的位置含义是谁规定的？
+
+MNIST 有 10 个类别：
+
+```text
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+```
+
+模型最后输出 10 个 logits：
+
+```text
+[z_0, z_1, z_2, z_3, z_4, z_5, z_6, z_7, z_8, z_9]
+```
+
+这里的含义是我们通过标签约定出来的：
+
+```text
+z_0 表示数字 0 的原始分数
+z_1 表示数字 1 的原始分数
+...
+z_9 表示数字 9 的原始分数
+```
+
+这个顺序不是神经网络天然知道的，而是训练数据标签和 `CrossEntropyLoss` 的使用方式共同规定的。
+
+在 PyTorch 中：
+
+```python
+loss = loss_fn(logits, labels)
+```
+
+如果某张图片的真实标签是：
+
+```text
+label = 7
+```
+
+那么 `CrossEntropyLoss` 会认为：
+
+```text
+第 7 个位置对应正确类别
+```
+
+也就是希望 `z_7` 经过 softmax 后的概率变高。
+
+理论上，也可以人为规定：
+
+```text
+第 9 个位置表示数字 0
+```
+
+但前提是训练、验证、推理时都使用同一套标签映射。类别位置本身只是约定，关键是映射必须前后一致。
+
+---
+
+## 14.2 重要符号说明
+
+为了避免公式产生歧义，先定义所有符号。
+
+```text
+i
+```
+
+表示类别下标。
+
+MNIST 中：
+
+```text
+i = 0, 1, 2, ..., 9
+```
+
+```text
+z_i
+```
+
+表示第 `i` 个类别的 logit，也就是模型输出的原始分数。
+
+例如：
+
+```text
+z_7 表示数字 7 的原始分数
+```
+
+```text
+exp(x)
+```
+
+表示：
+
+```text
+e^x
+```
+
+其中：
+
+```text
+e ≈ 2.71828
+```
+
+所以：
+
+```text
+exp(0) = e^0 = 1
+exp(1) = e^1 ≈ 2.718
+exp(2) = e^2 ≈ 7.389
+```
+
+softmax 使用 `exp` 的一个原因是：它可以把任意 logit 转成正数，然后再归一化成概率。
+
+```text
+ln(x)
+```
+
+表示自然对数，也就是以 `e` 为底的对数。
+
+机器学习公式里常写 `log(x)`，但这里为了避免歧义，统一理解为：
+
+```text
+log(x) = ln(x)
+```
+
+`exp` 和 `ln` 是反函数：
+
+```text
+ln(exp(x)) = x
+```
+
+也就是：
+
+```text
+ln(e^x) = x
+```
+
+所以：
+
+```text
+ln(exp(z_0)) = z_0
+```
+
+```text
+S
+```
+
+表示所有类别的 `exp(logit)` 总和。
+
+如果只有 3 类：
+
+```text
+S = exp(z_0) + exp(z_1) + exp(z_2)
+```
+
+如果是 MNIST 10 类：
+
+```text
+S = exp(z_0) + exp(z_1) + ... + exp(z_9)
+```
+
+```text
+p_i
+```
+
+表示 softmax 后第 `i` 个类别的预测概率。
+
+定义是：
+
+```text
+p_i = exp(z_i) / S
+```
+
+所以：
+
+```text
+p_0 = exp(z_0) / S
+p_1 = exp(z_1) / S
+...
+p_9 = exp(z_9) / S
+```
+
+所有概率加起来等于 1：
+
+```text
+p_0 + p_1 + ... + p_9 = 1
+```
+
+```text
+y_i
+```
+
+表示真实标签的 one-hot 值。
+
+如果真实标签是数字 `7`，那么 one-hot 是：
+
+```text
+[0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
+```
+
+也就是：
+
+```text
+y_7 = 1
+y_0 = 0
+y_1 = 0
+...
+y_9 = 0
+```
+
+含义是：
+
+```text
+正确类别希望概率是 1
+错误类别希望概率是 0
+```
+
+```text
+L
+```
+
+表示单张图片的 loss。
+
+分类任务中可以理解为：
+
+```text
+模型给正确类别的概率越高，L 越小。
+模型给正确类别的概率越低，L 越大。
+```
+
+```text
+dL/dz_i
+```
+
+读作：
+
+```text
+L 对 z_i 的导数
+```
+
+含义是：
+
+```text
+如果 z_i 稍微变大一点，L 会如何变化。
+```
+
+如果：
+
+```text
+dL/dz_i > 0
+```
+
+说明增大 `z_i` 会让 loss 变大，训练会倾向于压低它。
+
+如果：
+
+```text
+dL/dz_i < 0
+```
+
+说明增大 `z_i` 会让 loss 变小，训练会倾向于提高它。
+
+---
+
+## 14.3 softmax 和 CrossEntropyLoss 的关系
+
+假设为了简化，只有 3 个类别：
+
+```text
+z_0, z_1, z_2
+```
+
+softmax 的总和是：
+
+```text
+S = exp(z_0) + exp(z_1) + exp(z_2)
+```
+
+每个类别的概率是：
+
+```text
+p_0 = exp(z_0) / S
+p_1 = exp(z_1) / S
+p_2 = exp(z_2) / S
+```
+
+假设真实类别是 `0`。
+
+那么 one-hot 是：
+
+```text
+y_0 = 1
+y_1 = 0
+y_2 = 0
+```
+
+单张图片的 CrossEntropyLoss 是：
+
+```text
+L = -ln(p_0)
+```
+
+因为真实类别是 `0`，所以只看正确类别概率 `p_0`。
+
+如果：
+
+```text
+p_0 = 0.90
+```
+
+那么：
+
+```text
+L = -ln(0.90) ≈ 0.105
+```
+
+如果：
+
+```text
+p_0 = 0.10
+```
+
+那么：
+
+```text
+L = -ln(0.10) ≈ 2.303
+```
+
+所以：
+
+```text
+正确类别概率越低，loss 越大。
+```
+
+---
+
+## 14.4 为什么 dL/dz_i = p_i - y_i？
+
+继续使用 3 类例子。
+
+真实类别是 `0`，所以：
+
+```text
+L = -ln(p_0)
+```
+
+而 softmax 定义中：
+
+```text
+p_0 = exp(z_0) / S
+```
+
+代入：
+
+```text
+L = -ln(exp(z_0) / S)
+```
+
+根据自然对数规则：
+
+```text
+ln(a / b) = ln(a) - ln(b)
+```
+
+所以：
+
+```text
+L = -[ln(exp(z_0)) - ln(S)]
+```
+
+因为：
+
+```text
+ln(exp(z_0)) = z_0
+```
+
+所以：
+
+```text
+L = -z_0 + ln(S)
+```
+
+展开 `S`：
+
+```text
+L = -z_0 + ln(exp(z_0) + exp(z_1) + exp(z_2))
+```
+
+现在分别看 `L` 对不同 logit 的导数。
+
+### 对正确类别 z_0 求导
+
+```text
+L = -z_0 + ln(S)
+```
+
+第一部分：
+
+```text
+d(-z_0)/dz_0 = -1
+```
+
+第二部分：
+
+```text
+d(ln(S))/dz_0
+```
+
+这里要用链式法则：
+
+```text
+d(ln(S))/dz_0 = d(ln(S))/dS * dS/dz_0
+```
+
+其中：
+
+```text
+d(ln(S))/dS = 1 / S
+```
+
+而：
+
+```text
+S = exp(z_0) + exp(z_1) + exp(z_2)
+```
+
+所以：
+
+```text
+dS/dz_0 = exp(z_0)
+```
+
+因此：
+
+```text
+d(ln(S))/dz_0 = (1 / S) * exp(z_0)
+```
+
+也就是：
+
+```text
+d(ln(S))/dz_0 = exp(z_0) / S
+```
+
+根据 softmax 定义：
+
+```text
+p_0 = exp(z_0) / S
+```
+
+所以：
+
+```text
+d(ln(S))/dz_0 = p_0
+```
+
+两部分相加：
+
+```text
+dL/dz_0 = -1 + p_0
+```
+
+也就是：
+
+```text
+dL/dz_0 = p_0 - 1
+```
+
+因为真实类别是 `0`，所以：
+
+```text
+y_0 = 1
+```
+
+因此：
+
+```text
+dL/dz_0 = p_0 - y_0
+```
+
+### 对错误类别 z_1 求导
+
+仍然是：
+
+```text
+L = -z_0 + ln(S)
+```
+
+对 `z_1` 求导。
+
+第一部分：
+
+```text
+d(-z_0)/dz_1 = 0
+```
+
+因为 `z_0` 和 `z_1` 是两个不同位置的 logit。
+
+第二部分：
+
+```text
+d(ln(S))/dz_1 = d(ln(S))/dS * dS/dz_1
+```
+
+其中：
+
+```text
+d(ln(S))/dS = 1 / S
+```
+
+并且：
+
+```text
+dS/dz_1 = exp(z_1)
+```
+
+所以：
+
+```text
+d(ln(S))/dz_1 = exp(z_1) / S
+```
+
+根据 softmax 定义：
+
+```text
+p_1 = exp(z_1) / S
+```
+
+因此：
+
+```text
+dL/dz_1 = 0 + p_1
+```
+
+也就是：
+
+```text
+dL/dz_1 = p_1
+```
+
+因为真实类别不是 `1`，所以：
+
+```text
+y_1 = 0
+```
+
+因此：
+
+```text
+dL/dz_1 = p_1 - y_1
+```
+
+同理：
+
+```text
+dL/dz_2 = p_2 - y_2
+```
+
+最终统一写成：
+
+```text
+dL/dz_i = p_i - y_i
+```
+
+这句话的准确含义是：
+
+```text
+每个 logit 的梯度 = 模型给这个类别的预测概率 - 真实标签希望这个类别拥有的概率
+```
+
+正确类别的 `y_i = 1`，错误类别的 `y_i = 0`。
+
+---
+
+## 14.5 这个梯度如何推动正确类别上升？
+
+假设真实类别是 `7`。
+
+如果模型现在给数字 `7` 的概率很低：
 
 ```text
 p_7 = 0.10
 ```
 
-待回答：
+因为：
 
 ```text
-1. 哪个模型的 CrossEntropyLoss 更小？
-2. 为什么？
-3. 如果某个错误类别，比如 3，概率很高，会发生什么？
-4. CrossEntropyLoss 的输入应该是 logits，还是 softmax 后的概率？
+y_7 = 1
+```
+
+所以：
+
+```text
+dL/dz_7 = p_7 - y_7 = 0.10 - 1 = -0.90
+```
+
+这个梯度是负数。
+
+梯度下降的更新方向是：
+
+```text
+参数 = 参数 - learning_rate * 梯度
+```
+
+所以负梯度会让相关参数朝着“增大 `z_7`”的方向变化。
+
+如果错误类别 `3` 的概率很高：
+
+```text
+p_3 = 0.70
+```
+
+因为真实类别不是 `3`：
+
+```text
+y_3 = 0
+```
+
+所以：
+
+```text
+dL/dz_3 = p_3 - y_3 = 0.70 - 0 = 0.70
+```
+
+这个梯度是正数。
+
+梯度下降会让相关参数朝着“减小 `z_3`”的方向变化。
+
+所以 CrossEntropyLoss 的核心作用是：
+
+```text
+提高正确类别的 logit。
+压低错误类别的 logit。
+```
+
+---
+
+## 14.6 最后一层 Linear 的 weight 和 bias 如何被影响？
+
+MNIST MLP 的最后一层是：
+
+```python
+nn.Linear(128, 10)
+```
+
+它的含义是：
+
+```text
+输入 hidden 有 128 个特征。
+输出 logits 有 10 个类别分数。
+```
+
+对单张图片：
+
+```text
+hidden = [h_1, h_2, ..., h_128]
+```
+
+第 `i` 个类别的 logit 是：
+
+```text
+z_i = W_i,1 * h_1 + W_i,2 * h_2 + ... + W_i,128 * h_128 + b_i
+```
+
+其中：
+
+```text
+W_i,k
+```
+
+表示最后一层中“第 `i` 个类别、第 `k` 个 hidden 特征”对应的 weight。
+
+```text
+b_i
+```
+
+表示第 `i` 个类别对应的 bias。
+
+PyTorch 中这层参数形状是：
+
+```text
+weight.shape = [10, 128]
+bias.shape = [10]
+```
+
+现在看某一个具体参数：
+
+```text
+W_7,k
+```
+
+它只直接参与计算：
+
+```text
+z_7
+```
+
+因为：
+
+```text
+z_7 = W_7,1 * h_1 + ... + W_7,k * h_k + ... + W_7,128 * h_128 + b_7
+```
+
+所以根据链式法则：
+
+```text
+dL/dW_7,k = dL/dz_7 * dz_7/dW_7,k
+```
+
+又因为：
+
+```text
+dz_7/dW_7,k = h_k
+```
+
+所以：
+
+```text
+dL/dW_7,k = (dL/dz_7) * h_k
+```
+
+而前面已经得到：
+
+```text
+dL/dz_7 = p_7 - y_7
+```
+
+因此：
+
+```text
+dL/dW_7,k = (p_7 - y_7) * h_k
+```
+
+这个值就是参数 `W_7,k` 的梯度。
+
+也就是 PyTorch 里：
+
+```text
+weight.grad[7, k]
+```
+
+类似地：
+
+```text
+dL/db_7 = dL/dz_7 * dz_7/db_7
+```
+
+因为：
+
+```text
+dz_7/db_7 = 1
+```
+
+所以：
+
+```text
+dL/db_7 = p_7 - y_7
+```
+
+也就是：
+
+```text
+bias.grad[7]
+```
+
+对任意类别 `i` 和任意 hidden 位置 `k`，统一公式是：
+
+```text
+dL/dW_i,k = (p_i - y_i) * h_k
+```
+
+```text
+dL/db_i = p_i - y_i
+```
+
+这说明最后一层的全部参数都会被影响：
+
+```text
+10 个类别 * 128 个 hidden 特征 = 1280 个 weight
+再加 10 个 bias
+```
+
+每个 weight 都有自己的梯度。
+
+---
+
+## 14.7 batch size = 256 时如何计算梯度？
+
+如果 batch size 是 256，那么不是一张图片更新一次参数，而是：
+
+```text
+256 张图片一起 forward。
+256 张图片各自产生 loss。
+PyTorch 默认对 256 个 loss 求平均。
+然后 backward 得到平均梯度。
+最后 optimizer.step() 更新一次参数。
+```
+
+设：
+
+```text
+n
+```
+
+表示 batch 中第 `n` 张图片。
+
+```text
+n = 1, 2, ..., 256
+```
+
+第 `n` 张图片的第 `i` 个类别概率是：
+
+```text
+p_n,i
+```
+
+第 `n` 张图片的 one-hot 标签是：
+
+```text
+y_n,i
+```
+
+第 `n` 张图片的第 `k` 个 hidden 特征是：
+
+```text
+h_n,k
+```
+
+那么单张图片对参数 `W_i,k` 的梯度贡献是：
+
+```text
+(p_n,i - y_n,i) * h_n,k
+```
+
+因为 `CrossEntropyLoss` 默认是：
+
+```python
+reduction="mean"
+```
+
+所以 batch 的最终梯度是 256 张图片的平均值：
+
+```text
+dL_batch/dW_i,k =
+[(p_1,i - y_1,i) * h_1,k
++ (p_2,i - y_2,i) * h_2,k
++ ...
++ (p_256,i - y_256,i) * h_256,k] / 256
+```
+
+这个平均值会存到：
+
+```text
+weight.grad[i, k]
+```
+
+然后执行：
+
+```python
+optimizer.step()
+```
+
+参数更新为：
+
+```text
+W_i,k = W_i,k - learning_rate * weight.grad[i, k]
+```
+
+所以更准确地说：
+
+```text
+一个 batch 中的 256 张图片共同决定一次参数更新方向。
+```
+
+---
+
+## 14.8 当前理解总结
+
+目前可以这样理解 Day 3 的分类训练：
+
+```text
+1. 最后一层 Linear 把 128 维 hidden 特征转成 10 个 logits。
+2. logits 的位置含义由标签约定决定，比如第 7 个位置表示数字 7。
+3. CrossEntropyLoss 内部会对 logits 做 log_softmax，本质等价于 softmax + 负对数损失。
+4. exp(x) = e^x，ln(x) 是以 e 为底的自然对数，ln(exp(x)) = x。
+5. softmax 中 p_i = exp(z_i) / S，S 是所有 exp(logit) 的总和。
+6. 对单张图片，CrossEntropyLoss 对每个 logit 的梯度是 dL/dz_i = p_i - y_i。
+7. 正确类别的 y_i = 1，错误类别的 y_i = 0。
+8. 正确类别概率低时，p_i - 1 是负数，训练会推动正确类别 logit 上升。
+9. 错误类别概率高时，p_i - 0 是正数，训练会推动错误类别 logit 下降。
+10. 最后一层某个 weight 的梯度是 dL/dW_i,k = (p_i - y_i) * h_k。
+11. batch size = 256 时，最终梯度是 256 张图片梯度贡献的平均值。
+12. loss.backward() 负责自动计算这些梯度，并写入 weight.grad 和 bias.grad。
+13. optimizer.step() 根据这些梯度真正修改 weight 和 bias。
 ```
