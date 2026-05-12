@@ -81,3 +81,37 @@
 - 关于 uv 缓存的结论：
   - 正常终端中直接使用默认 uv 缓存即可。
   - 只有遇到权限问题时，才临时使用 `UV_CACHE_DIR=.uv-cache`。
+## Day 2 复现记录 - Windows 本机
+
+- 日期：2026-05-12
+- 目标：在当前 Windows 电脑上复现另一台电脑完成的 Day 2 PyTorch 自动微分与线性回归实验。
+- 环境检查：
+  - `.venv\Scripts\python.exe` 可用。
+  - Python：3.12.11
+  - PyTorch：2.11.0+cpu
+  - CUDA：不可用
+  - MPS：不可用
+  - 当前复现实验使用 CPU。
+- 运行命令：
+  - `.\.venv\Scripts\python.exe experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py`
+  - `.\.venv\Scripts\python.exe experiments/day-02-pytorch-autograd-linear-regression/gradient_debug.py`
+- 主实验结果：
+  - 设备：CPU
+  - 自动微分示例：`y = x^2 + 3x + 1`，当 `x = 2` 时，`y = 11`，`dy/dx = 7`。
+  - 线性回归最终 loss：约 `0.146679`
+  - 学到的函数：`y = 2.007x + 1.032`
+  - 输出图片：`experiments/day-02-pytorch-autograd-linear-regression/outputs/linear_regression_result.png`
+- 梯度调试结果：
+  - 单样本 `x = 2, y = 5`，初始 `weight = 1, bias = 0`。
+  - `pred = 2`，`error = -3`，`loss = 9`。
+  - `loss.backward()` 后：`weight.grad = -12`，`bias.grad = -6`。
+  - `optimizer.step()` 后：`weight = 1.6`，`bias = 0.3`。
+  - 连续两次 `backward()` 且不执行 `zero_grad()` 时，梯度会累积：`weight.grad = -24`，`bias.grad = -12`。
+- 需要注意：
+  - `uv run` 在当前机器上仍遇到权限问题，直接使用 `.venv\Scripts\python.exe` 可以运行。
+  - 主实验保存图像时出现 Matplotlib cache 权限警告，但不影响实验结果生成。
+- 今日理解：
+  - `loss.backward()` 负责计算梯度。
+  - `optimizer.step()` 负责根据梯度更新参数。
+  - `optimizer.zero_grad()` 必须在每次反向传播前清空旧梯度，否则梯度会累积。
+
