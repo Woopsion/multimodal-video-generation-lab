@@ -94,7 +94,7 @@ logs/
 - [ ] 学习：卷积、池化、BatchNorm、Dropout、数据增强。
 - [ ] 实践：训练一个 CIFAR-10 CNN 分类器。
 - [ ] 实践：记录 batch size 对显存和速度的影响。
-- [ ] 产出：`experiments/cifar10-cnn/train.py` 和 `logs/gpu-benchmark.md`。
+- [ ] 产出：`experiments/day-04-cifar10-cnn/train.py` 和 `logs/gpu-benchmark.md`。
 - [ ] 验收：能解释 CNN 为什么适合图像任务。
 
 ### Day 5：Transformer Encoder 手写版
