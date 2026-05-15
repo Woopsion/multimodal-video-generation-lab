@@ -1,0 +1,3441 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 5 - Transformer Encoder 入门</title>
+    <style>
+      :root {
+        --bg: #f4f7f5;
+        --paper: #ffffff;
+        --ink: #17211c;
+        --muted: #5a675f;
+        --line: #d8dfda;
+        --teal: #0f766e;
+        --teal-soft: #d9f3ef;
+        --amber: #b45309;
+        --amber-soft: #fff1d6;
+        --red: #b42318;
+        --red-soft: #ffe4e0;
+        --blue: #2563eb;
+        --blue-soft: #dce8ff;
+        --code: #101915;
+        --shadow: 0 24px 80px rgba(23, 33, 28, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.68;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 82svh;
+        display: grid;
+        grid-template-columns: minmax(28px, 1fr) minmax(0, 1180px) minmax(28px, 1fr);
+        align-items: center;
+        padding: 56px 0 36px;
+        background:
+          linear-gradient(90deg, rgba(244, 247, 245, 0.98), rgba(244, 247, 245, 0.7)),
+          radial-gradient(circle at 85% 28%, rgba(15, 118, 110, 0.12), transparent 34%),
+          radial-gradient(circle at 68% 76%, rgba(180, 83, 9, 0.12), transparent 34%);
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(380px, 1.1fr);
+        gap: 54px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--teal);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 760px;
+        font-size: clamp(44px, 7vw, 92px);
+        line-height: 0.94;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 620px;
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 23px);
+      }
+
+      .hero-points {
+        margin: 34px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 12px;
+        color: #27332d;
+        font-size: 16px;
+      }
+
+      .hero-points li {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--teal);
+      }
+
+      .hero-visual {
+        width: 100%;
+        min-height: 520px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: var(--shadow);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(28px, 1fr) minmax(0, 1180px) minmax(28px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        border-left: 2px solid var(--line);
+        padding: 8px 0 8px 18px;
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--teal);
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 34px 0 12px;
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 14px 0;
+        max-width: 860px;
+        color: #243029;
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--teal);
+        background: var(--teal-soft);
+      }
+
+      .callout strong {
+        color: #064e49;
+      }
+
+      .warning {
+        border-left-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .formula {
+        margin: 20px 0;
+        padding: 20px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        overflow-x: auto;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        color: var(--code);
+        font-size: 16px;
+      }
+
+      .formula.big {
+        font-size: 20px;
+      }
+
+      .frac {
+        display: inline-flex;
+        flex-direction: column;
+        vertical-align: middle;
+        text-align: center;
+        line-height: 1.25;
+        margin: 0 2px;
+      }
+
+      .frac > span:first-child {
+        border-bottom: 1.5px solid currentColor;
+        padding: 0 4px 2px;
+      }
+
+      .frac > span:last-child {
+        padding: 2px 4px 0;
+      }
+
+      .symbol-grid,
+      .compare-grid,
+      .shape-grid {
+        display: grid;
+        gap: 16px;
+        margin: 26px 0;
+      }
+
+      .symbol-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .compare-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .shape-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .tile {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        padding: 20px;
+      }
+
+      .tile h4 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      .tile p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .mono {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        margin: 22px 0;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 660px;
+      }
+
+      th,
+      td {
+        padding: 13px 15px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #edf3f0;
+        font-size: 14px;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .svg-panel {
+        margin: 28px 0;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .svg-panel svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .steps {
+        counter-reset: step;
+        display: grid;
+        gap: 18px;
+        margin: 26px 0;
+      }
+
+      .step {
+        counter-increment: step;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+
+      .step::before {
+        content: counter(step);
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: white;
+        font-weight: 800;
+      }
+
+      .step h4 {
+        margin: 0 0 5px;
+        font-size: 18px;
+      }
+
+      .step p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .matrix {
+        display: inline-grid;
+        gap: 4px 12px;
+        grid-auto-flow: row;
+        vertical-align: middle;
+        padding: 4px 10px;
+        border-left: 2px solid currentColor;
+        border-right: 2px solid currentColor;
+      }
+
+      .matrix.cols-2 {
+        grid-template-columns: repeat(2, auto);
+      }
+
+      .matrix.cols-3 {
+        grid-template-columns: repeat(3, auto);
+      }
+
+      .footer-note {
+        margin-top: 40px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 920px) {
+        .hero-inner {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-visual {
+          min-height: 360px;
+        }
+
+        .content {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        nav {
+          position: static;
+          border-left: 0;
+          border-bottom: 1px solid var(--line);
+          padding: 0 0 18px;
+          display: flex;
+          gap: 14px;
+          overflow-x: auto;
+        }
+
+        nav a {
+          flex: 0 0 auto;
+        }
+
+        .symbol-grid,
+        .compare-grid,
+        .shape-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 5 / Transformer Encoder</p>
+          <h1>从 token 到 attention 的第一层理解</h1>
+          <p class="hero-copy">
+            这一页只讲清楚四件事：embedding 是什么，position embedding
+            为什么存在，Q/K/V 是如何生成的，self-attention 如何把一个 token
+            更新成上下文向量。
+          </p>
+          <ul class="hero-points">
+            <li><span class="dot"></span><span>所有“信息”和“内容”在模型里都是向量，也就是一组浮点数。</span></li>
+            <li><span class="dot"></span><span>token embedding 和 position embedding 都是可学习参数表。</span></li>
+            <li><span class="dot"></span><span>attention 的输出是 forward 中的新向量，不是直接修改参数。</span></li>
+          </ul>
+        </div>
+
+        <div class="hero-visual" aria-label="Transformer learning map">
+          <svg viewBox="0 0 760 560" role="img">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+              </marker>
+            </defs>
+            <rect width="760" height="560" fill="#ffffff"></rect>
+            <text x="54" y="64" font-size="28" font-weight="800" fill="#17211c">Transformer Encoder 的入口</text>
+            <text x="54" y="96" font-size="15" fill="#5a675f">先把“是谁”和“在哪里”合成 token 当前向量，再进入 attention。</text>
+
+            <g transform="translate(58 138)">
+              <rect width="150" height="64" rx="0" fill="#dce8ff" stroke="#2563eb"></rect>
+              <text x="75" y="30" font-size="16" font-weight="800" text-anchor="middle" fill="#17211c">token id</text>
+              <text x="75" y="51" font-size="14" text-anchor="middle" fill="#5a675f">[12, 35, 108]</text>
+            </g>
+            <g transform="translate(58 246)">
+              <rect width="150" height="64" rx="0" fill="#fff1d6" stroke="#b45309"></rect>
+              <text x="75" y="30" font-size="16" font-weight="800" text-anchor="middle" fill="#17211c">position id</text>
+              <text x="75" y="51" font-size="14" text-anchor="middle" fill="#5a675f">[0, 1, 2]</text>
+            </g>
+
+            <g transform="translate(286 112)">
+              <rect width="162" height="94" rx="0" fill="#f4f7f5" stroke="#d8dfda"></rect>
+              <text x="81" y="34" font-size="16" font-weight="800" text-anchor="middle" fill="#17211c">token embedding 表</text>
+              <text x="81" y="58" font-size="14" text-anchor="middle" fill="#5a675f">E[token_id]</text>
+              <text x="81" y="78" font-size="13" text-anchor="middle" fill="#0f766e">查表得到“是谁”</text>
+            </g>
+            <g transform="translate(286 236)">
+              <rect width="162" height="94" rx="0" fill="#f4f7f5" stroke="#d8dfda"></rect>
+              <text x="81" y="34" font-size="16" font-weight="800" text-anchor="middle" fill="#17211c">position embedding 表</text>
+              <text x="81" y="58" font-size="14" text-anchor="middle" fill="#5a675f">P[position_id]</text>
+              <text x="81" y="78" font-size="13" text-anchor="middle" fill="#b45309">查表得到“在哪里”</text>
+            </g>
+
+            <line x1="208" y1="170" x2="286" y2="160" stroke="#17211c" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="208" y1="278" x2="286" y2="282" stroke="#17211c" stroke-width="2" marker-end="url(#arrow)"></line>
+
+            <g transform="translate(530 174)">
+              <rect width="168" height="104" rx="0" fill="#d9f3ef" stroke="#0f766e"></rect>
+              <text x="84" y="34" font-size="17" font-weight="800" text-anchor="middle" fill="#17211c">x_t = E[id] + P[t]</text>
+              <text x="84" y="62" font-size="14" text-anchor="middle" fill="#5a675f">Transformer 的真正输入</text>
+              <text x="84" y="84" font-size="13" text-anchor="middle" fill="#0f766e">“是谁” + “在哪里”</text>
+            </g>
+            <line x1="448" y1="160" x2="530" y2="214" stroke="#17211c" stroke-width="2" marker-end="url(#arrow)"></line>
+            <line x1="448" y1="282" x2="530" y2="236" stroke="#17211c" stroke-width="2" marker-end="url(#arrow)"></line>
+
+            <g transform="translate(108 410)">
+              <rect width="546" height="84" fill="#17211c"></rect>
+              <text x="273" y="34" fill="#ffffff" font-size="18" font-weight="800" text-anchor="middle">进入 Self-Attention</text>
+              <text x="273" y="60" fill="#d8dfda" font-size="14" text-anchor="middle">每个 token 用 Q/K 决定看谁，再用权重汇总 V 得到上下文向量。</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Page navigation">
+          <a href="#embedding">1. Embedding</a>
+          <a href="#position">2. Position</a>
+          <a href="#qkv">3. Q/K/V</a>
+          <a href="#attention">4. Attention 计算</a>
+          <a href="#multihead">5. Multi-Head</a>
+          <a href="#qkv-why">追加问答 01</a>
+          <a href="#value-shape">追加问答 02</a>
+          <a href="#encoder-block">7. Encoder Block</a>
+          <a href="#ffn-detail">追加问答 03</a>
+          <a href="#code-map">8. 代码实现地图</a>
+          <a href="#tokenizer-split">追加问答 04</a>
+          <a href="#qkv-permute">追加问答 05</a>
+          <a href="#summary">6. 当前总结</a>
+        </nav>
+
+        <main>
+          <section id="embedding">
+            <h2>1. Embedding：不是计算语义，而是查一张可训练表</h2>
+            <p class="lead">
+              token id 只是编号，本身没有数值大小意义。Embedding 的作用是把这个编号映射成一个模型能处理的向量。
+            </p>
+
+            <div class="callout">
+              <strong>先抓住一句话：</strong>
+              token embedding 是一张参数表。输入 token id 后，模型取出这张表里的对应行。
+            </div>
+
+            <div class="formula big">
+              x<sub>t</sub> = E[token_id<sub>t</sub>]
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                    <th>类比前几天的知识</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">E</td>
+                    <td>token embedding 表，shape 是 <span class="mono">[vocab_size, embed_dim]</span></td>
+                    <td>和 Linear 的 weight 一样，是可学习参数。</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">token_id_t</td>
+                    <td>第 <span class="mono">t</span> 个位置的 token 编号</td>
+                    <td>像 MNIST label 一样，是编号，不是连续数值。</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">x_t</td>
+                    <td>第 <span class="mono">t</span> 个 token 查表后得到的向量</td>
+                    <td>相当于模型内部对这个 token 的初始特征。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 310" role="img" aria-label="Token embedding lookup diagram">
+                <rect width="920" height="310" fill="#ffffff"></rect>
+                <text x="40" y="44" font-size="24" font-weight="800" fill="#17211c">token id 查表</text>
+                <text x="40" y="74" font-size="15" fill="#5a675f">输入不是“35 这个数值很大”，而是“取 embedding 表第 35 行”。</text>
+
+                <g transform="translate(52 120)">
+                  <rect width="130" height="52" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="65" y="32" font-size="17" text-anchor="middle" font-weight="800">token id = 35</text>
+                </g>
+
+                <path d="M196 146 L285 146" stroke="#17211c" stroke-width="2" marker-end="url(#arrow2)"></path>
+                <defs>
+                  <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+
+                <g transform="translate(306 100)">
+                  <rect width="220" height="140" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="110" y="28" font-size="16" font-weight="800" text-anchor="middle">Embedding 表 E</text>
+                  <line x1="0" y1="44" x2="220" y2="44" stroke="#d8dfda"></line>
+                  <text x="18" y="70" font-size="13" fill="#5a675f">E[34]</text>
+                  <text x="74" y="70" font-size="13" fill="#5a675f">[0.11, -0.08, ...]</text>
+                  <rect x="8" y="82" width="204" height="28" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="18" y="101" font-size="13" fill="#064e49">E[35]</text>
+                  <text x="74" y="101" font-size="13" fill="#064e49">[0.71, 0.12, -0.33, 0.08]</text>
+                  <text x="18" y="130" font-size="13" fill="#5a675f">E[36]</text>
+                  <text x="74" y="130" font-size="13" fill="#5a675f">[-0.20, 0.44, ...]</text>
+                </g>
+
+                <path d="M546 146 L642 146" stroke="#17211c" stroke-width="2" marker-end="url(#arrow2)"></path>
+
+                <g transform="translate(662 120)">
+                  <rect width="204" height="52" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="102" y="22" font-size="15" text-anchor="middle" font-weight="800">x_t</text>
+                  <text x="102" y="40" font-size="13" text-anchor="middle">[0.71, 0.12, -0.33, 0.08]</text>
+                </g>
+              </svg>
+            </div>
+
+            <p>
+              这张表一开始通常是随机初始化。训练时，某个 batch 用到了哪些 token，那些 token 对应的行就会收到梯度并被更新。
+              所以 embedding 不是人手写出来的语义字典，而是通过任务 loss 慢慢学出来的参数。
+            </p>
+          </section>
+
+          <section id="position">
+            <h2>2. Position Embedding：给每个位置一张可训练“坐标标签”</h2>
+            <p class="lead">
+              token embedding 告诉模型“这个 token 是谁”。position embedding 告诉模型“这个 token 在哪里”。
+            </p>
+
+            <div class="compare-grid">
+              <div class="tile">
+                <h4>token id</h4>
+                <p>表示词表里的编号，例如“我”可能是 12，“打”可能是 35。</p>
+              </div>
+              <div class="tile">
+                <h4>position id</h4>
+                <p>表示序列里的位置编号，例如第一个位置是 0，第二个位置是 1。</p>
+              </div>
+            </div>
+
+            <p>
+              如果一句话有 5 个 token，那么它的位置编号就是：
+            </p>
+
+            <div class="formula big">
+              position ids = [0, 1, 2, 3, 4]
+            </div>
+
+            <p>
+              这不是 token 的编号，而是“第几个位置”。所以 position embedding 表 <span class="mono">P</span>
+              也可以理解成：第 0 个位置有一条向量，第 1 个位置有一条向量，第 2 个位置有一条向量。
+            </p>
+
+            <div class="formula big">
+              x<sub>t</sub> = E[token_id<sub>t</sub>] + P[t]
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>句子</th>
+                    <th>第 0 个位置</th>
+                    <th>第 1 个位置</th>
+                    <th>第 2 个位置</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>我 打 你</td>
+                    <td><span class="mono">E[我] + P[0]</span></td>
+                    <td><span class="mono">E[打] + P[1]</span></td>
+                    <td><span class="mono">E[你] + P[2]</span></td>
+                  </tr>
+                  <tr>
+                    <td>你 打 我</td>
+                    <td><span class="mono">E[你] + P[0]</span></td>
+                    <td><span class="mono">E[打] + P[1]</span></td>
+                    <td><span class="mono">E[我] + P[2]</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout warning">
+              <strong>为什么这件事重要：</strong>
+              “我 打 你”和“你 打 我”包含同样的 token，但顺序不同，意思完全不同。
+              position embedding 让同一个 token 出现在不同位置时，进入 Transformer 的向量不同。
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 300" role="img" aria-label="Position embedding comparison">
+                <rect width="920" height="300" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">同一个 token，在不同位置会得到不同输入向量</text>
+
+                <g transform="translate(58 94)">
+                  <text x="0" y="0" font-size="17" font-weight="800">句子 A：我 打 你</text>
+                  <rect x="0" y="28" width="150" height="52" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <rect x="170" y="28" width="150" height="52" fill="#fff1d6" stroke="#b45309"></rect>
+                  <rect x="340" y="28" width="150" height="52" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="75" y="60" font-size="15" text-anchor="middle">E[我] + P[0]</text>
+                  <text x="245" y="60" font-size="15" text-anchor="middle">E[打] + P[1]</text>
+                  <text x="415" y="60" font-size="15" text-anchor="middle">E[你] + P[2]</text>
+                </g>
+
+                <g transform="translate(58 190)">
+                  <text x="0" y="0" font-size="17" font-weight="800">句子 B：你 打 我</text>
+                  <rect x="0" y="28" width="150" height="52" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <rect x="170" y="28" width="150" height="52" fill="#fff1d6" stroke="#b45309"></rect>
+                  <rect x="340" y="28" width="150" height="52" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="75" y="60" font-size="15" text-anchor="middle">E[你] + P[0]</text>
+                  <text x="245" y="60" font-size="15" text-anchor="middle">E[打] + P[1]</text>
+                  <text x="415" y="60" font-size="15" text-anchor="middle">E[我] + P[2]</text>
+                </g>
+
+                <text x="640" y="136" font-size="15" fill="#5a675f">token 相同，但 P[0]、P[1]、P[2] 不同。</text>
+                <text x="640" y="164" font-size="15" fill="#5a675f">因此模型能区分顺序差异。</text>
+              </svg>
+            </div>
+          </section>
+
+          <section id="qkv">
+            <h2>3. Q/K/V：不是三种文字信息，而是三组向量视角</h2>
+            <p class="lead">
+              Q、K、V 都是向量。所谓“想找什么”“提供什么标签”“真正内容”，都是帮助理解的比喻，底层实际存在形式就是一组浮点数。
+            </p>
+
+            <div class="formula big">
+              q<sub>t</sub> = x<sub>t</sub>W<sub>Q</sub>
+              &nbsp;&nbsp;
+              k<sub>t</sub> = x<sub>t</sub>W<sub>K</sub>
+              &nbsp;&nbsp;
+              v<sub>t</sub> = x<sub>t</sub>W<sub>V</sub>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>底层形式</th>
+                    <th>通俗理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">x_t</td>
+                    <td>第 t 个 token 进入 attention 前的向量</td>
+                    <td>“这个 token 是谁 + 它在哪里”的当前表示</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">W_Q</td>
+                    <td>共享的可学习参数矩阵</td>
+                    <td>把 x 转成“我想找什么”的 query 视角</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">W_K</td>
+                    <td>共享的可学习参数矩阵</td>
+                    <td>把 x 转成“我如何被匹配”的 key 视角</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">W_V</td>
+                    <td>共享的可学习参数矩阵</td>
+                    <td>把 x 转成“真正被汇总的内容” value 视角</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>关键点：</strong>
+              不是每个 token 各自拥有一套 W<sub>Q</sub>/W<sub>K</sub>/W<sub>V</sub>。
+              同一层 attention 共享这三套矩阵。每个 token 用自己的 x<sub>t</sub> 通过同一套矩阵，生成自己的 q/k/v。
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 360" role="img" aria-label="QKV shared parameter diagram">
+                <defs>
+                  <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="360" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">同一套 W_Q / W_K / W_V，被所有 token 共享</text>
+
+                <g transform="translate(62 92)">
+                  <rect width="120" height="54" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="60" y="33" text-anchor="middle" font-size="16" font-weight="800">x_0</text>
+                  <rect y="82" width="120" height="54" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="60" y="115" text-anchor="middle" font-size="16" font-weight="800">x_1</text>
+                  <rect y="164" width="120" height="54" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="60" y="197" text-anchor="middle" font-size="16" font-weight="800">x_2</text>
+                </g>
+
+                <g transform="translate(310 74)">
+                  <rect width="124" height="54" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="62" y="33" text-anchor="middle" font-size="16" font-weight="800">W_Q</text>
+                  <rect y="98" width="124" height="54" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="62" y="131" text-anchor="middle" font-size="16" font-weight="800">W_K</text>
+                  <rect y="196" width="124" height="54" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="62" y="229" text-anchor="middle" font-size="16" font-weight="800">W_V</text>
+                </g>
+
+                <g transform="translate(598 74)">
+                  <rect width="124" height="54" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="62" y="33" text-anchor="middle" font-size="16" font-weight="800">q_i</text>
+                  <rect y="98" width="124" height="54" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="62" y="131" text-anchor="middle" font-size="16" font-weight="800">k_i</text>
+                  <rect y="196" width="124" height="54" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="62" y="229" text-anchor="middle" font-size="16" font-weight="800">v_i</text>
+                </g>
+
+                <path d="M190 119 C250 110 254 102 302 101" stroke="#17211c" stroke-width="2" fill="none" marker-end="url(#arrow3)"></path>
+                <path d="M190 119 C254 144 250 194 302 199" stroke="#17211c" stroke-width="2" fill="none" marker-end="url(#arrow3)"></path>
+                <path d="M190 119 C250 210 250 286 302 297" stroke="#17211c" stroke-width="2" fill="none" marker-end="url(#arrow3)"></path>
+
+                <path d="M442 101 L590 101" stroke="#17211c" stroke-width="2" marker-end="url(#arrow3)"></path>
+                <path d="M442 199 L590 199" stroke="#17211c" stroke-width="2" marker-end="url(#arrow3)"></path>
+                <path d="M442 297 L590 297" stroke="#17211c" stroke-width="2" marker-end="url(#arrow3)"></path>
+
+                <text x="760" y="112" font-size="14" fill="#5a675f">Q/K 决定匹配分数</text>
+                <text x="760" y="210" font-size="14" fill="#5a675f">V 决定被汇总内容</text>
+                <text x="760" y="304" font-size="14" fill="#5a675f">参数训练时更新</text>
+              </svg>
+            </div>
+          </section>
+
+          <section id="attention">
+            <h2>4. Self-Attention：用权重把所有 V 混成当前 token 的新向量</h2>
+            <p class="lead">
+              这一步只是在 forward 里产生新的上下文向量，不是 optimizer.step 那种参数更新。
+            </p>
+
+            <div class="formula big">
+              score(t, j) = q<sub>t</sub> · k<sub>j</sub>
+            </div>
+
+            <p>
+              <span class="mono">t</span> 表示当前正在更新的 token 位置；
+              <span class="mono">j</span> 表示被它查看的 token 位置。
+              点积 <span class="mono">q_t · k_j</span> 用来衡量“第 t 个 token 的 query”和“第 j 个 token 的 key”匹配程度。
+            </p>
+
+            <div class="formula big">
+              attention_weight(t, j) =
+              <span class="frac">
+                <span>exp(score(t, j))</span>
+                <span>Σ<sub>r</sub> exp(score(t, r))</span>
+              </span>
+            </div>
+
+            <p>
+              <span class="mono">exp(x)</span> 就是 <span class="mono">e^x</span>。
+              它让分数变成正数；分母把同一行的所有正数加起来，使最后权重总和为 1。
+            </p>
+
+            <div class="formula big">
+              output<sub>t</sub> = Σ<sub>j</sub> attention_weight(t, j) · v<sub>j</sub>
+            </div>
+
+            <p>
+              这句话展开就是：第 t 个 token 的新向量，等于它对所有 token 的 value 向量做加权求和。
+            </p>
+
+            <h3>一个 3 token、2 维 value 的数字例子</h3>
+
+            <div class="formula">
+              v<sub>0</sub> = [1, 0]&nbsp;&nbsp;
+              v<sub>1</sub> = [0, 2]&nbsp;&nbsp;
+              v<sub>2</sub> = [3, 1]
+              <br />
+              第 0 个 token 的 attention 权重 = [0.70, 0.20, 0.10]
+            </div>
+
+            <div class="formula">
+              output<sub>0</sub>
+              = 0.70 · [1, 0] + 0.20 · [0, 2] + 0.10 · [3, 1]
+              <br />
+              = [0.70, 0.00] + [0.00, 0.40] + [0.30, 0.10]
+              <br />
+              = [1.00, 0.50]
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 380" role="img" aria-label="Attention weighted sum diagram">
+                <defs>
+                  <marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="380" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">第 0 个 token 如何得到新向量</text>
+
+                <g transform="translate(54 96)">
+                  <rect width="150" height="50" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="75" y="31" text-anchor="middle" font-size="15">v0 = [1, 0]</text>
+                  <rect y="74" width="150" height="50" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="75" y="105" text-anchor="middle" font-size="15">v1 = [0, 2]</text>
+                  <rect y="148" width="150" height="50" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="75" y="179" text-anchor="middle" font-size="15">v2 = [3, 1]</text>
+                </g>
+
+                <g transform="translate(278 96)">
+                  <rect width="120" height="50" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="60" y="31" text-anchor="middle" font-size="15">× 0.70</text>
+                  <rect y="74" width="120" height="50" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="60" y="105" text-anchor="middle" font-size="15">× 0.20</text>
+                  <rect y="148" width="120" height="50" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="60" y="179" text-anchor="middle" font-size="15">× 0.10</text>
+                </g>
+
+                <g transform="translate(472 96)">
+                  <rect width="150" height="50" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="75" y="31" text-anchor="middle" font-size="15">[0.70, 0]</text>
+                  <rect y="74" width="150" height="50" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="75" y="105" text-anchor="middle" font-size="15">[0, 0.40]</text>
+                  <rect y="148" width="150" height="50" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="75" y="179" text-anchor="middle" font-size="15">[0.30, 0.10]</text>
+                </g>
+
+                <path d="M640 195 L706 195" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+
+                <g transform="translate(724 158)">
+                  <rect width="150" height="74" fill="#17211c"></rect>
+                  <text x="75" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">output0</text>
+                  <text x="75" y="56" text-anchor="middle" font-size="15" fill="#d8dfda">[1.00, 0.50]</text>
+                </g>
+
+                <path d="M214 121 L270 121" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+                <path d="M214 195 L270 195" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+                <path d="M214 269 L270 269" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+                <path d="M406 121 L464 121" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+                <path d="M406 195 L464 195" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+                <path d="M406 269 L464 269" stroke="#17211c" stroke-width="2" marker-end="url(#arrow4)"></path>
+              </svg>
+            </div>
+
+            <div class="callout">
+              <strong>这里的“更新自己”是什么意思：</strong>
+              原来的 x<sub>t</sub> 没有被原地改掉。attention 产生了一个新的 output<sub>t</sub>，
+              它混入了其他 token 的 value 信息。参数更新仍然发生在训练阶段的 optimizer.step。
+            </div>
+          </section>
+
+          <section id="multihead">
+            <h2>5. Multi-Head：不是机械切原始 x，而是投影后拆成多个关系子空间</h2>
+            <p class="lead">
+              Multi-Head 的核心是让模型用多套 attention 权重同时看序列关系。每个 head 可以学到不同的关注方式。
+            </p>
+
+            <div class="shape-grid">
+              <div class="tile">
+                <h4>输入</h4>
+                <p><span class="mono">x.shape = [batch, seq_len, embed_dim]</span></p>
+              </div>
+              <div class="tile">
+                <h4>拆 head</h4>
+                <p><span class="mono">head_dim = embed_dim / num_heads</span></p>
+              </div>
+              <div class="tile">
+                <h4>输出</h4>
+                <p>合并后仍回到 <span class="mono">[batch, seq_len, embed_dim]</span></p>
+              </div>
+            </div>
+
+            <div class="formula big">
+              embed_dim = num_heads × head_dim
+            </div>
+
+            <p>
+              例如：
+            </p>
+
+            <div class="formula">
+              embed_dim = 8, num_heads = 2
+              <br />
+              head_dim = 8 / 2 = 4
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 430" role="img" aria-label="Multi-head shape flow">
+                <defs>
+                  <marker id="arrow5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="430" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">Multi-Head 的 shape 变化</text>
+
+                <g transform="translate(52 118)">
+                  <rect width="158" height="76" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="79" y="32" text-anchor="middle" font-size="16" font-weight="800">x</text>
+                  <text x="79" y="56" text-anchor="middle" font-size="14">[1, 3, 8]</text>
+                </g>
+
+                <g transform="translate(286 102)">
+                  <rect width="158" height="108" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="79" y="31" text-anchor="middle" font-size="16" font-weight="800">Linear 生成 Q/K/V</text>
+                  <text x="79" y="58" text-anchor="middle" font-size="13">q,k,v 都是</text>
+                  <text x="79" y="80" text-anchor="middle" font-size="14">[1, 3, 8]</text>
+                </g>
+
+                <g transform="translate(520 80)">
+                  <rect width="158" height="66" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="79" y="28" text-anchor="middle" font-size="16" font-weight="800">head 0</text>
+                  <text x="79" y="50" text-anchor="middle" font-size="14">[1, 3, 4]</text>
+                  <rect y="90" width="158" height="66" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="79" y="118" text-anchor="middle" font-size="16" font-weight="800">head 1</text>
+                  <text x="79" y="140" text-anchor="middle" font-size="14">[1, 3, 4]</text>
+                </g>
+
+                <g transform="translate(734 118)">
+                  <rect width="150" height="76" fill="#17211c"></rect>
+                  <text x="75" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">merge</text>
+                  <text x="75" y="56" text-anchor="middle" font-size="14" fill="#d8dfda">[1, 3, 8]</text>
+                </g>
+
+                <path d="M218 156 L278 156" stroke="#17211c" stroke-width="2" marker-end="url(#arrow5)"></path>
+                <path d="M452 156 L512 114" stroke="#17211c" stroke-width="2" marker-end="url(#arrow5)"></path>
+                <path d="M452 156 L512 204" stroke="#17211c" stroke-width="2" marker-end="url(#arrow5)"></path>
+                <path d="M686 114 L726 156" stroke="#17211c" stroke-width="2" marker-end="url(#arrow5)"></path>
+                <path d="M686 204 L726 156" stroke="#17211c" stroke-width="2" marker-end="url(#arrow5)"></path>
+
+                <g transform="translate(116 300)">
+                  <rect width="690" height="70" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="345" y="29" text-anchor="middle" font-size="16" font-weight="800">不要误解</text>
+                  <text x="345" y="52" text-anchor="middle" font-size="14" fill="#5a675f">
+                    不是把原始 x 的前 4 维给 head 0、后 4 维给 head 1；而是先 Linear 投影，再 reshape 拆 head。
+                  </text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>先投影</h4>
+                  <p>输入 x 经过 Linear 得到 q/k/v。此时每个还是 embed_dim 维。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>再拆 head</h4>
+                  <p>把最后一维 reshape 成 num_heads × head_dim，让每个 head 单独算 attention。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>最后合并</h4>
+                  <p>每个 head 输出 head_dim 维，拼接后回到 embed_dim 维。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="qkv-why">
+            <p class="eyebrow">追加问答 01 / 2026-05-14</p>
+            <h2>为什么要设计 Q/K/V，而不是直接拿 token 向量互相算？</h2>
+            <p class="lead">
+              你的问题本质是：我已经知道 Q/K/V 怎么算了，但为什么 Transformer 要这样设计？这是人类为了方便理解起的名字，还是模型结构本身真的需要这种分工？
+            </p>
+
+            <div class="callout">
+              <strong>先给结论：</strong>
+              Q/K/V 这三个名字带有帮助人类理解的比喻，但 Q/K/V 的分工不是随便编出来的。
+              它是一种真实的架构设计：用 Q 和 K 决定“看谁”，用 V 决定“拿什么内容回来”。
+            </div>
+
+            <h3>1. Q/K/V 是人类理解用的比喻吗？</h3>
+            <p>
+              是，也不完全是。
+            </p>
+            <p>
+              “Query、Key、Value”这三个词确实是人类为了理解而借用的概念。它们很像数据库检索：
+            </p>
+
+            <div class="formula">
+              Query：我拿什么去查找
+              <br />
+              Key：每条记录用什么被匹配
+              <br />
+              Value：匹配后真正取回来的内容
+            </div>
+
+            <p>
+              但在 Transformer 里，Q/K/V 不是文字、不是标签、不是人类写好的规则。它们的实际存在形式都是向量：
+            </p>
+
+            <div class="formula big">
+              q<sub>t</sub>、k<sub>t</sub>、v<sub>t</sub> 都是一组浮点数
+            </div>
+
+            <p>
+              所以更准确地说：
+            </p>
+
+            <div class="formula">
+              Q/K/V 的名字是理解类比；
+              <br />
+              Q/K/V 的计算结构是真实架构；
+              <br />
+              Q/K/V 的具体含义由训练学出来。
+            </div>
+
+            <h3>2. 这是设计者的一种“哲学”吗？</h3>
+            <p>
+              可以说有设计思想，但不是玄学式哲学。更工程化的说法是：
+            </p>
+
+            <div class="callout warning">
+              <strong>Transformer 的 Q/K/V 是一种 inductive bias。</strong>
+              也就是设计者提前规定了一种适合序列关系建模的计算方式，然后让模型通过训练去学习这套计算方式里的参数。
+            </div>
+
+            <p>
+              类比 Day 4 的 CNN：
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>结构</th>
+                    <th>设计者规定了什么</th>
+                    <th>模型训练学什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CNN</td>
+                    <td>用小卷积核在图片上滑动，优先建模局部空间结构。</td>
+                    <td>每个卷积核具体检测什么图案。</td>
+                  </tr>
+                  <tr>
+                    <td>Transformer Attention</td>
+                    <td>每个 token 可以对所有 token 分配权重，再汇总信息。</td>
+                    <td>Q/K/V 参数如何产生有用的关注关系。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              所以不是设计者手工告诉模型：
+            </p>
+
+            <div class="formula">
+              head 1 必须学主语
+              <br />
+              head 2 必须学地点
+              <br />
+              W_Q 的第 3 维必须表示某种语法
+            </div>
+
+            <p>
+              设计者只是规定了一个可训练的计算框架：
+            </p>
+
+            <div class="formula big">
+              x → Q/K/V → 分数 → softmax 权重 → 加权汇总 V → 新 token 向量
+            </div>
+
+            <p>
+              至于这些参数最后学出什么模式，是训练数据和 loss 共同逼出来的。
+            </p>
+
+            <h3>3. 为什么不是 q 直接乘 v？</h3>
+            <p>
+              这里要纠正一个容易混的点：attention 里不是用 q 直接去乘各个 v 来决定关注谁。
+            </p>
+
+            <div class="formula big">
+              正确流程是：q 和 k 算匹配分数，然后用分数产生的权重去加权 v
+            </div>
+
+            <div class="formula">
+              score(t, j) = q<sub>t</sub> · k<sub>j</sub>
+              <br />
+              weight(t, j) = softmax(score(t, j))
+              <br />
+              output<sub>t</sub> = Σ<sub>j</sub> weight(t, j) · v<sub>j</sub>
+            </div>
+
+            <p>
+              这样设计的好处是把两件事拆开了：
+            </p>
+
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>Q/K 负责匹配</h4>
+                <p>第 t 个 token 应该看第 j 个 token 多少。</p>
+              </div>
+              <div class="tile">
+                <h4>V 负责内容</h4>
+                <p>一旦决定看它，就从它那里拿什么向量内容回来。</p>
+              </div>
+            </div>
+
+            <p>
+              如果直接让 q 和 v 同时承担“匹配”和“内容”两个角色，模型的自由度会变小。
+              Q/K/V 分开后，模型可以学到：
+            </p>
+
+            <div class="formula">
+              用一种视角判断谁重要；
+              <br />
+              用另一种视角决定真正传递什么内容。
+            </div>
+
+            <h3>4. 为什么这种设计能通过训练变好？</h3>
+            <p>
+              因为整条链路都是可微分的。也就是说，从最终 loss 往回，梯度可以一路传到所有参数：
+            </p>
+
+            <div class="formula">
+              loss
+              ← output
+              ← attention weights
+              ← scores
+              ← Q/K/V
+              ← W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub>
+              ← embedding 表
+            </div>
+
+            <p>
+              如果某次模型预测错了，loss 会变大。反向传播会告诉模型：
+            </p>
+
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>哪些 token 本该多看却没多看</h4>
+                  <p>梯度会推动 W_Q 和 W_K，让这些 token 未来更容易得到更高匹配分数。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>哪些 token 本不该多看却看太多</h4>
+                  <p>梯度会推动 W_Q 和 W_K，让这些错误关注未来降低。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>哪些内容应该被传递给后续层</h4>
+                  <p>梯度会推动 W_V，让 value 向量携带更有用的内容。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 360" role="img" aria-label="Why QKV design works">
+                <defs>
+                  <marker id="arrow6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="360" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">Q/K/V 的设计分工</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">先决定看谁，再决定拿什么；训练会调整这些决定方式。</text>
+
+                <g transform="translate(54 128)">
+                  <rect width="130" height="62" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="65" y="27" text-anchor="middle" font-size="15" font-weight="800">x_t</text>
+                  <text x="65" y="48" text-anchor="middle" font-size="13">当前 token 向量</text>
+                </g>
+
+                <g transform="translate(260 70)">
+                  <rect width="126" height="56" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="63" y="34" text-anchor="middle" font-size="15" font-weight="800">Q</text>
+                  <rect y="86" width="126" height="56" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="63" y="120" text-anchor="middle" font-size="15" font-weight="800">K</text>
+                  <rect y="172" width="126" height="56" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="63" y="206" text-anchor="middle" font-size="15" font-weight="800">V</text>
+                </g>
+
+                <g transform="translate(474 96)">
+                  <rect width="160" height="92" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="80" y="32" text-anchor="middle" font-size="16" font-weight="800">Q · K</text>
+                  <text x="80" y="56" text-anchor="middle" font-size="13" fill="#5a675f">决定看谁</text>
+                  <text x="80" y="76" text-anchor="middle" font-size="13" fill="#5a675f">产生 attention 权重</text>
+                </g>
+
+                <g transform="translate(706 128)">
+                  <rect width="154" height="62" fill="#17211c"></rect>
+                  <text x="77" y="27" text-anchor="middle" font-size="15" font-weight="800" fill="#ffffff">Σ 权重 · V</text>
+                  <text x="77" y="48" text-anchor="middle" font-size="13" fill="#d8dfda">得到新向量</text>
+                </g>
+
+                <path d="M192 159 L252 98" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M192 159 L252 184" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M192 159 L252 270" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M394 98 L466 124" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M394 184 L466 154" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M642 142 L698 159" stroke="#17211c" stroke-width="2" marker-end="url(#arrow6)"></path>
+                <path d="M394 270 C538 288 628 242 702 184" stroke="#b42318" stroke-width="2" fill="none" marker-end="url(#arrow6)"></path>
+
+                <text x="454" y="278" font-size="14" fill="#b42318">V 不决定看谁，它决定被拿走的内容形态。</text>
+              </svg>
+            </div>
+
+            <h3>5. 这一段的最终回答</h3>
+            <div class="formula big">
+              Q/K/V 是人类命名的理解框架；
+              <br />
+              也是 Transformer 真实的参数化计算结构；
+              <br />
+              设计者规定了“如何算”，训练决定“算出什么模式”。
+            </div>
+          </section>
+
+          <section id="value-shape">
+            <p class="eyebrow">追加问答 02 / 2026-05-14</p>
+            <h2>V 决定“被拿走的内容形态”到底是什么意思？</h2>
+            <p class="lead">
+              你问得很关键：最终向量不都是表示这个 token 吗？为什么还要说 V 决定“内容形态”？
+            </p>
+
+            <div class="callout">
+              <strong>先把一句话改得更准确：</strong>
+              V 不是决定“看谁”，而是决定“被看见的那个 token，要以什么向量形式贡献给别人”。
+            </div>
+
+            <h3>1. 一个 token 在 attention 里有两个身份</h3>
+            <p>
+              在 self-attention 里，同一个 token 同时有两个角色：
+            </p>
+
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>作为正在更新的位置 t</h4>
+                <p>它用自己的 query 去决定应该参考谁。</p>
+              </div>
+              <div class="tile">
+                <h4>作为被别人参考的位置 j</h4>
+                <p>它用自己的 value 向量给别人提供内容。</p>
+              </div>
+            </div>
+
+            <p>
+              所以要区分两个东西：
+            </p>
+
+            <div class="formula">
+              output<sub>t</sub>：第 t 个位置更新后的向量
+              <br />
+              v<sub>j</sub>：第 j 个位置提供给别人汇总的 value 向量
+            </div>
+
+            <p>
+              最终 <span class="mono">output_t</span> 仍然放在第 t 个位置，所以它是“第 t 个 token 的上下文表示”。
+              但这个表示不再只来自第 t 个 token 自己，它混入了多个 <span class="mono">v_j</span>。
+            </p>
+
+            <h3>2. “内容形态”不是人类语言内容，而是向量特征形式</h3>
+            <p>
+              这里的“内容”不是一句中文解释，也不是人能直接读懂的词义。
+              它就是一组浮点数，也就是模型内部的特征。
+            </p>
+
+            <div class="formula big">
+              v<sub>j</sub> = x<sub>j</sub>W<sub>V</sub>
+            </div>
+
+            <p>
+              <span class="mono">W_V</span> 会把原始 token 向量 <span class="mono">x_j</span>
+              转换成 value 向量 <span class="mono">v_j</span>。这个转换可以改变：
+            </p>
+
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>哪些特征被放大</h4>
+                  <p>某些维度可能变得更强，更容易影响后续输出。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>哪些特征被压低</h4>
+                  <p>某些对当前任务不重要的维度可以被弱化。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>特征如何重新组合</h4>
+                  <p>多个原始维度可以线性组合成新的 value 维度。</p>
+                </div>
+              </div>
+            </div>
+
+            <p>
+              所以“内容形态”更准确地说是：
+            </p>
+
+            <div class="formula big">
+              这个 token 在被别人汇总时，应该以怎样的特征向量形式出现。
+            </div>
+
+            <h3>3. 相同的“看谁”，不同的 V，会得到不同 output</h3>
+            <p>
+              下面这个例子可以直接说明：attention 权重不变，也就是“看谁”不变；
+              但 <span class="mono">W_V</span> 不同，拿回来的内容向量不同，最后输出就不同。
+            </p>
+
+            <div class="formula">
+              假设第 0 个 token 的 attention 权重固定为：
+              <br />
+              weight = [0.70, 0.30]
+            </div>
+
+            <p>
+              也就是说：
+            </p>
+
+            <div class="formula">
+              第 0 个 token 更新自己时：
+              <br />
+              70% 参考 token 0
+              <br />
+              30% 参考 token 1
+            </div>
+
+            <p>
+              原始 token 向量设为：
+            </p>
+
+            <div class="formula">
+              x<sub>0</sub> = [1, 0]
+              &nbsp;&nbsp;
+              x<sub>1</sub> = [0, 1]
+            </div>
+
+            <h3>情况 A：W_V 不改变向量</h3>
+
+            <div class="formula">
+              v<sub>0</sub> = [1, 0]
+              &nbsp;&nbsp;
+              v<sub>1</sub> = [0, 1]
+              <br />
+              output<sub>0</sub> = 0.70 · [1, 0] + 0.30 · [0, 1]
+              <br />
+              output<sub>0</sub> = [0.70, 0.30]
+            </div>
+
+            <h3>情况 B：W_V 改变 value 的特征形式</h3>
+
+            <div class="formula">
+              v<sub>0</sub> = [2, 0]
+              &nbsp;&nbsp;
+              v<sub>1</sub> = [0, 0.5]
+              <br />
+              output<sub>0</sub> = 0.70 · [2, 0] + 0.30 · [0, 0.5]
+              <br />
+              output<sub>0</sub> = [1.40, 0.15]
+            </div>
+
+            <div class="callout warning">
+              <strong>注意：</strong>
+              两种情况的 attention 权重都是 <span class="mono">[0.70, 0.30]</span>。
+              也就是“看谁”的比例完全一样。不同的是 V，所以“拿回来的内容向量”不同。
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 360" role="img" aria-label="Same attention different values">
+                <defs>
+                  <marker id="arrow7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="360" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">看谁一样，拿回来的内容可以不一样</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">同一组 attention 权重 [0.70, 0.30]，因为 V 不同，输出不同。</text>
+
+                <g transform="translate(62 120)">
+                  <rect width="150" height="62" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="75" y="26" text-anchor="middle" font-size="15" font-weight="800">权重固定</text>
+                  <text x="75" y="47" text-anchor="middle" font-size="14">[0.70, 0.30]</text>
+                </g>
+
+                <g transform="translate(286 92)">
+                  <rect width="196" height="74" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="98" y="28" text-anchor="middle" font-size="15" font-weight="800">情况 A 的 V</text>
+                  <text x="98" y="50" text-anchor="middle" font-size="13">v0=[1,0], v1=[0,1]</text>
+
+                  <rect y="112" width="196" height="74" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="98" y="140" text-anchor="middle" font-size="15" font-weight="800">情况 B 的 V</text>
+                  <text x="98" y="162" text-anchor="middle" font-size="13">v0=[2,0], v1=[0,0.5]</text>
+                </g>
+
+                <g transform="translate(604 92)">
+                  <rect width="196" height="74" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="98" y="28" text-anchor="middle" font-size="15" font-weight="800">output A</text>
+                  <text x="98" y="52" text-anchor="middle" font-size="15">[0.70, 0.30]</text>
+
+                  <rect y="112" width="196" height="74" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="98" y="140" text-anchor="middle" font-size="15" font-weight="800">output B</text>
+                  <text x="98" y="164" text-anchor="middle" font-size="15">[1.40, 0.15]</text>
+                </g>
+
+                <path d="M220 151 L278 129" stroke="#17211c" stroke-width="2" marker-end="url(#arrow7)"></path>
+                <path d="M220 151 L278 239" stroke="#17211c" stroke-width="2" marker-end="url(#arrow7)"></path>
+                <path d="M490 129 L596 129" stroke="#17211c" stroke-width="2" marker-end="url(#arrow7)"></path>
+                <path d="M490 239 L596 239" stroke="#17211c" stroke-width="2" marker-end="url(#arrow7)"></path>
+              </svg>
+            </div>
+
+            <h3>4. 最终向量是不是还表示这个 token？</h3>
+            <p>
+              是，但要加一个限定：
+            </p>
+
+            <div class="formula big">
+              output<sub>t</sub> 表示第 t 个位置的 token，经过上下文融合后的表示。
+            </div>
+
+            <p>
+              它仍然属于第 t 个位置。比如第 0 个位置原来是“我”，attention 后的
+              <span class="mono">output_0</span> 仍然是第 0 个位置的表示。
+              但它已经不是孤立的“我”的 embedding，而是：
+            </p>
+
+            <div class="formula">
+              “我” + 它参考到的其他 token 信息
+            </div>
+
+            <p>
+              所以你可以这样区分：
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>它表示什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">x_t</td>
+                    <td>第 t 个位置进入 attention 前的 token 表示。</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">v_j</td>
+                    <td>第 j 个 token 被别人参考时，提供出去的内容向量。</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">output_t</td>
+                    <td>第 t 个位置汇总多个 v_j 后得到的上下文表示。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="formula big">
+              V 决定的不是“最终这个 token 是谁”，
+              <br />
+              而是“其他 token 看它时，能从它那里拿到什么形式的向量内容”。
+            </div>
+          </section>
+
+          <section id="encoder-block">
+            <p class="eyebrow">下一步学习 / Encoder Block</p>
+            <h2>Encoder Block：Attention 之后为什么还要 Residual、LayerNorm 和 FFN？</h2>
+            <p class="lead">
+              到这里，你已经大概理解了 attention 如何让每个 token 汇总上下文。接下来要看完整 Encoder Block：
+              attention 只是其中一个子层，后面还要接 residual、LayerNorm 和 FFN（Feed Forward Network，前馈神经网络）。
+            </p>
+
+            <div class="formula big">
+              x
+              → Self-Attention
+              → Residual Add
+              → LayerNorm
+              → FFN
+              → Residual Add
+              → LayerNorm
+            </div>
+
+            <div class="callout">
+              <strong>先抓住一句话：</strong>
+              Attention 负责让 token 看上下文；Residual 负责保留原信息和提供稳定路径；
+              LayerNorm 负责稳定每个 token 向量的数值分布；FFN 负责对每个 token 的向量做进一步非线性加工。
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 430" role="img" aria-label="Transformer Encoder Block flow">
+                <defs>
+                  <marker id="arrow8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="430" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">一个 Transformer Encoder Block 的核心路径</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">输入输出 shape 不变，都是 [batch, seq_len, embed_dim]。</text>
+
+                <g transform="translate(52 168)">
+                  <rect width="96" height="56" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="48" y="34" text-anchor="middle" font-size="16" font-weight="800">x</text>
+                </g>
+
+                <g transform="translate(210 150)">
+                  <rect width="160" height="92" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="80" y="34" text-anchor="middle" font-size="16" font-weight="800">Self-Attention</text>
+                  <text x="80" y="60" text-anchor="middle" font-size="13" fill="#5a675f">看上下文</text>
+                </g>
+
+                <g transform="translate(432 150)">
+                  <rect width="130" height="92" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="65" y="34" text-anchor="middle" font-size="16" font-weight="800">Add</text>
+                  <text x="65" y="60" text-anchor="middle" font-size="13" fill="#5a675f">x + attn</text>
+                </g>
+
+                <g transform="translate(624 150)">
+                  <rect width="150" height="92" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="75" y="34" text-anchor="middle" font-size="16" font-weight="800">LayerNorm</text>
+                  <text x="75" y="60" text-anchor="middle" font-size="13" fill="#5a675f">稳定向量分布</text>
+                </g>
+
+                <g transform="translate(210 300)">
+                  <rect width="160" height="76" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="80" y="32" text-anchor="middle" font-size="16" font-weight="800">FFN</text>
+                  <text x="80" y="56" text-anchor="middle" font-size="13" fill="#5a675f">逐 token 加工</text>
+                </g>
+
+                <g transform="translate(432 300)">
+                  <rect width="130" height="76" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="65" y="32" text-anchor="middle" font-size="16" font-weight="800">Add</text>
+                  <text x="65" y="56" text-anchor="middle" font-size="13" fill="#5a675f">y + ffn</text>
+                </g>
+
+                <g transform="translate(624 300)">
+                  <rect width="150" height="76" fill="#17211c"></rect>
+                  <text x="75" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">LayerNorm</text>
+                  <text x="75" y="56" text-anchor="middle" font-size="13" fill="#d8dfda">输出 z</text>
+                </g>
+
+                <path d="M156 196 L202 196" stroke="#17211c" stroke-width="2" marker-end="url(#arrow8)"></path>
+                <path d="M378 196 L424 196" stroke="#17211c" stroke-width="2" marker-end="url(#arrow8)"></path>
+                <path d="M570 196 L616 196" stroke="#17211c" stroke-width="2" marker-end="url(#arrow8)"></path>
+                <path d="M700 250 C700 284 624 318 570 336" stroke="#17211c" stroke-width="2" fill="none" marker-end="url(#arrow8)"></path>
+                <path d="M378 338 L424 338" stroke="#17211c" stroke-width="2" marker-end="url(#arrow8)"></path>
+                <path d="M570 338 L616 338" stroke="#17211c" stroke-width="2" marker-end="url(#arrow8)"></path>
+
+                <path d="M100 164 C138 82 424 82 486 144" stroke="#b45309" stroke-width="2" fill="none" marker-end="url(#arrow8)"></path>
+                <text x="250" y="104" font-size="14" fill="#b45309">Residual：原 x 跳过去参与相加</text>
+
+                <path d="M700 292 C680 260 464 258 496 292" stroke="#b45309" stroke-width="2" fill="none" marker-end="url(#arrow8)"></path>
+                <text x="540" y="278" font-size="14" fill="#b45309">第二次 residual</text>
+              </svg>
+            </div>
+
+            <h3>1. 先定义符号，避免公式看起来像黑箱</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                    <th>shape</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">x</td>
+                    <td>进入 Encoder Block 的 token 向量序列</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">B</td>
+                    <td>batch size，一次输入几条序列</td>
+                    <td>例如 2</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">T</td>
+                    <td>seq_len，每条序列几个 token</td>
+                    <td>例如 5</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">D</td>
+                    <td>embed_dim，每个 token 向量多少维</td>
+                    <td>例如 16</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">Attn(x)</td>
+                    <td>Self-Attention 输出的上下文向量</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FFN(y)</td>
+                    <td>Feed Forward Network 对每个 token 独立加工后的输出</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>2. Residual Add：为什么要加回原来的 x？</h3>
+            <p>
+              Attention 会生成一个上下文向量 <span class="mono">Attn(x)</span>。
+              但 Transformer 通常不会直接用它替换原来的 <span class="mono">x</span>，而是先相加：
+            </p>
+
+            <div class="formula big">
+              y = LayerNorm(x + Attn(x))
+            </div>
+
+            <p>
+              这里的加法是逐元素相加。因为：
+            </p>
+
+            <div class="formula">
+              x.shape = [B, T, D]
+              <br />
+              Attn(x).shape = [B, T, D]
+              <br />
+              所以 x + Attn(x) 的 shape 仍然是 [B, T, D]
+            </div>
+
+            <p>
+              residual 的直觉是：不要让 attention 子层完全接管 token 表示，而是让它在原表示基础上补充或修正。
+            </p>
+
+            <div class="compare-grid">
+              <div class="tile">
+                <h4>没有 residual</h4>
+                <p>输出只来自 attention。如果 attention 暂时学得不好，原始信息可能被破坏。</p>
+              </div>
+              <div class="tile">
+                <h4>有 residual</h4>
+                <p>输出包含原始 x，也包含 attention 的上下文补充，训练更稳。</p>
+              </div>
+            </div>
+
+            <p>
+              这可以类比 Day 3/Day 4 的训练：模型不是每次都从零开始重建全部信息，而是在已有表示上继续调整。
+              residual 给信息和梯度都提供了一条更直接的路径。
+            </p>
+
+            <h3>3. LayerNorm：到底 norm 什么？</h3>
+            <p>
+              LayerNorm 不是对整个 batch 一起归一化，也不是像 BatchNorm2d 那样按通道统计
+              <span class="mono">batch * height * width</span>。
+              在 Transformer 里，LayerNorm 通常是：
+            </p>
+
+            <div class="formula big">
+              对每一个 token 自己的 D 维向量做归一化
+            </div>
+
+            <p>
+              假设某个 token 的向量是：
+            </p>
+
+            <div class="formula">
+              u = [u<sub>1</sub>, u<sub>2</sub>, ..., u<sub>D</sub>]
+            </div>
+
+            <p>
+              LayerNorm 会先计算这个 token 向量内部的平均值：
+            </p>
+
+            <div class="formula">
+              μ =
+              <span class="frac">
+                <span>u<sub>1</sub> + u<sub>2</sub> + ... + u<sub>D</sub></span>
+                <span>D</span>
+              </span>
+            </div>
+
+            <p>
+              再计算方差：
+            </p>
+
+            <div class="formula">
+              σ² =
+              <span class="frac">
+                <span>(u<sub>1</sub>-μ)² + (u<sub>2</sub>-μ)² + ... + (u<sub>D</sub>-μ)²</span>
+                <span>D</span>
+              </span>
+            </div>
+
+            <p>
+              然后把每一维标准化：
+            </p>
+
+            <div class="formula big">
+              norm(u<sub>i</sub>) =
+              <span class="frac">
+                <span>u<sub>i</sub> - μ</span>
+                <span>sqrt(σ² + ε)</span>
+              </span>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">u_i</td>
+                    <td>当前 token 向量的第 i 个维度</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">μ</td>
+                    <td>这个 token 向量 D 个维度的平均值</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">σ²</td>
+                    <td>这个 token 向量 D 个维度的方差</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">ε</td>
+                    <td>一个很小的数，防止除以 0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              LayerNorm 做完标准化后，通常还有两个可学习参数：
+            </p>
+
+            <div class="formula big">
+              output = γ · norm(u) + β
+            </div>
+
+            <p>
+              其中 <span class="mono">γ</span> 和 <span class="mono">β</span>
+              也是训练出来的参数。它们让模型在稳定数值分布的同时，仍然保留调整表达范围的能力。
+            </p>
+
+            <div class="callout warning">
+              <strong>和 Day 4 BatchNorm 的区别：</strong>
+              BatchNorm2d 主要按通道跨 batch 和空间位置统计；LayerNorm 在 Transformer 里通常对单个 token 的 D 维向量内部统计。
+            </div>
+
+            <h3>4. FFN：为什么 attention 后还要逐 token 加工？</h3>
+            <p>
+              Attention 主要负责 token 之间交换信息。FFN 主要负责对每个 token 的向量做进一步非线性变换。
+            </p>
+
+            <div class="formula big">
+              FFN(u) = Linear<sub>2</sub>(Activation(Linear<sub>1</sub>(u)))
+            </div>
+
+            <p>
+              典型结构是：
+            </p>
+
+            <div class="formula">
+              Linear(D, D_ff)
+              → GELU/ReLU
+              → Linear(D_ff, D)
+            </div>
+
+            <p>
+              比如：
+            </p>
+
+            <div class="formula">
+              D = 16
+              <br />
+              D_ff = 64
+              <br />
+              FFN: 16 → 64 → 16
+            </div>
+
+            <p>
+              它先扩维，再压回原维度。这样做的直觉是：
+            </p>
+
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>先扩展表达空间</h4>
+                  <p>把 16 维 token 向量映射到更宽的 64 维空间，允许模型形成更多中间特征。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>加入非线性</h4>
+                  <p>GELU/ReLU 让模型不是单纯线性变换，否则多层 Linear 合起来仍然接近一个 Linear。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>压回 embed_dim</h4>
+                  <p>输出回到 D 维，方便和 residual 相加，也方便进入下一个 Encoder Block。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <strong>注意：</strong>
+              FFN 是逐 token 独立执行的。它不会让 token 之间互相看；token 之间的信息交换主要发生在 Self-Attention。
+            </div>
+
+            <h3>5. 第二次 Residual + LayerNorm</h3>
+            <p>
+              FFN 输出后，也不会直接替换前面的向量，而是再做一次 residual：
+            </p>
+
+            <div class="formula big">
+              z = LayerNorm(y + FFN(y))
+            </div>
+
+            <p>
+              这里：
+            </p>
+
+            <div class="formula">
+              y.shape = [B, T, D]
+              <br />
+              FFN(y).shape = [B, T, D]
+              <br />
+              z.shape = [B, T, D]
+            </div>
+
+            <p>
+              所以完整 Encoder Block 输入和输出 shape 一样：
+            </p>
+
+            <div class="formula big">
+              [B, T, D] → Encoder Block → [B, T, D]
+            </div>
+
+            <h3>6. 一个重要但暂时不展开的事实：Pre-LN 和 Post-LN</h3>
+            <p>
+              很多教材图会写成：
+            </p>
+
+            <div class="formula">
+              y = LayerNorm(x + Attn(x))
+              <br />
+              z = LayerNorm(y + FFN(y))
+            </div>
+
+            <p>
+              这常被称为 Post-LN，也就是先子层、再相加、再归一化。
+              但很多现代大模型实现会使用 Pre-LN：
+            </p>
+
+            <div class="formula">
+              y = x + Attn(LayerNorm(x))
+              <br />
+              z = y + FFN(LayerNorm(y))
+            </div>
+
+            <p>
+              你现在不需要马上纠结两者差异。先掌握共同点：
+            </p>
+
+            <div class="formula big">
+              attention / FFN 子层
+              + residual path
+              + LayerNorm 稳定数值
+            </div>
+
+            <h3>7. 当前小结</h3>
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>Self-Attention</h4>
+                <p>让每个 token 汇总其他 token 的信息。</p>
+              </div>
+              <div class="tile">
+                <h4>Residual</h4>
+                <p>把原输入加回来，让模型在原表示上补充和修正。</p>
+              </div>
+              <div class="tile">
+                <h4>LayerNorm</h4>
+                <p>对每个 token 的 D 维向量内部做归一化，稳定训练。</p>
+              </div>
+              <div class="tile">
+                <h4>FFN</h4>
+                <p>对每个 token 独立做非线性加工，增强表达能力。</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="ffn-detail">
+            <p class="eyebrow">追加问答 03 / 2026-05-14</p>
+            <h2>FFN 公式逐行拆解：为什么是 Linear → Activation → Linear？</h2>
+            <p class="lead">
+              FFN 的全称是 Feed Forward Network，中文常译为前馈神经网络。在 Transformer Encoder 里，更准确地说，它是 position-wise feed-forward network，也就是“对每个位置的 token 向量分别执行同一套前馈网络”。
+            </p>
+
+            <div class="callout">
+              <strong>先纠正缩写：</strong>
+              这里讨论的是 <span class="mono">FFN</span>，不是 <span class="mono">FNN</span>。
+              在 Transformer 语境里，FFN 通常指 Feed Forward Network。
+            </div>
+
+            <h3>1. FFN(u) = Linear2(Activation(Linear1(u))) 里的符号是什么？</h3>
+            <div class="formula big">
+              FFN(u) = Linear<sub>2</sub>(Activation(Linear<sub>1</sub>(u)))
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                    <th>shape 示例</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">u</td>
+                    <td>某一个 token 当前的向量。它通常已经经过 attention、residual 和 LayerNorm。</td>
+                    <td class="mono">[D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">D</td>
+                    <td>embed_dim，也就是每个 token 向量的维度。</td>
+                    <td>例如 16</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">D_ff</td>
+                    <td>FFN 中间隐藏层维度，通常比 D 大。</td>
+                    <td>例如 64</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">Linear1</td>
+                    <td>第一层线性变换，把 token 向量从 D 维扩到 D_ff 维。</td>
+                    <td class="mono">D → D_ff</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">Activation</td>
+                    <td>非线性激活函数，例如 GELU 或 ReLU。</td>
+                    <td>shape 不变</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">Linear2</td>
+                    <td>第二层线性变换，把 D_ff 维压回 D 维。</td>
+                    <td class="mono">D_ff → D</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>2. 把公式拆成三步</h3>
+            <p>
+              为了看清楚，不要一口气读完整个嵌套公式。把它拆开：
+            </p>
+
+            <div class="formula">
+              a = Linear<sub>1</sub>(u)
+              <br />
+              h = Activation(a)
+              <br />
+              o = Linear<sub>2</sub>(h)
+              <br />
+              FFN(u) = o
+            </div>
+
+            <p>
+              其中：
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>中间变量</th>
+                    <th>含义</th>
+                    <th>shape</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">u</td>
+                    <td>输入 token 向量</td>
+                    <td class="mono">[D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">a</td>
+                    <td>第一层 Linear 后的中间向量</td>
+                    <td class="mono">[D_ff]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">h</td>
+                    <td>激活函数处理后的中间向量</td>
+                    <td class="mono">[D_ff]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">o</td>
+                    <td>第二层 Linear 后的输出向量</td>
+                    <td class="mono">[D]</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>3. Linear1 到底怎么算？</h3>
+            <p>
+              假设当前 token 向量是行向量：
+            </p>
+
+            <div class="formula">
+              u.shape = [D]
+            </div>
+
+            <p>
+              第一层 Linear 有参数：
+            </p>
+
+            <div class="formula">
+              W<sub>1</sub>.shape = [D, D_ff]
+              <br />
+              b<sub>1</sub>.shape = [D_ff]
+            </div>
+
+            <p>
+              计算：
+            </p>
+
+            <div class="formula big">
+              a = uW<sub>1</sub> + b<sub>1</sub>
+            </div>
+
+            <p>
+              这和 Day 3 里 Linear 层的本质一样：输入向量乘权重矩阵，再加 bias。
+              只是这里不是直接输出类别 logits，而是在 token 向量内部做特征变换。
+            </p>
+
+            <h3>4. Activation 为什么必须存在？</h3>
+            <p>
+              如果没有 Activation，那么 FFN 就变成：
+            </p>
+
+            <div class="formula">
+              FFN(u) = Linear<sub>2</sub>(Linear<sub>1</sub>(u))
+            </div>
+
+            <p>
+              两个线性变换叠在一起，本质上仍然可以合并成一个更大的线性变换。
+              这会限制模型表达能力。
+            </p>
+
+            <div class="callout warning">
+              <strong>Activation 的作用：</strong>
+              引入非线性，让 FFN 可以表达更复杂的特征组合，而不是只做一次线性重排。
+            </div>
+
+            <p>
+              常见激活函数：
+            </p>
+
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>ReLU</h4>
+                <p>负数变 0，正数保留。你在 Day 3 / Day 4 已经见过。</p>
+              </div>
+              <div class="tile">
+                <h4>GELU</h4>
+                <p>Transformer 里更常见，效果更平滑。可以先理解为一种更柔和的 ReLU。</p>
+              </div>
+            </div>
+
+            <h3>5. 为什么要先扩维再压回去？</h3>
+            <p>
+              典型 FFN 不是：
+            </p>
+
+            <div class="formula">
+              D → D
+            </div>
+
+            <p>
+              而是：
+            </p>
+
+            <div class="formula big">
+              D → D_ff → D
+            </div>
+
+            <p>
+              例如：
+            </p>
+
+            <div class="formula">
+              16 → 64 → 16
+            </div>
+
+            <p>
+              先扩到更大的维度，是为了给模型一个更宽的中间空间，让它能临时展开更多特征组合。
+              再压回 D 维，是为了保持 Encoder Block 的输入输出 shape 一致，方便 residual 相加和堆叠多层。
+            </p>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 380" role="img" aria-label="FFN expand activate compress">
+                <defs>
+                  <marker id="arrow9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="380" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">FFN：扩维、非线性、压回</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">每个 token 独立走同一套 FFN，不在这里和其他 token 交换信息。</text>
+
+                <g transform="translate(60 150)">
+                  <rect width="126" height="74" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="63" y="30" text-anchor="middle" font-size="16" font-weight="800">u</text>
+                  <text x="63" y="54" text-anchor="middle" font-size="14">D = 16</text>
+                </g>
+
+                <g transform="translate(268 126)">
+                  <rect width="146" height="122" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="73" y="42" text-anchor="middle" font-size="16" font-weight="800">Linear1</text>
+                  <text x="73" y="68" text-anchor="middle" font-size="14">16 → 64</text>
+                  <text x="73" y="94" text-anchor="middle" font-size="13" fill="#5a675f">扩展特征空间</text>
+                </g>
+
+                <g transform="translate(496 142)">
+                  <rect width="146" height="90" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="73" y="38" text-anchor="middle" font-size="16" font-weight="800">Activation</text>
+                  <text x="73" y="62" text-anchor="middle" font-size="14">GELU / ReLU</text>
+                </g>
+
+                <g transform="translate(724 150)">
+                  <rect width="126" height="74" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="63" y="30" text-anchor="middle" font-size="16" font-weight="800">Linear2</text>
+                  <text x="63" y="54" text-anchor="middle" font-size="14">64 → 16</text>
+                </g>
+
+                <path d="M194 187 L260 187" stroke="#17211c" stroke-width="2" marker-end="url(#arrow9)"></path>
+                <path d="M422 187 L488 187" stroke="#17211c" stroke-width="2" marker-end="url(#arrow9)"></path>
+                <path d="M650 187 L716 187" stroke="#17211c" stroke-width="2" marker-end="url(#arrow9)"></path>
+
+                <text x="60" y="294" font-size="15" fill="#5a675f">输入和输出都是 D 维，所以后面可以继续 residual add。</text>
+              </svg>
+            </div>
+
+            <h3>6. FFN 的目的、作用和意义</h3>
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>补足 attention 的能力</h4>
+                  <p>Attention 主要负责 token 之间交换信息；FFN 负责在每个 token 内部继续加工这些信息。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>增加非线性表达</h4>
+                  <p>没有非线性，模型很难表达复杂模式。Activation 让 token 特征可以发生更复杂变化。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>逐 token 做“思考加工”</h4>
+                  <p>Self-Attention 先把上下文信息汇入 token；FFN 再对这个融合后的 token 向量做进一步处理。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>保持结构可堆叠</h4>
+                  <p>FFN 输出回到 D 维，使每个 Encoder Block 输入输出 shape 一致，可以连续堆很多层。</p>
+                </div>
+              </div>
+            </div>
+
+            <h3>7. FFN 是不是会看其他 token？</h3>
+            <p>
+              不会。FFN 是逐 token 独立执行的。
+            </p>
+
+            <div class="formula">
+              对第 0 个 token：o<sub>0</sub> = FFN(u<sub>0</sub>)
+              <br />
+              对第 1 个 token：o<sub>1</sub> = FFN(u<sub>1</sub>)
+              <br />
+              对第 2 个 token：o<sub>2</sub> = FFN(u<sub>2</sub>)
+            </div>
+
+            <p>
+              它们使用同一套 FFN 参数，但每个 token 单独计算。
+              token 之间的信息交换主要由 Self-Attention 完成。
+            </p>
+
+            <div class="formula big">
+              Attention：token 之间交流
+              <br />
+              FFN：每个 token 内部加工
+            </div>
+          </section>
+
+          <section id="code-map">
+            <p class="eyebrow">下一步学习 / 从概念到代码</p>
+            <h2>最小 Transformer Encoder 应该怎么写？先看实现地图</h2>
+            <p class="lead">
+              现在不急着一次性写完整代码。先把最小实现拆成几个模块：Embedding、Multi-Head Self-Attention、FFN、Encoder Block、整体 Encoder。每个模块只负责一件事。
+            </p>
+
+            <div class="callout">
+              <strong>这一步的目标：</strong>
+              你要能看到一个类或函数名，就知道它在 Transformer Encoder 里负责什么，以及输入输出 shape 应该是什么。
+            </div>
+
+            <h3>1. 最小实现需要哪些模块？</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>模块名</th>
+                    <th>负责什么</th>
+                    <th>输入 shape</th>
+                    <th>输出 shape</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">TokenEmbedding</td>
+                    <td>把 token id 查表成 token 向量。</td>
+                    <td class="mono">[B, T]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">PositionEmbedding</td>
+                    <td>给每个位置查一个位置向量。</td>
+                    <td class="mono">[B, T]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">MultiHeadSelfAttention</td>
+                    <td>让每个 token 汇总其他 token 的 value 信息。</td>
+                    <td class="mono">[B, T, D]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">FeedForwardNetwork</td>
+                    <td>对每个 token 独立做非线性加工。</td>
+                    <td class="mono">[B, T, D]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">EncoderBlock</td>
+                    <td>组合 Attention、Residual、LayerNorm、FFN。</td>
+                    <td class="mono">[B, T, D]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">MiniTransformerEncoder</td>
+                    <td>把 embedding 和一个或多个 EncoderBlock 串起来。</td>
+                    <td class="mono">[B, T]</td>
+                    <td class="mono">[B, T, D]</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>2. 先固定一组小参数</h3>
+            <p>
+              为了学习，不要一开始用真实大模型参数。先用小尺寸，这样 shape 很容易检查。
+            </p>
+
+            <div class="formula">
+              B = batch_size = 2
+              <br />
+              T = seq_len = 5
+              <br />
+              D = embed_dim = 16
+              <br />
+              H = num_heads = 4
+              <br />
+              d = head_dim = D / H = 16 / 4 = 4
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>全称或含义</th>
+                    <th>当前例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">B</td>
+                    <td>batch size，一次输入几条序列</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">T</td>
+                    <td>sequence length，每条序列几个 token</td>
+                    <td>5</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">D</td>
+                    <td>embedding dimension，每个 token 向量多少维</td>
+                    <td>16</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">H</td>
+                    <td>number of heads，attention head 数量</td>
+                    <td>4</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">d</td>
+                    <td>head dimension，每个 head 里的 token 向量维度</td>
+                    <td>4</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>3. 整体 forward 路线</h3>
+            <div class="formula big">
+              token_ids
+              → token_embedding + position_embedding
+              → EncoderBlock
+              → encoder_output
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 430" role="img" aria-label="Minimal Transformer Encoder implementation map">
+                <defs>
+                  <marker id="arrow10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="430" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">最小 Encoder 的代码实现地图</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">每个方块对应一个你之后会写的模块或子模块。</text>
+
+                <g transform="translate(52 150)">
+                  <rect width="130" height="74" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="65" y="30" text-anchor="middle" font-size="15" font-weight="800">token_ids</text>
+                  <text x="65" y="54" text-anchor="middle" font-size="13">[B, T]</text>
+                </g>
+
+                <g transform="translate(246 104)">
+                  <rect width="162" height="70" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="81" y="28" text-anchor="middle" font-size="15" font-weight="800">TokenEmbedding</text>
+                  <text x="81" y="50" text-anchor="middle" font-size="13">[B, T, D]</text>
+                  <rect y="102" width="162" height="70" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="81" y="130" text-anchor="middle" font-size="15" font-weight="800">PositionEmbedding</text>
+                  <text x="81" y="152" text-anchor="middle" font-size="13">[B, T, D]</text>
+                </g>
+
+                <g transform="translate(472 150)">
+                  <rect width="138" height="74" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="69" y="30" text-anchor="middle" font-size="15" font-weight="800">相加</text>
+                  <text x="69" y="54" text-anchor="middle" font-size="13">x [B, T, D]</text>
+                </g>
+
+                <g transform="translate(674 104)">
+                  <rect width="178" height="172" fill="#17211c"></rect>
+                  <text x="89" y="36" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">EncoderBlock</text>
+                  <text x="89" y="70" text-anchor="middle" font-size="13" fill="#d8dfda">Multi-Head Attention</text>
+                  <text x="89" y="98" text-anchor="middle" font-size="13" fill="#d8dfda">Residual + LayerNorm</text>
+                  <text x="89" y="126" text-anchor="middle" font-size="13" fill="#d8dfda">FFN</text>
+                  <text x="89" y="154" text-anchor="middle" font-size="13" fill="#d8dfda">Residual + LayerNorm</text>
+                </g>
+
+                <g transform="translate(674 318)">
+                  <rect width="178" height="56" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="89" y="23" text-anchor="middle" font-size="15" font-weight="800">encoder_output</text>
+                  <text x="89" y="42" text-anchor="middle" font-size="13">[B, T, D]</text>
+                </g>
+
+                <path d="M190 187 L238 139" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+                <path d="M190 187 L238 241" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+                <path d="M416 139 L464 174" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+                <path d="M416 241 L464 200" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+                <path d="M618 187 L666 187" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+                <path d="M762 284 L762 310" stroke="#17211c" stroke-width="2" marker-end="url(#arrow10)"></path>
+              </svg>
+            </div>
+
+            <h3>4. Multi-Head Self-Attention 代码里最容易错的 shape</h3>
+            <p>
+              这部分之后写代码时要特别慢。核心不是“公式会背”，而是每一步 shape 要对。
+            </p>
+
+            <div class="formula">
+              输入 x.shape = [B, T, D]
+              <br />
+              qkv = Linear(x)
+              <br />
+              qkv.shape = [B, T, 3D]
+            </div>
+
+            <p>
+              这里的 <span class="mono">3D</span> 是因为一次性生成 Q、K、V 三份向量。
+            </p>
+
+            <div class="formula">
+              qkv reshape:
+              <br />
+              [B, T, 3D]
+              → [B, T, 3, H, d]
+              → [3, B, H, T, d]
+            </div>
+
+            <p>
+              最后拆开：
+            </p>
+
+            <div class="formula">
+              Q.shape = [B, H, T, d]
+              <br />
+              K.shape = [B, H, T, d]
+              <br />
+              V.shape = [B, H, T, d]
+            </div>
+
+            <div class="callout warning">
+              <strong>这里最重要：</strong>
+              Q/K/V 拆成 head 之后，attention 是在每个 head 内部独立计算。
+              所以 scores 的 shape 是 <span class="mono">[B, H, T, T]</span>。
+            </div>
+
+            <h3>5. scores、weights、context 的代码地图</h3>
+            <div class="formula">
+              scores = Q @ K<sup>T</sup> / sqrt(d)
+              <br />
+              scores.shape = [B, H, T, T]
+            </div>
+
+            <p>
+              最后两个维度 <span class="mono">[T, T]</span> 的含义仍然是：
+            </p>
+
+            <div class="formula">
+              行：谁在看
+              <br />
+              列：被看的 token
+            </div>
+
+            <div class="formula">
+              weights = softmax(scores)
+              <br />
+              weights.shape = [B, H, T, T]
+            </div>
+
+            <div class="formula">
+              context = weights @ V
+              <br />
+              context.shape = [B, H, T, d]
+            </div>
+
+            <p>
+              然后把 head 合并回去：
+            </p>
+
+            <div class="formula">
+              [B, H, T, d]
+              → [B, T, H, d]
+              → [B, T, D]
+            </div>
+
+            <h3>6. 之后写代码时的顺序</h3>
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>先写纯 shape demo</h4>
+                  <p>只用随机 token ids，打印每一步 shape，不训练。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>再写 MultiHeadSelfAttention</h4>
+                  <p>重点验证 Q/K/V、scores、weights、context、merge heads 的 shape。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>再包 EncoderBlock</h4>
+                  <p>加入 residual、LayerNorm、FFN，确认输入输出都是 [B, T, D]。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>最后写整体 Encoder</h4>
+                  <p>把 token embedding、position embedding 和一个 EncoderBlock 串起来。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="formula big">
+              下一步真正写代码时，只追求一件事：
+              <br />
+              每一步 shape 都能解释清楚。
+            </div>
+          </section>
+
+          <section id="tokenizer-split">
+            <p class="eyebrow">追加问答 04 / 2026-05-15</p>
+            <h2>token 是程序自动切的吗？如果切得很怪怎么办？</h2>
+            <p class="lead">
+              你问到的是 Transformer 入口处非常关键的一层：tokenizer。模型本身不直接读原始文字，文字要先经过 tokenizer 变成 token id。
+            </p>
+
+            <div class="callout">
+              <strong>先给结论：</strong>
+              不是研究人员手动逐句切 token。通常是研究人员先选择或训练一个 tokenizer，
+              得到固定的词表和切分规则。之后每一句话都由程序按照这套固定规则自动切分。
+            </div>
+
+            <h3>1. tokenizer 是什么？</h3>
+            <p>
+              tokenizer 可以理解成：
+            </p>
+
+            <div class="formula big">
+              原始文本 → token 列表 → token id 列表
+            </div>
+
+            <p>
+              例如：
+            </p>
+
+            <div class="formula">
+              "我喜欢深度学习"
+              <br />
+              → ["我", "喜欢", "深度", "学习"]
+              <br />
+              → [12, 35, 108, 209]
+            </div>
+
+            <p>
+              这只是一个理想例子。真实 tokenizer 不一定按人类词语切，也可能切得更细。
+            </p>
+
+            <h3>2. 是谁决定怎么切？</h3>
+            <p>
+              不是研究人员对每一句话手工切分，而是先确定一套 tokenizer。这个 tokenizer 里通常有两样东西：
+            </p>
+
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>词表 vocab</h4>
+                <p>记录模型认识哪些 token，以及每个 token 对应哪个 id。</p>
+              </div>
+              <div class="tile">
+                <h4>切分规则</h4>
+                <p>规定一段文本如何被拆成词表里的 token。</p>
+              </div>
+            </div>
+
+            <p>
+              训练大模型前，通常会先在大量文本上训练 tokenizer，或者直接选用已有 tokenizer。
+              一旦 tokenizer 确定，后续模型训练和推理都必须使用同一个 tokenizer。
+            </p>
+
+            <div class="formula">
+              tokenizer 固定
+              <br />
+              → 文本切分方式固定
+              <br />
+              → token id 映射固定
+              <br />
+              → 模型学习这些 id 对应的 embedding
+            </div>
+
+            <h3>3. 常见切分方式有哪些？</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>方式</th>
+                    <th>大概做法</th>
+                    <th>问题</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>按字切</td>
+                    <td>中文每个字一个 token，例如 “深 度 学 习”。</td>
+                    <td>序列会变长，有些词语整体含义要靠模型后面组合。</td>
+                  </tr>
+                  <tr>
+                    <td>按词切</td>
+                    <td>按人类词语切，例如 “深度 学习”。</td>
+                    <td>遇到新词、罕见词、错别字时很麻烦。</td>
+                  </tr>
+                  <tr>
+                    <td>子词切分</td>
+                    <td>介于字和词之间，常见片段成为 token，罕见词继续拆小。</td>
+                    <td>切出来的 token 有时不像完整词，但工程上更灵活。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              现代 LLM 常用的是子词切分思想，例如 BPE、WordPiece、SentencePiece 一类方法。
+              你现在不用急着掌握算法细节，先知道它们的目标：
+            </p>
+
+            <div class="formula big">
+              常见片段尽量合成较大 token；
+              <br />
+              罕见片段可以继续拆小，保证几乎任何文本都能表示。
+            </div>
+
+            <h3>4. 如果切成“我喜 / 欢 / 深度 / 学 / 习”怎么办？</h3>
+            <p>
+              这种情况在理论上是可以发生的，尤其是 tokenizer 词表和规则不理想时。
+              但只要每个片段都在词表里，它仍然可以被模型处理：
+            </p>
+
+            <div class="formula">
+              ["我喜", "欢", "深度", "学", "习"]
+              <br />
+              → [id_a, id_b, id_c, id_d, id_e]
+              <br />
+              → embedding 向量序列
+              <br />
+              → Transformer 继续处理
+            </div>
+
+            <p>
+              也就是说，模型不会因为 token 不是人类眼里的完整词就完全不能工作。
+              Transformer 后面的 self-attention 可以把多个 token 的信息重新组合起来。
+            </p>
+
+            <div class="callout warning">
+              <strong>但是：</strong>
+              切得太怪会让学习更困难、更低效。因为模型要花更多层、更多 attention 去重新组合这些被切碎的片段。
+            </div>
+
+            <h3>5. 切得怪会带来什么影响？</h3>
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>序列变长</h4>
+                  <p>“深度学习”如果是 1 个 token，只占 1 个位置；如果拆成 4 个字，就占 4 个位置。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>上下文窗口被浪费</h4>
+                  <p>同样长度的文本会占更多 token，能放进模型上下文的内容变少。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>语义组合压力变大</h4>
+                  <p>模型需要自己学会把“学”和“习”组合成“学习”的含义。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>罕见切分可能学得差</h4>
+                  <p>如果某个奇怪 token 在训练数据里很少出现，它的 embedding 可能学得不充分。</p>
+                </div>
+              </div>
+            </div>
+
+            <h3>6. 那 tokenizer 是不是越按人类词语切越好？</h3>
+            <p>
+              不一定。完全按词切会遇到一个严重问题：世界上新词、专有名词、拼写变体、代码片段、表情、错别字太多。
+              如果词表没有某个词，模型就不知道怎么表示。
+            </p>
+
+            <p>
+              子词 tokenizer 的好处是：
+            </p>
+
+            <div class="formula">
+              常见词可以成为整体 token；
+              <br />
+              不常见词可以拆成更小片段；
+              <br />
+              新词也能被表示出来。
+            </div>
+
+            <p>
+              所以它是在这两件事之间折中：
+            </p>
+
+            <div class="compare-grid">
+              <div class="tile">
+                <h4>切太细</h4>
+                <p>表示能力稳定，但序列很长，效率低。</p>
+              </div>
+              <div class="tile">
+                <h4>切太粗</h4>
+                <p>常见词效率高，但新词和罕见词难处理。</p>
+              </div>
+            </div>
+
+            <h3>7. 和 embedding 的关系</h3>
+            <p>
+              tokenizer 决定 token id。embedding 表根据 token id 查向量。
+            </p>
+
+            <div class="formula big">
+              tokenizer 负责：文本 → token id
+              <br />
+              embedding 负责：token id → 向量
+            </div>
+
+            <p>
+              所以，如果 tokenizer 把一句话切成 5 个 token，那么模型输入就是 5 个 token id；
+              后面的 <span class="mono">seq_len</span> 就是 5。
+            </p>
+
+            <div class="formula">
+              seq_len = 当前输入序列中的 token 数量
+            </div>
+
+            <h3>8. 当前结论</h3>
+            <div class="formula big">
+              token 不是研究人员逐句手切的；
+              <br />
+              tokenizer 用固定词表和规则自动切；
+              <br />
+              切得不符合人类词语也能训练，但可能更低效；
+              <br />
+              Transformer 会在后续层里重新组合这些 token 的信息。
+            </div>
+          </section>
+
+          <section id="qkv-permute">
+            <p class="eyebrow">追加问答 05 / 2026-05-15</p>
+            <h2>qkv_packed、reshape、permute 到底在整理什么？</h2>
+            <p class="lead">
+              你现在卡住的不是 attention 公式，而是张量维度整理。这里不要把它想成新数学，
+              它更像是在把一堆已经算好的数字重新装箱、换标签、换摆放顺序。
+            </p>
+
+            <div class="callout">
+              <strong>先给一句话版：</strong>
+              <span class="mono">qkv_projection</span> 先给每个 token 算出一整条
+              <span class="mono">[Q, K, V]</span> 混在一起的长向量；
+              <span class="mono">view</span> 把这条长向量拆成“Q/K/V、head、head_dim”；
+              <span class="mono">permute</span> 把维度顺序换成后面 attention 更方便计算的格式。
+            </div>
+
+            <h3>1. 先看当前 demo 的固定数字</h3>
+            <div class="formula">
+              B = 2&nbsp;&nbsp; batch 里有 2 条序列
+              <br />
+              T = 5&nbsp;&nbsp; 每条序列有 5 个 token
+              <br />
+              D = 4&nbsp;&nbsp; 每个 token 向量是 4 维
+              <br />
+              H = 2&nbsp;&nbsp; 有 2 个 attention head
+              <br />
+              d = 2&nbsp;&nbsp; 每个 head 里向量是 2 维
+            </div>
+
+            <p>
+              因为：
+            </p>
+
+            <div class="formula big">
+              D = H × d = 2 × 2 = 4
+            </div>
+
+            <p>
+              所以一个 token 的 Q 是 4 个数，可以拆成 2 个 head，每个 head 2 个数。
+              K 和 V 也是一样。
+            </p>
+
+            <h3>2. qkv_projection = Linear(D, 3D) 是一次性生成 Q/K/V</h3>
+            <div class="formula big">
+              qkv_projection = nn.Linear(in_features=D, out_features=3D)
+            </div>
+
+            <p>
+              当前 demo 中：
+            </p>
+
+            <div class="formula">
+              D = 4
+              <br />
+              3D = 12
+              <br />
+              qkv_projection = nn.Linear(4, 12)
+            </div>
+
+            <p>
+              它的意思不是“12 个 token”或“12 个 head”，而是：
+            </p>
+
+            <div class="formula">
+              每个 token 原本 4 维；
+              <br />
+              经过这个 Linear 后变成 12 维；
+              <br />
+              这 12 维里面装着 Q、K、V 三份 4 维向量。
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>区间</th>
+                    <th>含义</th>
+                    <th>当前长度</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">0 : D</td>
+                    <td>Q 向量</td>
+                    <td>4 个数</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">D : 2D</td>
+                    <td>K 向量</td>
+                    <td>4 个数</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">2D : 3D</td>
+                    <td>V 向量</td>
+                    <td>4 个数</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>3. weight.shape = (12, 4) 为什么不是 (4, 12)？</h3>
+            <p>
+              PyTorch 的 <span class="mono">nn.Linear(in_features, out_features)</span>
+              把 weight 存成：
+            </p>
+
+            <div class="formula big">
+              weight.shape = [out_features, in_features]
+            </div>
+
+            <p>
+              所以：
+            </p>
+
+            <div class="formula">
+              nn.Linear(4, 12)
+              <br />
+              weight.shape = [12, 4]
+              <br />
+              bias.shape = [12]
+            </div>
+
+            <p>
+              它可以理解成：
+            </p>
+
+            <div class="formula">
+              12 个输出维度；
+              <br />
+              每个输出维度都由输入的 4 个维度算出来。
+            </div>
+
+            <p>
+              实际计算时等价于：
+            </p>
+
+            <div class="formula big">
+              output = input @ weight.T + bias
+            </div>
+
+            <p>
+              所以：
+            </p>
+
+            <div class="formula">
+              input.shape = [B, T, 4]
+              <br />
+              weight.T.shape = [4, 12]
+              <br />
+              output.shape = [B, T, 12]
+            </div>
+
+            <div class="callout warning">
+              <strong>注意：</strong>
+              PyTorch 这样存，不代表输入是 12 维、输出是 4 维。
+              <span class="mono">nn.Linear(4, 12)</span> 的语义永远是 4 维输入、12 维输出。
+            </div>
+
+            <h3>4. qkv_packed 是什么？</h3>
+            <div class="formula big">
+              qkv_packed = qkv_projection(encoder_input)
+            </div>
+
+            <p>
+              当前：
+            </p>
+
+            <div class="formula">
+              encoder_input.shape = [2, 5, 4]
+              <br />
+              qkv_packed.shape = [2, 5, 12]
+            </div>
+
+            <p>
+              这表示：
+            </p>
+
+            <div class="formula">
+              2 条序列；
+              <br />
+              每条 5 个 token；
+              <br />
+              每个 token 现在有 12 个数，里面塞着 Q、K、V。
+            </div>
+
+            <p>
+              例如一个 token 的 12 个数可以看成：
+            </p>
+
+            <div class="formula">
+              qkv_packed[b, t] =
+              [q0, q1, q2, q3, &nbsp; k0, k1, k2, k3, &nbsp; v0, v1, v2, v3]
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 360" role="img" aria-label="qkv packed vector diagram">
+                <defs>
+                  <marker id="arrow11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="360" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">一个 token 的 qkv_packed 长向量</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">D = 4，所以 Q/K/V 各 4 个数，总共 12 个数。</text>
+
+                <g transform="translate(60 132)">
+                  <rect width="176" height="72" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="88" y="30" text-anchor="middle" font-size="16" font-weight="800">Q</text>
+                  <text x="88" y="54" text-anchor="middle" font-size="13">q0 q1 q2 q3</text>
+                </g>
+
+                <g transform="translate(252 132)">
+                  <rect width="176" height="72" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="88" y="30" text-anchor="middle" font-size="16" font-weight="800">K</text>
+                  <text x="88" y="54" text-anchor="middle" font-size="13">k0 k1 k2 k3</text>
+                </g>
+
+                <g transform="translate(444 132)">
+                  <rect width="176" height="72" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="88" y="30" text-anchor="middle" font-size="16" font-weight="800">V</text>
+                  <text x="88" y="54" text-anchor="middle" font-size="13">v0 v1 v2 v3</text>
+                </g>
+
+                <g transform="translate(690 126)">
+                  <rect width="166" height="84" fill="#17211c"></rect>
+                  <text x="83" y="32" text-anchor="middle" font-size="15" font-weight="800" fill="#ffffff">qkv_packed[b,t]</text>
+                  <text x="83" y="56" text-anchor="middle" font-size="13" fill="#d8dfda">shape = [12]</text>
+                </g>
+
+                <path d="M628 168 L682 168" stroke="#17211c" stroke-width="2" marker-end="url(#arrow11)"></path>
+                <text x="60" y="250" font-size="15" fill="#5a675f">此时 Q/K/V 只是挤在同一条长向量里，还没有显式分组。</text>
+              </svg>
+            </div>
+
+            <h3>5. qkv_reshaped = view(B, T, 3, H, d) 是把长条拆成盒子</h3>
+            <div class="formula big">
+              qkv_reshaped = qkv_packed.view(B, T, 3, H, d)
+            </div>
+
+            <p>
+              当前数字代入：
+            </p>
+
+            <div class="formula">
+              [B, T, 12]
+              <br />
+              → [B, T, 3, H, d]
+              <br />
+              → [2, 5, 3, 2, 2]
+            </div>
+
+            <p>
+              这个操作没有重新计算 Q/K/V，只是重新解释同一批数字的摆放方式。
+            </p>
+
+            <div class="formula">
+              [12]
+              <br />
+              → [3, 2, 2]
+            </div>
+
+            <p>
+              对一个 token 来说：
+            </p>
+
+            <div class="formula">
+              3：Q / K / V 三组
+              <br />
+              2：两个 head
+              <br />
+              2：每个 head 里面两个数
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 430" role="img" aria-label="reshape qkv into qkv heads">
+                <defs>
+                  <marker id="arrow12" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="430" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">view：把 [12] 拆成 [3, 2, 2]</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">一条长向量被整理成 Q/K/V 三组，每组再分成两个 head。</text>
+
+                <g transform="translate(64 142)">
+                  <rect width="220" height="80" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="110" y="32" text-anchor="middle" font-size="16" font-weight="800">qkv_packed[b,t]</text>
+                  <text x="110" y="56" text-anchor="middle" font-size="14">[12]</text>
+                </g>
+
+                <path d="M300 182 L380 182" stroke="#17211c" stroke-width="2" marker-end="url(#arrow12)"></path>
+
+                <g transform="translate(410 94)">
+                  <rect width="130" height="70" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="65" y="28" text-anchor="middle" font-size="15" font-weight="800">Q</text>
+                  <text x="65" y="50" text-anchor="middle" font-size="13">2 heads × 2</text>
+
+                  <rect y="94" width="130" height="70" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="65" y="122" text-anchor="middle" font-size="15" font-weight="800">K</text>
+                  <text x="65" y="144" text-anchor="middle" font-size="13">2 heads × 2</text>
+
+                  <rect y="188" width="130" height="70" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="65" y="216" text-anchor="middle" font-size="15" font-weight="800">V</text>
+                  <text x="65" y="238" text-anchor="middle" font-size="13">2 heads × 2</text>
+                </g>
+
+                <g transform="translate(644 144)">
+                  <rect width="214" height="96" fill="#17211c"></rect>
+                  <text x="107" y="34" text-anchor="middle" font-size="15" font-weight="800" fill="#ffffff">qkv_reshaped[b,t]</text>
+                  <text x="107" y="58" text-anchor="middle" font-size="13" fill="#d8dfda">shape = [3, 2, 2]</text>
+                  <text x="107" y="78" text-anchor="middle" font-size="13" fill="#d8dfda">[Q/K/V, head, dim]</text>
+                </g>
+
+                <path d="M552 128 L636 178" stroke="#17211c" stroke-width="2" marker-end="url(#arrow12)"></path>
+                <path d="M552 222 L636 192" stroke="#17211c" stroke-width="2" marker-end="url(#arrow12)"></path>
+                <path d="M552 316 L636 206" stroke="#17211c" stroke-width="2" marker-end="url(#arrow12)"></path>
+              </svg>
+            </div>
+
+            <h3>6. permute(2, 0, 3, 1, 4) 是换维度顺序，不是改数字</h3>
+            <div class="formula big">
+              qkv_for_attention = qkv_reshaped.permute(2, 0, 3, 1, 4)
+            </div>
+
+            <p>
+              先给 <span class="mono">qkv_reshaped</span> 的每个维度贴标签：
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>原维度编号</th>
+                    <th>标签</th>
+                    <th>含义</th>
+                    <th>当前大小</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">0</td>
+                    <td class="mono">B</td>
+                    <td>batch 中第几条序列</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">1</td>
+                    <td class="mono">T</td>
+                    <td>第几个 token 位置</td>
+                    <td>5</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">2</td>
+                    <td class="mono">QKV</td>
+                    <td>第 0 组是 Q，第 1 组是 K，第 2 组是 V</td>
+                    <td>3</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">3</td>
+                    <td class="mono">H</td>
+                    <td>第几个 attention head</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">4</td>
+                    <td class="mono">d</td>
+                    <td>每个 head 里面的向量维度</td>
+                    <td>2</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              原来的顺序是：
+            </p>
+
+            <div class="formula">
+              qkv_reshaped.shape = [B, T, QKV, H, d]
+              <br />
+              也就是维度编号 [0, 1, 2, 3, 4]
+            </div>
+
+            <p>
+              <span class="mono">permute(2, 0, 3, 1, 4)</span> 的意思是：
+            </p>
+
+            <div class="formula">
+              新第 0 维 = 旧第 2 维 = QKV
+              <br />
+              新第 1 维 = 旧第 0 维 = B
+              <br />
+              新第 2 维 = 旧第 3 维 = H
+              <br />
+              新第 3 维 = 旧第 1 维 = T
+              <br />
+              新第 4 维 = 旧第 4 维 = d
+            </div>
+
+            <p>
+              所以 shape 从：
+            </p>
+
+            <div class="formula big">
+              [B, T, QKV, H, d]
+              → [QKV, B, H, T, d]
+            </div>
+
+            <p>
+              当前数字就是：
+            </p>
+
+            <div class="formula">
+              [2, 5, 3, 2, 2]
+              → [3, 2, 2, 5, 2]
+            </div>
+
+            <div class="svg-panel">
+              <svg viewBox="0 0 920 460" role="img" aria-label="permute dimension reorder">
+                <defs>
+                  <marker id="arrow13" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211c"></path>
+                  </marker>
+                </defs>
+                <rect width="920" height="460" fill="#ffffff"></rect>
+                <text x="42" y="44" font-size="24" font-weight="800" fill="#17211c">permute：只换维度顺序</text>
+                <text x="42" y="74" font-size="15" fill="#5a675f">数字没有重新计算，只是把维度摆成 attention 更方便的顺序。</text>
+
+                <g transform="translate(70 132)">
+                  <text x="0" y="-20" font-size="17" font-weight="800" fill="#17211c">原顺序</text>
+                  <rect x="0" y="0" width="92" height="58" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="46" y="36" text-anchor="middle" font-size="15">B</text>
+                  <rect x="104" y="0" width="92" height="58" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="150" y="36" text-anchor="middle" font-size="15">T</text>
+                  <rect x="208" y="0" width="92" height="58" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="254" y="36" text-anchor="middle" font-size="15">QKV</text>
+                  <rect x="312" y="0" width="92" height="58" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="358" y="36" text-anchor="middle" font-size="15">H</text>
+                  <rect x="416" y="0" width="92" height="58" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="462" y="36" text-anchor="middle" font-size="15">d</text>
+                  <text x="254" y="92" text-anchor="middle" font-size="14" fill="#5a675f">[B, T, QKV, H, d]</text>
+                </g>
+
+                <path d="M460 270 C476 236 512 218 570 206" stroke="#17211c" stroke-width="2" fill="none" marker-end="url(#arrow13)"></path>
+                <text x="456" y="252" font-size="14" fill="#5a675f">permute(2, 0, 3, 1, 4)</text>
+
+                <g transform="translate(300 310)">
+                  <text x="0" y="-20" font-size="17" font-weight="800" fill="#17211c">新顺序</text>
+                  <rect x="0" y="0" width="92" height="58" fill="#fff1d6" stroke="#b45309"></rect>
+                  <text x="46" y="36" text-anchor="middle" font-size="15">QKV</text>
+                  <rect x="104" y="0" width="92" height="58" fill="#dce8ff" stroke="#2563eb"></rect>
+                  <text x="150" y="36" text-anchor="middle" font-size="15">B</text>
+                  <rect x="208" y="0" width="92" height="58" fill="#ffe4e0" stroke="#b42318"></rect>
+                  <text x="254" y="36" text-anchor="middle" font-size="15">H</text>
+                  <rect x="312" y="0" width="92" height="58" fill="#d9f3ef" stroke="#0f766e"></rect>
+                  <text x="358" y="36" text-anchor="middle" font-size="15">T</text>
+                  <rect x="416" y="0" width="92" height="58" fill="#f4f7f5" stroke="#d8dfda"></rect>
+                  <text x="462" y="36" text-anchor="middle" font-size="15">d</text>
+                  <text x="254" y="92" text-anchor="middle" font-size="14" fill="#5a675f">[QKV, B, H, T, d]</text>
+                </g>
+              </svg>
+            </div>
+
+            <h3>7. 为什么要把 QKV 放到最前面？</h3>
+            <p>
+              因为这样后面可以很方便地拆出：
+            </p>
+
+            <div class="formula">
+              query, key, value = qkv_for_attention.unbind(dim=0)
+            </div>
+
+            <p>
+              由于第 0 维现在是 QKV，所以：
+            </p>
+
+            <div class="formula">
+              qkv_for_attention[0] = 所有 Q
+              <br />
+              qkv_for_attention[1] = 所有 K
+              <br />
+              qkv_for_attention[2] = 所有 V
+            </div>
+
+            <p>
+              拆出来以后：
+            </p>
+
+            <div class="formula big">
+              query.shape = key.shape = value.shape = [B, H, T, d]
+            </div>
+
+            <p>
+              当前就是：
+            </p>
+
+            <div class="formula">
+              [2, 2, 5, 2]
+            </div>
+
+            <h3>8. 为什么要把 H 放到 T 前面？</h3>
+            <p>
+              因为 attention 是在每个 batch、每个 head 内部单独算的。
+              我们希望每个 head 看到的是：
+            </p>
+
+            <div class="formula">
+              Q[b, h].shape = [T, d]
+              <br />
+              K[b, h].shape = [T, d]
+              <br />
+              V[b, h].shape = [T, d]
+            </div>
+
+            <p>
+              这样下一步就能直接算：
+            </p>
+
+            <div class="formula big">
+              scores[b, h] = Q[b, h] @ K[b, h].T
+            </div>
+
+            <p>
+              shape 是：
+            </p>
+
+            <div class="formula">
+              [T, d] @ [d, T] = [T, T]
+            </div>
+
+            <p>
+              所有 batch 和 head 一起算时：
+            </p>
+
+            <div class="formula big">
+              scores.shape = [B, H, T, T]
+            </div>
+
+            <div class="callout">
+              <strong>所以 permute 的目的不是改变含义，</strong>
+              而是把张量整理成后续矩阵乘法最顺手的形状：
+              每个 batch、每个 head 都有一张 <span class="mono">[T, T]</span> 的 attention 分数表。
+            </div>
+
+            <h3>9. 这段代码的形象理解</h3>
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h4>Linear：给每个 token 打包三份材料</h4>
+                  <p>每个 token 从 D 维变成 3D 维，里面顺序放着 Q、K、V。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>view：把一条长材料拆成分格盒子</h4>
+                  <p>从 [12] 拆成 [3, 2, 2]，也就是 Q/K/V、head、head_dim。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>permute：把盒子的维度顺序重新摆放</h4>
+                  <p>从 [B,T,QKV,H,d] 改成 [QKV,B,H,T,d]，方便先拿出 Q/K/V。</p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h4>unbind：把 Q、K、V 三摞材料分开</h4>
+                  <p>最后得到 query/key/value，每个都是 [B,H,T,d]。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="formula big">
+              这一整段没有训练，也没有 attention 计算；
+              <br />
+              它只是在准备 Q/K/V 的形状。
+            </div>
+          </section>
+
+          <section id="summary">
+            <h2>6. 当前你应该拿稳的结论</h2>
+            <div class="symbol-grid">
+              <div class="tile">
+                <h4>Embedding</h4>
+                <p>token id 查 token embedding 表，position id 查 position embedding 表。</p>
+              </div>
+              <div class="tile">
+                <h4>Q/K/V</h4>
+                <p>它们都是向量。Q/K 决定权重，V 决定被汇总的内容。</p>
+              </div>
+              <div class="tile">
+                <h4>Attention 输出</h4>
+                <p>attention 是 forward 中的新上下文向量，不是直接修改参数。</p>
+              </div>
+              <div class="tile">
+                <h4>Multi-Head</h4>
+                <p>先投影，再拆 head。多个 head 各自算关系，最后合并。</p>
+              </div>
+            </div>
+
+            <div class="formula big">
+              token embedding：这个 token 是谁
+              <br />
+              position embedding：这个 token 在哪里
+              <br />
+              attention：这个 token 应该参考谁，并汇总什么内容
+            </div>
+
+            <p class="footer-note">
+              下一页适合继续讲 Encoder Block：
+              Self-Attention 之后为什么要 residual add、LayerNorm 和 FFN。
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
