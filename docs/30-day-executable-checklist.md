@@ -75,11 +75,11 @@ logs/
 
 ### Day 2：PyTorch 张量与自动微分
 
-- [ ] 学习：张量、矩阵乘法、广播、计算图、自动微分。
+- [x] 学习：张量、矩阵乘法、广播、计算图、自动微分。
 - [x] 实践：写一个张量运算 notebook 或脚本，包含 `backward()` 示例。
 - [x] 实践：手动实现一个线性回归训练循环。
 - [x] 产出：`experiments/day-02-pytorch-autograd-linear-regression/linear_regression.py`。
-- [ ] 验收：能解释 `requires_grad`、`loss.backward()`、`optimizer.step()` 的作用。
+- [x] 验收：能解释 `requires_grad`、`loss.backward()`、`optimizer.step()` 的作用。
 
 ### Day 3：MNIST 完整训练脚本
 
@@ -91,19 +91,20 @@ logs/
 
 ### Day 4：CNN 与 CIFAR-10
 
-- [ ] 学习：卷积、池化、BatchNorm、Dropout、数据增强。
-- [ ] 实践：训练一个 CIFAR-10 CNN 分类器。
-- [ ] 实践：记录 batch size 对显存和速度的影响。
-- [ ] 产出：`experiments/day-04-cifar10-cnn/train.py` 和 `logs/gpu-benchmark.md`。
-- [ ] 验收：能解释 CNN 为什么适合图像任务。
+- [x] 学习：卷积、池化、BatchNorm、Dropout、数据增强。
+- [x] 实践：训练一个 CIFAR-10 CNN 分类器。
+- [x] 实践：记录 batch size 对显存和速度的影响。
+- [x] 产出：`experiments/day-04-cifar10-cnn/train.py` 和 `logs/gpu-benchmark.md`。
+- [x] 验收：能解释 CNN 为什么适合图像任务。
 
 ### Day 5：Transformer Encoder 手写版
 
-- [ ] 学习：Embedding、位置编码、Self-Attention、Multi-Head Attention、FFN、Residual、LayerNorm。
-- [ ] 实践：手写一个最小 Transformer Encoder block。
-- [ ] 实践：用随机输入检查输入输出 shape。
-- [ ] 产出：`experiments/transformer-from-scratch/encoder.py`。
-- [ ] 验收：能画出 Transformer Encoder block 的数据流。
+- [x] 学习：Embedding、位置编码、Self-Attention、Multi-Head Attention、FFN、Residual、LayerNorm。
+- [x] 实践：手写一个最小 Transformer Encoder block 的 forward shape demo。
+- [x] 实践：用固定 token id 和随机初始化参数检查输入输出 shape。
+- [x] 产出：`experiments/day-05-transformer-encoder/encoder_shape_demo.py`。
+- [x] 产出：`docs/day-05-transformer-encoder/index.html` 作为最终学习笔记。
+- [x] 验收：能画出 Transformer Encoder block 的数据流。
 
 ### Day 6：LLM 基础与推理流程
 
@@ -359,4 +360,3 @@ logs/
 - 视频生成：ComfyUI + AnimateDiff、CogVideoX 或 Wan 轻量版本。
 - 微调：PEFT + LoRA。
 - 部署：Gradio 或 FastAPI。
-
