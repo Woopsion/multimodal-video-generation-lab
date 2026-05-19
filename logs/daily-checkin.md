@@ -171,3 +171,38 @@
   - 手算一个最小卷积例子：`1` 张 `1` 通道 `4x4` 图片，`1` 个 `3x3` 卷积核，`padding=1`，`stride=1`，再接 `MaxPool2d(2)`。
   - 再逐行理解 `experiments/day-04-cifar10-cnn/train.py` 的 CNN 模型结构与训练流程。
 
+## Day 5 - Transformer Encoder Shape Demo 与最终笔记收口
+
+- 日期：2026-05-19
+- 今日目标：完成 Transformer Encoder Block 核心骨架理解，并将 Day5 HTML 整理为最终学习笔记。
+- 完成内容：
+  - 完成最终学习笔记：`docs/day-05-transformer-encoder/index.html`
+  - 完成 shape demo：`experiments/day-05-transformer-encoder/encoder_shape_demo.py`
+  - 补充实验说明：`experiments/day-05-transformer-encoder/README.md`
+  - 更新学习状态索引：`notes/day-05-transformer-encoder.md`
+  - 更新 30 天执行清单中的 Day5 完成状态。
+- 当前脚本覆盖：
+  - token embedding + position embedding
+  - Q/K/V projection
+  - scaled dot-product attention
+  - Multi-Head split / merge
+  - output projection
+  - residual connection
+  - LayerNorm
+  - Feed Forward Network
+  - EncoderBlock 最终输出 shape
+- 验证命令：
+  - `.venv/bin/python experiments/day-05-transformer-encoder/encoder_shape_demo.py`
+- 最终 shape：
+  - `encoder_input.shape = [2, 5, 4]`
+  - `ffn_hidden.shape = [2, 5, 16]`
+  - `encoder_output.shape = [2, 5, 4]`
+- 今日理解：
+  - Self-Attention 负责 token 之间交换信息。
+  - Multi-Head 让多个 head 各自计算关系，再合并回完整 token 向量。
+  - output projection 在 shape 不变的情况下混合多个 head 的输出。
+  - residual connection 保留原路径，LayerNorm 稳定每个 token 的 D 维数值。
+  - FFN 逐 token 做 `D -> 4D -> D` 的非线性加工。
+- 下一步计划：
+  - 不再扩写 Day5 概念笔记。
+  - 后续进入工程封装：把当前散开的 forward 操作整理成可复用的 `EncoderBlock` 类。
