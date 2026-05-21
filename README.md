@@ -7,14 +7,31 @@ A repository for learning, paper reading, engineering practice, and experimental
 - Plan: `multimodal-video-generation-learning-plan.md`
 - Executable checklist: `docs/30-day-executable-checklist.md`
 - Daily check-in log: `logs/daily-checkin.md`
+- Week 1 review: `docs/week-01-foundation-review/index.html`
+- Active Week 2 note: `docs/week-02-multimodal-understanding/index.html`
 - Notes: `notes/`
 - Experiments: `experiments/`
 
 ## Current Completed Milestone
 
-Day 5 Transformer Encoder has been completed as a no-training shape demo and final HTML note.
+Week 1 foundation study has been completed. The repo now contains runnable PyTorch, CNN, Transformer Encoder, and LLM inference learning demos with HTML notes.
 
-- Final note: `docs/day-05-transformer-encoder/index.html`
-- Experiment: `experiments/day-05-transformer-encoder/encoder_shape_demo.py`
-- Experiment README: `experiments/day-05-transformer-encoder/README.md`
-- Status note: `notes/day-05-transformer-encoder.md`
+- Day 5 final note: `docs/day-05-transformer-encoder/index.html`
+- Day 6 final note: `docs/day-06-llm-inference/index.html`
+- Week 1 review: `docs/week-01-foundation-review/index.html`
+- Week 1 status note: `notes/week-01-foundation.md`
+
+## Current Learning Focus
+
+Week 2 has started. The learning format continues the HTML-first pattern: concepts are explained visually first, and code demos are added only after the shape and data flow are clear.
+
+- Active note: `docs/week-02-multimodal-understanding/index.html`
+- Status note: `notes/week-02-vlm.md`
+- Next task: Day 8 ViT patch embedding shape demo.
+
+## Repository Hygiene
+
+- Local datasets under `experiments/*/data/` are ignored.
+- Local pretrained model folders under `experiments/*/pretrained/` are ignored.
+- Generated `.pt` checkpoints under `experiments/*/outputs/` are ignored for future runs.
+- Day 6 real Transformers demos are offline/local-only by default and require `--allow-download` before downloading Hugging Face model files.

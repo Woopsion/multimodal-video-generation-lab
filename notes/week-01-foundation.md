@@ -191,3 +191,229 @@ Day 1 的环境初始化已经从“发现问题”推进到“可运行 PyTorch
 - Day 2 线性回归实验脚本已创建。
 
 下一步应正式进入 Day 2 的概念学习：张量、矩阵乘法、广播机制、计算图和自动微分。
+
+## Week 1 复盘启动：Day 1 到 Day 6
+
+HTML 复盘入口：
+
+```text
+docs/week-01-foundation-review/index.html
+```
+
+### 1. 复盘目标
+
+本周复盘不是重新抄一遍笔记，而是检查三件事：
+
+1. 能不能把 Day1 到 Day6 的知识串成一条主线。
+2. 能不能指出每段代码到底在验证哪个概念。
+3. 能不能暴露还不稳定的概念，后面继续追问和补强。
+
+### 2. 当前已经完成的主线
+
+| 天数 | 主题 | 当前产出 | 复盘时要能说清楚 |
+| --- | --- | --- | --- |
+| Day 1 | 学习目标、环境、VLM / Diffusion / Video Generation 总览 | `docs/30-day-executable-checklist.md`、`logs/daily-checkin.md` | 为什么先学 PyTorch，再学 Transformer / LLM，再进入多模态和生成模型。 |
+| Day 2 | Tensor、矩阵乘法、自动微分、线性回归 | `experiments/day-02-pytorch-autograd-linear-regression/` | `loss.backward()` 如何得到梯度，`optimizer.step()` 如何更新参数。 |
+| Day 3 | MNIST 训练、验证、checkpoint、推理、训练曲线 | `experiments/day-03-mnist-classifier/` | CrossEntropyLoss 如何从 logits 产生梯度，以及 checkpoint 为什么能恢复模型。 |
+| Day 4 | CNN、卷积核、通道、padding、stride、pooling | `notes/day-04-cnn-cifar10.md` | CNN 为什么保留空间结构，卷积输出 shape 如何计算。 |
+| Day 5 | Transformer Encoder、Self-Attention、Multi-Head、FFN、Residual、LayerNorm | `docs/day-05-transformer-encoder/index.html` | 一个 token 如何通过 attention 聚合其他 token 的信息。 |
+| Day 6 | LLM 推理流程、Causal LM、KV Cache、真实模型生成参数 | `docs/day-06-llm-inference/index.html` | prompt 如何变成 token id，模型如何得到 logits，生成参数如何影响 next token。 |
+
+### 3. Week 1 复盘的第一轮问题
+
+本组问题用于复盘自测：
+
+1. 训练阶段和推理阶段，模型参数分别会不会更新？
+2. logits 为什么还不是概率？softmax 在这里解决什么问题？
+3. `loss.backward()` 算出来的梯度最终影响的是哪些参数？
+4. CNN 的卷积核和 Transformer 的 Q/K/V 参数矩阵都叫“可学习参数”，它们相同点和不同点是什么？
+5. Self-Attention 里的 attention weight 和 LLM 生成时的 token probability 是不是同一种东西？
+6. KV Cache 缓存的是最终 hidden state，还是每层 attention 里的 K/V？
+
+### 4. 下一步执行方式
+
+复盘时优先按“问题驱动”推进：每次只拿一个问题深挖，必要时回到对应代码和 HTML 页面验证 shape 与数据流。
+
+### 5. 第一关讲评记录：训练 vs 推理
+
+学习者当前理解：
+
+- 训练、验证、推理都会执行 `model(x)`。
+- 训练阶段会更新参数；验证和推理阶段不更新参数。
+- logits 是 Linear 映射后的原始分数，不是概率；softmax 将其转成概率分布。
+- KV Cache 缓存每层 attention 的 K/V。
+
+需要纠正：
+
+- `loss.backward()` 只负责计算梯度，并把梯度写到参数的 `.grad` 中。
+- `optimizer.step()` 才真正根据当前 `.grad` 修改参数。
+- `optimizer.step()` 不会选择历史最低 loss 对应的权重；保存 best model 是 checkpoint 逻辑。
+- attention weight 不是 hidden state，它是 query 对 key 做 softmax 后得到的位置权重；`attention_weight @ V` 得到的 context 才是新的向量表示。
+
+当前结论：
+
+- 第一关可以通过。
+- 下一关进入 logits、softmax、CrossEntropyLoss、梯度的统一复盘。
+
+### 6. 第二关讲评记录：logits、softmax、CrossEntropyLoss
+
+学习者当前理解：
+
+- MNIST 的 10 个 logits 和 LLM 的 50257 个 logits，本质上都是最后 Linear 映射出的候选项原始分数。
+- 索引含义不是模型天然知道的，而是由数据集 label 或 tokenizer vocab 固定；训练阶段通过 loss 让模型对齐这些索引。
+- `p_i` 可以理解为预测值，`y_i` 可以理解为真实值。
+
+需要补强：
+
+- `CrossEntropyLoss` 的作用是惩罚“正确类别概率低”的情况，奖励“正确类别概率高”的情况。
+- PyTorch 的 `nn.CrossEntropyLoss` 直接接收 logits，内部等价于稳定版 `log_softmax` + 负对数似然，不需要手动 softmax。
+- 更精确地说，`p_i` 是 softmax 后第 `i` 个类别的预测概率；`y_i` 是 one-hot 真实标签第 `i` 位的 0 或 1。
+- 如果真实类别是 7，`y_7 = 1`，其他 `y_i = 0`。
+- 梯度公式 `dLoss/dz_i = p_i - y_i` 的含义是：正确类别的 logit 通常被推高，错误类别的 logit 通常被压低。
+
+当前结论：
+
+- logits 的大方向已经掌握。
+- CrossEntropyLoss 需要通过第二轮追问继续钉牢。
+
+### 7. 第二关追问讲评：one-hot 与错误类别梯度
+
+学习者当前理解：
+
+- 如果正确类别概率低，`Loss = -log(p_7)` 会变大。
+- 错误类别应该被压低，权重会朝着让错误类别分数下降的趋势调整。
+
+需要纠正和补强：
+
+- one-hot 是真实标签的编码方式，不是模型输出。真实类别是 7 时，`y = [0,0,0,0,0,0,0,1,0,0]`。
+- `y_7 = 1` 表示目标概率全部放在类别 7 上；其他 `y_i = 0` 表示它们不是真实答案。
+- PyTorch 的 `nn.CrossEntropyLoss` 通常直接接收类别编号 `label = 7`，不需要手动传 one-hot。
+- `z_3` 是错误类别 3 的 logit，是 forward 输出值，不是参数。
+- `p_3` 是错误类别 3 的预测概率，也不是参数。
+- `dLoss/dz_3 = p_3` 是 loss 对错误类别 logit 的梯度，表示应该把 `z_3` 往下压。
+
+关键链路：
+
+```text
+z_3 = w_3 · h + b_3
+dLoss/dz_3 = p_3
+dLoss/dw_3 = p_3 * h
+dLoss/db_3 = p_3
+```
+
+所以 optimizer 更新的是 `w_3` 和 `b_3`，不是直接更新 `z_3`。对类似样本来说，更新后的 `w_3 · h + b_3` 会变小，从而压低错误类别 3 的分数。
+
+当前结论：
+
+- 第二关可以通过。
+- 之后进入“参数如何被 logits 梯度影响”的链式法则复盘。
+
+### 8. 第三关启动：logits 梯度如何影响参数
+
+核心链路：
+
+```text
+h -> Linear -> logits -> CrossEntropyLoss
+```
+
+对类别 `i`：
+
+```text
+z_i = w_i · h + b_i
+g_i = dLoss/dz_i = p_i - y_i
+dLoss/dw_i,k = g_i * h_k
+dLoss/db_i = g_i
+```
+
+符号含义：
+
+- `h` 是进入最后 Linear 层之前的隐藏向量。
+- `z_i` 是第 `i` 个类别的 logit，是 forward 输出值，不是参数。
+- `w_i` 是最后 Linear 层第 `i` 个类别对应的权重向量。
+- `w_i,k` 是 `w_i` 的第 `k` 个参数。
+- `b_i` 是第 `i` 个类别对应的 bias。
+- `g_i` 是 loss 对第 `i` 个 logit 的梯度。
+
+batch 规则：
+
+- 单个样本会贡献一份梯度。
+- batch size 为 256 时，默认 `reduction="mean"` 下可以理解为 256 份梯度先平均。
+- 一次 `optimizer.step()` 使用聚合后的 `parameter.grad` 更新一次参数。
+
+重要边界：
+
+- `h` 通常不是长期保存的参数，而是当前 forward 的中间结果。
+- 反向传播会通过 `h` 继续找到产生它的前面层参数，例如更早的 Linear、CNN 卷积核、Attention 参数、Embedding 参数。
+
+保留自测题：
+
+1. 为什么 `dLoss/dw_7,k = dLoss/dz_7 * h_k`？
+2. batch size 为 256 时，最终是每个样本单独更新一次参数，还是梯度聚合后更新一次？
+3. 为什么 `h` 本身通常不是参数，但梯度还能通过 `h` 继续影响更前面的层？
+
+### 9. 第三关讲评：参数梯度链路
+
+学习者当前理解：
+
+- `dLoss/dw = dLoss/dz * dz/dw` 是链式求导。
+- batch size 为 256 时，梯度聚合后更新一次参数。
+- `h` 可以由上一层计算公式表达，所以梯度能继续往前传。
+
+需要精确化：
+
+- `w_7,k` 是最后 Linear 层中类别 7 对应权重向量的第 `k` 个参数。
+- `z_7` 是类别 7 的 logit，是 forward 输出值，不是参数。
+- `h_k` 是进入最后 Linear 层的隐藏向量第 `k` 个数。
+- 默认 `nn.CrossEntropyLoss(reduction="mean")` 是先对 batch 内样本 loss 求平均，再对平均 loss 做 `backward()`；因此梯度等价于样本梯度的平均。
+- 一次 batch 对应一次聚合后的 `parameter.grad`，一次 `optimizer.step()` 更新一次参数。
+- `h` 不是上一层的权重矩阵，而是上一层使用参数和输入算出来的中间输出。
+
+关键公式：
+
+```text
+h = f(x; theta_previous)
+dLoss/dtheta_previous = dLoss/dh * dh/dtheta_previous
+```
+
+当前结论：
+
+- 第三关可以通过。
+- CNN 卷积核梯度、Q/K/V 参数梯度留作后续观察项。
+
+## Week 1 最终收口
+
+Week1 到此收口，不再继续追加密集关卡式追问。当前基础主线已经建立：
+
+```text
+数据 / 文本
+-> 张量 / token id
+-> 模型 forward
+-> logits
+-> loss / sampling
+-> backward 计算梯度
+-> optimizer.step 更新参数
+-> checkpoint 保存权重
+-> 推理阶段固定参数使用
+```
+
+当前已经掌握的核心边界：
+
+- 训练、验证、推理都会 forward；只有训练执行 `backward()` 和 `optimizer.step()` 更新参数。
+- `CrossEntropyLoss` 直接接收 logits，内部等价于稳定版 `log_softmax` + 负对数似然。
+- `dLoss/dz_i = p_i - y_i` 是 logits 层面的梯度，后续通过链式法则影响产生 logits 的参数。
+- `h` 是前面层根据参数计算出来的中间输出，不是参数本身，但梯度可以通过它继续传回前面的参数。
+- LLM 推理阶段固定参数，通过 tokenizer、embedding、causal Transformer、LM Head、sampling 逐 token 生成。
+
+后续观察项：
+
+- CNN 卷积核梯度。
+- Transformer Q/K/V 参数梯度。
+- attention weight 与 token probability 的区别。
+- KV Cache 的工程实现细节。
+- LoRA / QLoRA 微调。
+
+Week2 入口：
+
+```text
+docs/week-02-multimodal-understanding/index.html
+```

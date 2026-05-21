@@ -1,0 +1,1918 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Week 1 - 基础阶段复盘</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c1014;
+        --paper: #141b22;
+        --paper-2: #10161c;
+        --ink: #edf4fb;
+        --muted: #9dafbf;
+        --line: #2b3946;
+        --cyan: #67e8f9;
+        --cyan-soft: #0f3340;
+        --green: #86efac;
+        --green-soft: #143421;
+        --amber: #fbbf24;
+        --amber-soft: #352713;
+        --rose: #fb7185;
+        --rose-soft: #381822;
+        --violet: #c4b5fd;
+        --violet-soft: #261f3d;
+        --code: #070a0d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 70svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 58px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(12, 16, 20, 1), rgba(12, 16, 20, 0.84)),
+          linear-gradient(135deg, rgba(103, 232, 249, 0.13), rgba(251, 191, 36, 0.09));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--cyan);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 760px;
+        font-size: clamp(42px, 6.8vw, 82px);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 720px;
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual {
+        border: 1px solid var(--line);
+        background: rgba(20, 27, 34, 0.9);
+        overflow: hidden;
+        box-shadow: 0 24px 88px rgba(0, 0, 0, 0.42);
+      }
+
+      .hero-visual svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        padding: 8px 0 8px 18px;
+        border-left: 2px solid var(--line);
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--cyan);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-label:first-child {
+        margin-top: 0;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 34px 0 12px;
+        font-size: 24px;
+        line-height: 1.22;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202a33;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #e6f6ff;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--cyan);
+        background: var(--cyan-soft);
+      }
+
+      .callout.green {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .callout.rose {
+        border-color: var(--rose);
+        background: var(--rose-soft);
+      }
+
+      .callout.violet {
+        border-color: var(--violet);
+        background: var(--violet-soft);
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 18px;
+        margin: 24px 0;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        box-shadow: 0 16px 46px rgba(0, 0, 0, 0.24);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+      }
+
+      .table-wrap {
+        margin: 24px 0;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      th {
+        background: #1b2530;
+        font-weight: 850;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin: 0 6px 8px 0;
+        padding: 3px 9px;
+        border: 1px solid var(--line);
+        background: var(--paper-2);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .flow {
+        margin: 28px 0;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        overflow: hidden;
+      }
+
+      .flow svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .formula {
+        margin: 22px 0;
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 16px;
+        line-height: 1.7;
+        overflow-x: auto;
+      }
+
+      details {
+        margin: 18px 0;
+        border: 1px solid var(--line);
+        background: rgba(16, 22, 28, 0.86);
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 14px 18px;
+        color: var(--cyan);
+        font-weight: 850;
+      }
+
+      details > div {
+        padding: 0 18px 18px;
+      }
+
+      .todo-list {
+        margin: 22px 0;
+        padding: 20px;
+        border: 1px dashed #637385;
+        background: rgba(20, 27, 34, 0.65);
+      }
+
+      .todo-list li {
+        margin: 8px 0;
+      }
+
+      @media (max-width: 980px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          position: static;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          min-height: auto;
+          padding-top: 36px;
+        }
+
+        .content {
+          padding-top: 34px;
+        }
+
+        nav {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Week 1 Review</p>
+          <h1>从张量、梯度到 Transformer 推理</h1>
+          <p class="hero-copy">
+            第一周复盘的目标不是“再学一遍”，而是检查你能不能把 Day1 到 Day6 串成一条因果链：数据如何变成张量，张量如何经过模型，loss 如何推动参数，训练好的参数又如何用于推理。
+          </p>
+          <div>
+            <span class="tag">PyTorch</span>
+            <span class="tag">MNIST</span>
+            <span class="tag">CNN</span>
+            <span class="tag">Transformer</span>
+            <span class="tag">LLM Inference</span>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="Week 1 知识主线图">
+          <svg viewBox="0 0 760 520" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+              </marker>
+            </defs>
+            <rect width="760" height="520" fill="#141b22" />
+            <text x="46" y="54" fill="#edf4fb" font-size="24" font-weight="850">第一周真正要串起来的主线</text>
+            <text x="46" y="84" fill="#9dafbf" font-size="15">不是六个孤立主题，而是一条从训练到推理的链路。</text>
+
+            <rect x="54" y="126" width="152" height="70" fill="#0f3340" stroke="#67e8f9" />
+            <text x="82" y="158" fill="#edf4fb" font-size="17" font-weight="850">数据</text>
+            <text x="74" y="180" fill="#9dafbf" font-size="13">图片 / 文本 / 标签</text>
+
+            <path d="M206 161 H258" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="276" y="126" width="152" height="70" fill="#143421" stroke="#86efac" />
+            <text x="319" y="158" fill="#edf4fb" font-size="17" font-weight="850">张量</text>
+            <text x="304" y="180" fill="#9dafbf" font-size="13">shape + 数值</text>
+
+            <path d="M428 161 H480" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="498" y="126" width="182" height="70" fill="#261f3d" stroke="#c4b5fd" />
+            <text x="532" y="158" fill="#edf4fb" font-size="17" font-weight="850">模型 forward</text>
+            <text x="524" y="180" fill="#9dafbf" font-size="13">Linear / CNN / Attention</text>
+
+            <path d="M589 196 V250" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="498" y="270" width="182" height="70" fill="#352713" stroke="#fbbf24" />
+            <text x="556" y="302" fill="#edf4fb" font-size="17" font-weight="850">logits</text>
+            <text x="524" y="324" fill="#9dafbf" font-size="13">分类 / 词表原始分数</text>
+
+            <path d="M498 305 H430" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="270" y="270" width="158" height="70" fill="#381822" stroke="#fb7185" />
+            <text x="327" y="302" fill="#edf4fb" font-size="17" font-weight="850">loss</text>
+            <text x="296" y="324" fill="#9dafbf" font-size="13">预测与答案的差距</text>
+
+            <path d="M270 305 H206" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="54" y="270" width="152" height="70" fill="#0f3340" stroke="#67e8f9" />
+            <text x="89" y="302" fill="#edf4fb" font-size="17" font-weight="850">梯度</text>
+            <text x="78" y="324" fill="#9dafbf" font-size="13">参数该怎么改</text>
+
+            <path d="M130 270 C110 226 146 210 276 188" fill="none" stroke="#86efac" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="140" y="236" fill="#86efac" font-size="14" font-weight="850">训练阶段更新参数</text>
+
+            <path d="M352 340 V408 H592 V346" fill="none" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="392" y="432" fill="#fbbf24" font-size="14" font-weight="850">推理阶段不更新参数，只使用参数</text>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Week1 复盘导航">
+          <div class="nav-label">复盘主线</div>
+          <a href="#goal">0. 复盘目标</a>
+          <a href="#map">1. 六天如何连起来</a>
+          <a href="#evidence">2. 代码证据表</a>
+          <a href="#checkpoint">3. 第一轮检查题</a>
+          <div class="nav-label">第一关</div>
+          <a href="#train-infer">4. 训练 vs 推理</a>
+          <a href="#your-turn">5. 第一关检查题</a>
+          <a href="#round1-feedback">6. 第一关讲评</a>
+          <div class="nav-label">第二关</div>
+          <a href="#logits-ce">7. logits 与 CrossEntropy</a>
+          <a href="#round2-feedback">8. 第二关讲评</a>
+          <a href="#round2-next">9. 第二关检查题</a>
+          <a href="#round2-deep-feedback">10. 第二关追问讲评</a>
+          <div class="nav-label">第三关</div>
+          <a href="#param-gradient">11. logits 梯度到参数</a>
+          <a href="#param-gradient-questions">12. 第三关检查题</a>
+          <a href="#param-gradient-feedback">13. 第三关讲评</a>
+          <a href="#week1-close">14. Week1 收口</a>
+          <a href="#next">15. Week2 入口</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 复盘目标</h2>
+            <p class="lead">
+              第一周你已经接触了 PyTorch、MNIST、CNN、Transformer Encoder 和 LLM 推理。复盘时不要追求“所有术语都背下来”，而是检查能不能解释一条完整链路。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>本周最核心的一句话：</strong>训练阶段用 loss 和梯度调整参数；推理阶段固定参数，只把输入变成输出。CNN、Transformer、LLM 都是在这个大框架下换了不同结构。
+              </p>
+            </div>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>最低目标</h3>
+                <p>看到一个 demo，能说清楚输入是什么、shape 是什么、输出是什么。</p>
+              </div>
+              <div class="panel">
+                <h3>合格目标</h3>
+                <p>能解释训练时参数为什么会改变，推理时为什么不会改变。</p>
+              </div>
+              <div class="panel">
+                <h3>进阶目标</h3>
+                <p>能把 CNN 的卷积、Transformer 的 attention、LLM 的 logits 放进同一套“参数化函数”视角中。</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="map">
+            <h2>1. 六天如何连起来</h2>
+            <p>
+              你可以把第一周理解成三层递进：先学神经网络如何学习参数，再学图片和序列分别如何组织信息，最后看训练好的语言模型如何推理生成。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>阶段</th>
+                    <th>你学到的东西</th>
+                    <th>真正要抓住的主线</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Day 1</td>
+                    <td>学习路线、环境、VLM / Diffusion / Video Generation 边界。</td>
+                    <td>知道为什么后面要先打 PyTorch 和 Transformer 基础。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 2</td>
+                    <td>Tensor、计算图、自动微分、线性回归。</td>
+                    <td>神经网络训练的底层动作：forward、loss、backward、step。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 3</td>
+                    <td>MNIST 分类、CrossEntropyLoss、checkpoint、曲线、推理。</td>
+                    <td>多分类模型如何从 logits 产生 loss，再通过梯度更新参数。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 4</td>
+                    <td>CNN、卷积核、通道、padding、stride、pooling。</td>
+                    <td>图片不是一开始压平，先用局部可学习卷积核提取空间特征。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 5</td>
+                    <td>Embedding、Self-Attention、Multi-Head、FFN、Residual、LayerNorm。</td>
+                    <td>序列里的 token 如何互相看见、交换信息、更新自己的向量表示。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 6</td>
+                    <td>Tokenizer、Causal LM、KV Cache、真实模型生成参数。</td>
+                    <td>训练好的语言模型如何根据已有 token 预测下一个 token。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="evidence">
+            <h2>2. 代码证据表</h2>
+            <p>
+              复盘时不要只靠概念回忆。每个概念都要能回到一段代码，看它在代码里具体对应什么。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>文件</th>
+                    <th>复盘时看什么</th>
+                    <th>要能回答的问题</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>experiments/day-02-pytorch-autograd-linear-regression/gradient_debug.py</code></td>
+                    <td>单样本 loss、backward、梯度、step。</td>
+                    <td>为什么不清零梯度会累积？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-03-mnist-classifier/cross_entropy_gradient_demo.py</code></td>
+                    <td><code>dLoss/dz_i = p_i - y_i</code> 的数值演示。</td>
+                    <td>正确类别和错误类别的 logit 梯度方向为什么不同？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-03-mnist-classifier/train.py</code></td>
+                    <td>训练循环、验证循环、checkpoint、infer-only。</td>
+                    <td>训练和验证最大的代码差异是什么？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-04-cifar10-cnn/train.py</code></td>
+                    <td>Conv2d、BatchNorm、Pool、Classifier。</td>
+                    <td>通道数为什么会变，宽高为什么会变？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-05-transformer-encoder/encoder_shape_demo.py</code></td>
+                    <td>Q/K/V、attention scores、head split / merge、FFN。</td>
+                    <td>Multi-Head 最终如何合并回原来的 embedding 维度？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-06-llm-inference/transformers_real_generation_demo.py</code></td>
+                    <td>tokenizer、model forward、logits、KV cache、generate。</td>
+                    <td>为什么只取最后一个位置的 logits 来生成下一个 token？</td>
+                  </tr>
+                  <tr>
+                    <td><code>experiments/day-06-llm-inference/generation_controls_demo.py</code></td>
+                    <td>temperature、top-k、top-p、repetition penalty。</td>
+                    <td>这些参数改变的是模型参数，还是选 token 的策略？</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="checkpoint">
+            <h2>3. 第一轮检查题</h2>
+            <p>
+              第一轮复盘只问六个问题。你不需要一次答完，但每个问题都必须能用代码、shape 或公式说清楚。
+            </p>
+            <ol class="todo-list">
+              <li>训练阶段和推理阶段，模型参数分别会不会更新？</li>
+              <li>logits 为什么还不是概率？softmax 在这里解决什么问题？</li>
+              <li><code>loss.backward()</code> 算出来的梯度最终影响的是哪些参数？</li>
+              <li>CNN 的卷积核和 Transformer 的 Q/K/V 参数矩阵都叫“可学习参数”，它们相同点和不同点是什么？</li>
+              <li>Self-Attention 里的 attention weight 和 LLM 生成时的 token probability 是不是同一种东西？</li>
+              <li>KV Cache 缓存的是最终 hidden state，还是每层 attention 里的 K/V？</li>
+            </ol>
+            <div class="callout amber">
+              <p>
+                <strong>复盘规则：</strong>你先回答，我再纠偏。回答可以不完整，但要尽量说出“为什么”。这比直接看标准答案有效得多。
+              </p>
+            </div>
+          </section>
+
+          <section id="train-infer">
+            <h2>4. 第一关：训练 vs 推理</h2>
+            <p class="lead">
+              这是第一周最重要的分界线。如果这条线不清楚，后面 checkpoint、验证、生成、KV Cache 都容易混在一起。
+            </p>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>训练阶段</h3>
+                <p>训练阶段的核心目标是改变模型参数，让模型下次预测得更好。</p>
+                <pre><code>model.train()
+logits = model(x)
+loss = loss_fn(logits, y)
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()</code></pre>
+              </div>
+              <div class="panel">
+                <h3>推理阶段</h3>
+                <p>推理阶段的核心目标是使用已经训练好的参数，把输入变成输出。</p>
+                <pre><code>model.eval()
+with torch.inference_mode():
+    logits = model(x)
+    prediction = choose_from(logits)</code></pre>
+              </div>
+            </div>
+
+            <h3>4.1 参数什么时候会变</h3>
+            <p>
+              参数是否会变，关键不在于有没有 <code>model(x)</code>。训练和推理都会执行 forward。真正让参数变化的是这一整套动作：
+            </p>
+            <div class="formula">
+              loss.backward() 计算每个可学习参数的梯度<br />
+              optimizer.step() 根据梯度修改参数数值
+            </div>
+            <p>
+              只 forward 不会自动修改权重。只算 loss 也不会自动修改权重。只 backward 会把梯度算出来，但参数还没更新。真正改参数的动作是 <code>optimizer.step()</code>。
+            </p>
+
+            <h3>4.2 梯度到底是什么</h3>
+            <p>
+              梯度可以暂时理解成：如果某个参数稍微变大一点，loss 会怎么变。数学上它是一个导数，写成：
+            </p>
+            <div class="formula">
+              dLoss / dw
+            </div>
+            <p>
+              这里 <code>w</code> 表示某一个可学习参数，比如 Linear 层里的一个 weight，CNN 卷积核里的一个数，或者 Q/K/V 参数矩阵里的一个数。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>梯度符号</th>
+                    <th>直觉含义</th>
+                    <th>optimizer 会怎么做</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>dLoss/dw &gt; 0</code></td>
+                    <td><code>w</code> 变大时 loss 也倾向于变大。</td>
+                    <td>为了降低 loss，通常把 <code>w</code> 往小调。</td>
+                  </tr>
+                  <tr>
+                    <td><code>dLoss/dw &lt; 0</code></td>
+                    <td><code>w</code> 变大时 loss 倾向于变小。</td>
+                    <td>为了降低 loss，通常把 <code>w</code> 往大调。</td>
+                  </tr>
+                  <tr>
+                    <td><code>dLoss/dw = 0</code></td>
+                    <td>当前这个方向上，loss 对这个参数不敏感。</td>
+                    <td>这个参数这一步可能基本不动。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>4.3 验证为什么不更新参数</h3>
+            <p>
+              验证集的作用是检查模型在没参与训练的数据上表现如何。如果验证时也更新参数，就等于把验证集偷偷变成训练集，评估就不可信了。
+            </p>
+            <pre><code>model.eval()
+with torch.inference_mode():
+    logits = model(images)
+    loss = loss_fn(logits, labels)
+    # 没有 loss.backward()
+    # 没有 optimizer.step()</code></pre>
+            <p>
+              所以验证和推理都可以算 logits，也都可以算 loss 或预测结果；但它们不做参数更新。
+            </p>
+
+            <details>
+              <summary>如果你想看代码证据，应该去哪里找</summary>
+              <div>
+                <p>
+                  去看 <code>experiments/day-03-mnist-classifier/train.py</code>。训练函数里应该能找到 <code>loss.backward()</code> 和 <code>optimizer.step()</code>；验证函数里应该没有这两句，并且会包在 <code>torch.inference_mode()</code> 或类似上下文里。
+                </p>
+              </div>
+            </details>
+          </section>
+
+          <section id="your-turn">
+            <h2>5. 第一关检查题</h2>
+            <p>
+              这一组题用于检查训练、验证、推理和 checkpoint 的边界。当前 Week1 已收口，下面保留为复盘自测题。
+            </p>
+            <ol class="todo-list">
+              <li>训练、验证、推理三者都会执行 <code>model(x)</code> 吗？如果都会，它们最大的区别是什么？</li>
+              <li>如果代码里只有 <code>loss.backward()</code>，但是没有 <code>optimizer.step()</code>，参数会不会更新？为什么？</li>
+              <li>checkpoint 保存下来的到底是什么？为什么加载 checkpoint 后可以直接推理？</li>
+            </ol>
+            <div class="callout rose">
+              <p>
+                <strong>回答要求：</strong>不要只答“会 / 不会”。至少说出一层因果关系，例如“因为 backward 只是计算梯度，step 才用梯度改参数”。
+              </p>
+            </div>
+          </section>
+
+          <section id="round1-feedback">
+            <h2>6. 第一关讲评</h2>
+            <p class="lead">
+              你的整体方向是对的：训练、验证、推理都会 forward；训练会更新参数，验证和推理不更新参数。但有两个地方必须校准，否则后面会把 checkpoint、best model、optimizer 混在一起。
+            </p>
+
+            <h3>6.1 你的回答中已经稳定的部分</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>问题</th>
+                    <th>你的理解</th>
+                    <th>判断</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>训练 / 验证 / 推理都会不会执行 <code>model(x)</code></td>
+                    <td>都会执行 forward。</td>
+                    <td>正确。区别在于训练还会计算梯度并更新参数。</td>
+                  </tr>
+                  <tr>
+                    <td>logits 是什么</td>
+                    <td>Linear 后得到的原始分数，不是概率。</td>
+                    <td>正确。softmax 后才变成总和为 1 的概率分布。</td>
+                  </tr>
+                  <tr>
+                    <td>KV Cache 缓存什么</td>
+                    <td>缓存每层的 K/V。</td>
+                    <td>正确。不是缓存最终 hidden state。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>6.2 必须纠正：<code>backward()</code> 和 <code>step()</code> 的分工</h3>
+            <p>
+              你说“参数不会更新”这个结论是对的，但后半句需要改：<code>loss.backward()</code> 不是根据梯度去更新权重，它只是把梯度算出来，存到每个参数的 <code>.grad</code> 里。
+            </p>
+            <div class="formula">
+              loss.backward()：计算梯度，把结果写入 parameter.grad<br />
+              optimizer.step()：读取 parameter.grad，真正修改 parameter.data
+            </div>
+            <p>
+              也就是说，只有 <code>loss.backward()</code> 而没有 <code>optimizer.step()</code> 时，参数不会更新。它只是完成了“我知道该往哪个方向改”的计算，还没有真正动参数。
+            </p>
+            <pre><code># 参数不会变：只算梯度
+loss.backward()
+
+# 参数会变：optimizer 使用刚才算出的梯度更新参数
+optimizer.step()</code></pre>
+
+            <h3>6.3 必须纠正：<code>optimizer.step()</code> 不会选择历史最好 loss</h3>
+            <p>
+              <code>optimizer.step()</code> 不会去比较“这次 loss 是不是历史最低”，也不会自动保存最好权重。它只做一件事：使用当前 batch 反向传播得到的梯度，按优化器规则更新当前参数。
+            </p>
+            <div class="formula">
+              SGD 的简化形式：w_new = w_old - learning_rate * grad
+            </div>
+            <p>
+              这里：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>w_old</code></td>
+                    <td>更新前的某个参数值。</td>
+                  </tr>
+                  <tr>
+                    <td><code>grad</code></td>
+                    <td><code>loss.backward()</code> 根据当前 batch 算出来的梯度。</td>
+                  </tr>
+                  <tr>
+                    <td><code>learning_rate</code></td>
+                    <td>学习率，控制这一步改多大。</td>
+                  </tr>
+                  <tr>
+                    <td><code>w_new</code></td>
+                    <td><code>optimizer.step()</code> 后得到的新参数值。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              “选择历史最好 loss 对应的权重”是 checkpoint 保存逻辑，不是 optimizer 的工作。它通常长这样：
+            </p>
+            <pre><code>if val_loss &lt; best_val_loss:
+    best_val_loss = val_loss
+    torch.save(model.state_dict(), checkpoint_path)</code></pre>
+
+            <h3>6.4 checkpoint 到底保存什么</h3>
+            <p>
+              你说 checkpoint 保存模型权重参数值，这对“只做推理”的情况基本够用。但完整 checkpoint 往往不只保存权重。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>保存内容</th>
+                    <th>作用</th>
+                    <th>是否推理必须</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>model_state_dict</code></td>
+                    <td>模型所有可学习参数，例如 Linear、Conv、Embedding、LayerNorm 等权重。</td>
+                    <td>必须。没有它就没有训练好的模型能力。</td>
+                  </tr>
+                  <tr>
+                    <td><code>optimizer_state_dict</code></td>
+                    <td>优化器状态，例如 Adam 的动量估计。</td>
+                    <td>推理不必须，恢复训练时需要。</td>
+                  </tr>
+                  <tr>
+                    <td><code>epoch</code> / <code>step</code></td>
+                    <td>训练进度。</td>
+                    <td>推理不必须，继续训练时有用。</td>
+                  </tr>
+                  <tr>
+                    <td><code>best_val_loss</code> / <code>best_acc</code></td>
+                    <td>记录当前 checkpoint 为什么被认为最好。</td>
+                    <td>推理不必须，但实验复盘有用。</td>
+                  </tr>
+                  <tr>
+                    <td>模型配置</td>
+                    <td>例如层数、hidden size、类别数、词表大小。</td>
+                    <td>通常需要。加载权重前必须先创建同结构模型。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              加载 checkpoint 后可以推理，是因为模型结构先被创建出来，然后权重被填回对应参数位置。此后执行 forward 时，用的就是训练后的参数。
+            </p>
+
+            <h3>6.5 第一轮六题讲评</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>题目</th>
+                    <th>判定</th>
+                    <th>需要校准的点</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>训练阶段和推理阶段参数是否更新</td>
+                    <td>基本正确</td>
+                    <td>训练是否更新参数取决于是否执行 <code>backward()</code> + <code>optimizer.step()</code>；推理通常使用 <code>inference_mode()</code> 禁用梯度。</td>
+                  </tr>
+                  <tr>
+                    <td>logits 与 softmax</td>
+                    <td>正确</td>
+                    <td>补充：PyTorch 的 <code>CrossEntropyLoss</code> 直接吃 logits，内部等价做了 <code>log_softmax</code> + 负对数似然。</td>
+                  </tr>
+                  <tr>
+                    <td><code>loss.backward()</code> 影响哪些参数</td>
+                    <td>方向正确</td>
+                    <td>准确说是影响所有参与本次计算、并且 <code>requires_grad=True</code> 的参数。Embedding 通常只有本 batch 用到的 token 行有非零梯度。</td>
+                  </tr>
+                  <tr>
+                    <td>CNN 卷积核 vs Q/K/V 参数矩阵</td>
+                    <td>方向正确，需要加结构差异</td>
+                    <td>卷积核在二维局部窗口上共享参数；Q/K/V 是对每个 token 向量做线性投影，后续由 attention 动态决定 token 之间看谁。</td>
+                  </tr>
+                  <tr>
+                    <td>attention weight vs token probability</td>
+                    <td>结论正确，但解释要改</td>
+                    <td>attention weight 不是 hidden state，它是每个 query 对可见 key 做 softmax 后得到的“看各位置的权重”。<code>attention_weight @ V</code> 得到的 context 才是新的向量表示。</td>
+                  </tr>
+                  <tr>
+                    <td>KV Cache 缓存什么</td>
+                    <td>正确</td>
+                    <td>缓存每一层 attention 的历史 Key / Value，用于新 token 的 decode。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>6.6 CNN 卷积核和 Q/K/V 的关键不同</h3>
+            <p>
+              二者都是可学习参数，但它们解决的问题不同。卷积核适合图像，因为图像有二维空间结构；Q/K/V 适合序列，因为 token 之间的关系不一定只发生在相邻位置。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对比项</th>
+                    <th>CNN 卷积核</th>
+                    <th>Transformer Q/K/V</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>参数形状直觉</td>
+                    <td><code>[out_channels, in_channels, kernel_h, kernel_w]</code></td>
+                    <td>常见合并写法是 <code>[3 * d_model, d_model]</code></td>
+                  </tr>
+                  <tr>
+                    <td>处理对象</td>
+                    <td>图像或特征图上的局部二维窗口。</td>
+                    <td>序列中每个 token 的向量。</td>
+                  </tr>
+                  <tr>
+                    <td>信息来源</td>
+                    <td>固定几何邻域，例如当前像素附近的 <code>3x3</code> 区域。</td>
+                    <td>由 attention 动态选择可见 token，距离可以很远。</td>
+                  </tr>
+                  <tr>
+                    <td>共享方式</td>
+                    <td>同一个卷积核扫过整张图，位置共享。</td>
+                    <td>同一组 Q/K/V 投影参数作用于所有 token 位置。</td>
+                  </tr>
+                  <tr>
+                    <td>结果直觉</td>
+                    <td>提取边缘、纹理、局部形状等空间模式。</td>
+                    <td>为每个 token 构造“我要找什么、我提供什么、真正拿走什么”的关系计算空间。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>第一关结论：</strong>可以过关，但必须记住一句话：<code>backward()</code> 只算梯度，<code>optimizer.step()</code> 才改参数；保存最好模型是 checkpoint 逻辑，不是 optimizer 自动做的事。
+              </p>
+            </div>
+          </section>
+
+          <section id="logits-ce">
+            <h2>7. 第二关：logits、softmax、CrossEntropyLoss</h2>
+            <p class="lead">
+              第二关把 Day3 的 MNIST 和 Day6 的 LLM 放在一起看。它们任务不同，但最后一步高度相似：都把隐藏向量通过 Linear 变成一组候选类别的原始分数，也就是 logits。
+            </p>
+
+            <h3>7.1 MNIST logits 和 LLM logits 的共同点</h3>
+            <p>
+              你的回答方向对：二者本质上都是“对一组候选项打分”。区别只是候选项的集合大小不同。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>任务</th>
+                    <th>logits shape</th>
+                    <th>最后一维每个位置代表什么</th>
+                    <th>索引含义由谁固定</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>MNIST</td>
+                    <td><code>[batch, 10]</code></td>
+                    <td>第 0 到第 9 个数字类别的分数。</td>
+                    <td>数据集标签约定：label 0 表示数字 0，label 7 表示数字 7。</td>
+                  </tr>
+                  <tr>
+                    <td>LLM</td>
+                    <td><code>[batch, seq_len, vocab_size]</code></td>
+                    <td>词表中每个 token 作为下一个 token 的分数。</td>
+                    <td>tokenizer 词表：token id 5087 对应某个固定 token。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以“人为规定”这个说法可以保留，但要更精确：不是模型自己天然知道第 7 位是什么意思，而是训练数据和标签体系把第 7 位的意义固定下来。模型通过 loss 学会让正确索引的 logit 更高。
+            </p>
+            <div class="formula">
+              MNIST: hidden_vector -> Linear(..., out_features=10) -> 10 个数字类别分数<br />
+              LLM: hidden_vector -> Linear(..., out_features=vocab_size) -> 词表中每个 token 的分数
+            </div>
+
+            <h3>7.2 CrossEntropyLoss 是干什么的</h3>
+            <p>
+              CrossEntropyLoss 的作用是：看模型给“正确类别”分配的概率够不够高。如果正确类别概率很低，loss 就大；如果正确类别概率很高，loss 就小。
+            </p>
+            <p>
+              假设 MNIST 的真实数字是 7，模型输出 10 个 logits：
+            </p>
+            <pre><code>z = [z_0, z_1, z_2, z_3, z_4, z_5, z_6, z_7, z_8, z_9]</code></pre>
+            <p>
+              这里 <code>z_i</code> 表示第 <code>i</code> 个类别的原始分数。比如 <code>z_7</code> 是“数字 7”这个类别的原始分数。
+            </p>
+            <p>
+              softmax 会把 logits 变成概率：
+            </p>
+            <div class="formula">
+              p_i = exp(z_i) / (exp(z_0) + exp(z_1) + ... + exp(z_9))
+            </div>
+            <p>
+              这里 <code>p_i</code> 表示模型认为“类别 i 是正确答案”的概率。所有 <code>p_i</code> 加起来等于 1。
+            </p>
+            <p>
+              如果真实类别是 7，那么 CrossEntropyLoss 关注的是 <code>p_7</code>：
+            </p>
+            <div class="formula">
+              Loss = -log(p_7)
+            </div>
+            <p>
+              <code>p_7</code> 越接近 1，<code>-log(p_7)</code> 越接近 0，loss 越小。<code>p_7</code> 越接近 0，<code>-log(p_7)</code> 越大，loss 越大。
+            </p>
+
+            <h3>7.3 为什么 PyTorch CrossEntropyLoss 直接吃 logits</h3>
+            <p>
+              PyTorch 的 <code>nn.CrossEntropyLoss</code> 设计上就要求输入 raw logits，而不是已经 softmax 过的概率。原因是它内部会做更稳定的计算。
+            </p>
+            <div class="formula">
+              CrossEntropyLoss(logits, label)<br />
+              = log_softmax(logits) + negative log likelihood
+            </div>
+            <p>
+              换成人话：
+            </p>
+            <pre><code># 你不需要这样写
+probabilities = softmax(logits)
+loss = cross_entropy(probabilities, label)
+
+# PyTorch 希望你这样写
+loss = CrossEntropyLoss(logits, label)</code></pre>
+            <p>
+              这样做有两个好处：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>原因</th>
+                    <th>解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>数值稳定</td>
+                    <td><code>exp(z)</code> 在 <code>z</code> 很大时可能爆掉。PyTorch 内部用稳定写法避免溢出。</td>
+                  </tr>
+                  <tr>
+                    <td>避免重复 softmax</td>
+                    <td>如果你先 softmax，再传给 CrossEntropyLoss，等于把它期望的输入格式弄错了。</td>
+                  </tr>
+                  <tr>
+                    <td>梯度更直接</td>
+                    <td>softmax 和 cross entropy 合在一起后，反向传播的结果刚好简化成 <code>p_i - y_i</code>。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout amber">
+              <p>
+                <strong>记住用法：</strong>训练多分类时，模型最后输出 logits；训练代码直接写 <code>loss = nn.CrossEntropyLoss()(logits, labels)</code>。不要在前面手动加 softmax。
+              </p>
+            </div>
+
+            <h3>7.4 <code>p_i</code> 和 <code>y_i</code> 到底是什么</h3>
+            <p>
+              你说 <code>p_i</code> 是预测值、<code>y_i</code> 是真实值，这个方向对，但要更具体。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>具体含义</th>
+                    <th>例子：真实类别是 7</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>i</code></td>
+                    <td>类别索引。MNIST 中 <code>i</code> 可以是 0 到 9。</td>
+                    <td><code>i = 7</code> 表示数字 7 这个类别。</td>
+                  </tr>
+                  <tr>
+                    <td><code>z_i</code></td>
+                    <td>第 <code>i</code> 个类别的 logit，softmax 前的原始分数。</td>
+                    <td><code>z_7</code> 是数字 7 的原始分数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>p_i</code></td>
+                    <td>softmax 后第 <code>i</code> 个类别的预测概率。</td>
+                    <td><code>p_7</code> 是模型认为图片是数字 7 的概率。</td>
+                  </tr>
+                  <tr>
+                    <td><code>y_i</code></td>
+                    <td>真实标签的 one-hot 表示里第 <code>i</code> 个位置的值。</td>
+                    <td><code>y_7 = 1</code>，其他 <code>y_i = 0</code>。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              one-hot 的意思是：真实类别所在位置是 1，其他位置都是 0。
+            </p>
+            <pre><code>真实类别 = 7
+y = [0, 0, 0, 0, 0, 0, 0, 1, 0, 0]</code></pre>
+
+            <h3>7.5 为什么梯度是 <code>dLoss/dz_i = p_i - y_i</code></h3>
+            <p>
+              这个公式的意思是：loss 对每个 logit <code>z_i</code> 的导数，等于模型预测概率 <code>p_i</code> 减去真实 one-hot 值 <code>y_i</code>。
+            </p>
+            <div class="formula">
+              dLoss/dz_i = p_i - y_i
+            </div>
+            <p>
+              这里的 <code>dLoss/dz_i</code> 表示：如果第 <code>i</code> 个 logit <code>z_i</code> 稍微变大一点，loss 会怎么变化。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>位置</th>
+                    <th><code>y_i</code></th>
+                    <th>梯度 <code>p_i - y_i</code></th>
+                    <th>参数更新直觉</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>正确类别 7</td>
+                    <td><code>1</code></td>
+                    <td><code>p_7 - 1</code>，通常是负数。</td>
+                    <td>梯度下降会推动 <code>z_7</code> 变大，让正确类别分数上升。</td>
+                  </tr>
+                  <tr>
+                    <td>错误类别 i</td>
+                    <td><code>0</code></td>
+                    <td><code>p_i - 0 = p_i</code>，通常是正数。</td>
+                    <td>梯度下降会推动错误类别 <code>z_i</code> 变小。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              这就是 CrossEntropyLoss 影响参数的起点：它先告诉每个 logit 应该往哪个方向动；再通过链式法则，把这个影响传回最后 Linear 层、前面的 hidden state、再传回更早的参数。
+            </p>
+            <pre><code>Loss
+-> dLoss/dlogits
+-> dLoss/dlm_head.weight
+-> dLoss/dhidden_states
+-> 更前面的 Linear / Attention / Embedding 参数</code></pre>
+          </section>
+
+          <section id="round2-feedback">
+            <h2>8. 第二关讲评</h2>
+            <p>
+              你的第 1 题基本正确：MNIST 的 10 个 logits 和 LLM 的 50257 个 logits，本质上都是对固定候选集合打分。需要补充的是：这些候选集合不是模型随意理解的，而是由标签体系或 tokenizer 词表固定的。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>你的回答</th>
+                    <th>判定</th>
+                    <th>补充</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>logits 是 Linear 得到的维度数值，索引含义由人类规定。</td>
+                    <td>基本正确</td>
+                    <td>更准确地说，索引含义由数据集 label 或 tokenizer vocab 固定，训练通过 loss 让模型对齐这些索引。</td>
+                  </tr>
+                  <tr>
+                    <td>CrossEntropyLoss 的作用忘了。</td>
+                    <td>需要补强</td>
+                    <td>它惩罚“正确类别概率低”的情况，奖励“正确类别概率高”的情况。</td>
+                  </tr>
+                  <tr>
+                    <td><code>p_i</code> 是预测值，<code>y_i</code> 是真实值。</td>
+                    <td>方向正确</td>
+                    <td><code>p_i</code> 是 softmax 后第 i 类的概率；<code>y_i</code> 是 one-hot 真实标签第 i 位的 0 或 1。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout green">
+              <p>
+                <strong>第二关当前结论：</strong>logits 的大方向你已经掌握；CrossEntropyLoss 需要重新钉牢。尤其要记住：PyTorch 的 CrossEntropyLoss 直接吃 logits，不要手动 softmax。
+              </p>
+            </div>
+          </section>
+
+          <section id="round2-next">
+            <h2>9. 第二关检查题</h2>
+            <p>
+              这一组题用于确认 CrossEntropyLoss 是否已经回到知识体系里。当前 Week1 已收口，下面保留为复盘自测题。
+            </p>
+            <ol class="todo-list">
+              <li>如果真实类别是 7，为什么 <code>y_7 = 1</code>，其他 <code>y_i = 0</code>？这和 one-hot 有什么关系？</li>
+              <li>如果模型给正确类别 7 的概率 <code>p_7</code> 很低，<code>Loss = -log(p_7)</code> 会变大还是变小？为什么？</li>
+              <li>对于错误类别 3，<code>y_3 = 0</code>，所以 <code>dLoss/dz_3 = p_3</code>。这个梯度为什么会推动错误类别分数下降？</li>
+            </ol>
+          </section>
+
+          <section id="round2-deep-feedback">
+            <h2>10. 第二关追问讲评</h2>
+            <p class="lead">
+              你已经抓到了“正确类别概率低，loss 会大；错误类别要被压下去”的直觉。现在要把符号和链路说得更精确：one-hot 是真实答案的编码，<code>z_i</code> 是 logit 输出值，不是参数；真正被更新的是产生这些 logits 的权重。
+            </p>
+
+            <h3>10.1 one-hot 到底是什么</h3>
+            <p>
+              你说“要减少预测其他类型的噪音”，这可以理解为训练后的效果，但 one-hot 本身不是为了“降噪”创造出来的东西。one-hot 是一种表示真实标签的编码方式。
+            </p>
+            <p>
+              如果 MNIST 图片真实类别是数字 7，那么目标答案不是一句话，而是一个 10 维向量：
+            </p>
+            <pre><code>真实类别 = 7
+one-hot y = [0, 0, 0, 0, 0, 0, 0, 1, 0, 0]</code></pre>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>位置</th>
+                    <th>含义</th>
+                    <th>one-hot 值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>y_7</code></td>
+                    <td>真实类别所在位置。</td>
+                    <td><code>1</code>，表示目标概率全部放在类别 7 上。</td>
+                  </tr>
+                  <tr>
+                    <td><code>y_0, y_1, ..., y_9</code> 中除 <code>y_7</code> 外的位置</td>
+                    <td>不是真实答案的类别。</td>
+                    <td><code>0</code>，表示这些类别不是目标答案。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以 one-hot 的核心不是“模型预测了什么”，而是“标准答案长什么样”。模型输出的是 <code>p</code>，真实答案是 <code>y</code>，loss 比较的是 <code>p</code> 和 <code>y</code> 的差距。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>PyTorch 细节：</strong><code>nn.CrossEntropyLoss</code> 通常不要求你手动传 one-hot。你传入类别编号 <code>label = 7</code> 即可。它内部等价于知道“第 7 位是真实类别”。
+              </p>
+            </div>
+
+            <h3>10.2 为什么 <code>p_7</code> 很低时 loss 会变大</h3>
+            <p>
+              你这题回答正确。真实类别是 7 时：
+            </p>
+            <div class="formula">
+              Loss = -log(p_7)
+            </div>
+            <p>
+              <code>log</code> 这里是自然对数，也就是以 <code>e</code> 为底的对数。你只需要记住它的趋势：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th><code>p_7</code></th>
+                    <th><code>log(p_7)</code> 大致值</th>
+                    <th><code>-log(p_7)</code> 大致值</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>1.0</code></td>
+                    <td><code>0</code></td>
+                    <td><code>0</code></td>
+                    <td>模型非常确定正确类别，loss 最小。</td>
+                  </tr>
+                  <tr>
+                    <td><code>0.1</code></td>
+                    <td><code>-2.30</code></td>
+                    <td><code>2.30</code></td>
+                    <td>正确类别概率低，loss 变大。</td>
+                  </tr>
+                  <tr>
+                    <td><code>0.001</code></td>
+                    <td><code>-6.91</code></td>
+                    <td><code>6.91</code></td>
+                    <td>模型几乎不相信正确答案，loss 很大。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以 CrossEntropyLoss 的惩罚非常直接：正确类别概率越低，loss 越大。
+            </p>
+
+            <h3>10.3 为什么错误类别 3 的分数会下降</h3>
+            <p>
+              你说“会根据 <code>p_3</code> 的值和 loss 的关系来调整权重参数”，这个方向是对的。但要把三个对象分清楚：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>它是什么</th>
+                    <th>它是不是参数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>z_3</code></td>
+                    <td>错误类别 3 的 logit，也就是模型算出来的输出分数。</td>
+                    <td>不是参数。它是 forward 计算结果。</td>
+                  </tr>
+                  <tr>
+                    <td><code>p_3</code></td>
+                    <td>softmax 后错误类别 3 的预测概率。</td>
+                    <td>不是参数。它也是 forward 计算结果。</td>
+                  </tr>
+                  <tr>
+                    <td><code>dLoss/dz_3 = p_3</code></td>
+                    <td>loss 对 <code>z_3</code> 的梯度。</td>
+                    <td>不是参数。它告诉反向传播：<code>z_3</code> 应该往下压。</td>
+                  </tr>
+                  <tr>
+                    <td><code>w_3</code>、<code>b_3</code></td>
+                    <td>最后 Linear 层中负责产生类别 3 分数的权重和 bias。</td>
+                    <td>是参数。optimizer 真正更新的是它们。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              最后一层 Linear 对类别 3 的计算可以写成：
+            </p>
+            <div class="formula">
+              z_3 = w_3 · h + b_3
+            </div>
+            <p>
+              这里：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>h</code></td>
+                    <td>模型前面层输出的隐藏向量，例如 MNIST MLP 最后一层前的特征向量，或 LLM 最后位置的 hidden state。</td>
+                  </tr>
+                  <tr>
+                    <td><code>w_3</code></td>
+                    <td>最后 Linear 层中“类别 3”对应的权重向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>b_3</code></td>
+                    <td>最后 Linear 层中“类别 3”对应的 bias。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              因为真实类别不是 3，所以 <code>y_3 = 0</code>：
+            </p>
+            <div class="formula">
+              dLoss/dz_3 = p_3 - y_3 = p_3 - 0 = p_3
+            </div>
+            <p>
+              <code>p_3</code> 是正数，所以 <code>dLoss/dz_3</code> 是正数。梯度下降的规则是“参数往负梯度方向更新”。链式法则继续往 Linear 层传：
+            </p>
+            <div class="formula">
+              dLoss/dw_3 = dLoss/dz_3 * dz_3/dw_3 = p_3 * h<br />
+              dLoss/db_3 = dLoss/dz_3 * dz_3/db_3 = p_3
+            </div>
+            <p>
+              optimizer 更新时：
+            </p>
+            <div class="formula">
+              w_3_new = w_3_old - learning_rate * p_3 * h<br />
+              b_3_new = b_3_old - learning_rate * p_3
+            </div>
+            <p>
+              对同一个类似样本来说，这会让 <code>w_3 · h + b_3</code> 变小，也就是让错误类别 3 的 logit <code>z_3</code> 降低。错误类别概率 <code>p_3</code> 越大，说明模型越离谱地相信了错误类别，梯度也越大，压下去的力度也越强。
+            </p>
+            <div class="callout green">
+              <p>
+                <strong>第二关结论：</strong>你可以进入下一步。需要牢牢记住：CrossEntropyLoss 先产生 <code>dLoss/dlogits</code>，然后通过链式法则影响产生 logits 的参数。模型不是直接更新 <code>z_i</code>，而是更新产生 <code>z_i</code> 的权重。
+              </p>
+            </div>
+          </section>
+
+          <section id="param-gradient">
+            <h2>11. 第三关：logits 梯度如何影响参数</h2>
+            <p class="lead">
+              第二关已经知道 CrossEntropyLoss 会先得到 <code>dLoss/dz_i = p_i - y_i</code>。第三关要回答：这个关于 logit 的梯度，怎么继续传到最后 Linear 层的 <code>weight</code> 和 <code>bias</code>，再传到更前面的网络。
+            </p>
+
+            <h3>11.1 先把最后一层 Linear 拆开</h3>
+            <p>
+              不管是 MNIST 还是 LLM，最后一步都可以先简化成：
+            </p>
+            <div class="formula">
+              h -> Linear -> logits
+            </div>
+            <p>
+              这里 <code>h</code> 是进入最后 Linear 层之前的隐藏向量。MNIST 中它可能是 MLP 提取出的图片特征；LLM 中它是某个位置的 hidden state。
+            </p>
+            <p>
+              对类别 <code>i</code> 来说：
+            </p>
+            <div class="formula">
+              z_i = w_i · h + b_i
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                    <th>shape 直觉</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>h</code></td>
+                    <td>上一层输出的隐藏向量。</td>
+                    <td><code>[hidden_dim]</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>w_i</code></td>
+                    <td>最后 Linear 层中第 <code>i</code> 个类别对应的权重向量。</td>
+                    <td><code>[hidden_dim]</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>b_i</code></td>
+                    <td>第 <code>i</code> 个类别对应的 bias。</td>
+                    <td>一个数字</td>
+                  </tr>
+                  <tr>
+                    <td><code>z_i</code></td>
+                    <td>第 <code>i</code> 个类别的 logit。</td>
+                    <td>一个数字</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>11.2 单个参数的梯度公式</h3>
+            <p>
+              假设 <code>h</code> 有 128 维，那么类别 7 的权重向量就是：
+            </p>
+            <pre><code>w_7 = [w_7,0, w_7,1, ..., w_7,127]</code></pre>
+            <p>
+              类别 7 的 logit 是：
+            </p>
+            <div class="formula">
+              z_7 = w_7,0*h_0 + w_7,1*h_1 + ... + w_7,127*h_127 + b_7
+            </div>
+            <p>
+              现在要问：某一个参数 <code>w_7,k</code> 应该怎么改？用链式法则：
+            </p>
+            <div class="formula">
+              dLoss/dw_7,k = dLoss/dz_7 * dz_7/dw_7,k
+            </div>
+            <p>
+              因为 <code>z_7</code> 里和 <code>w_7,k</code> 相关的那一项是 <code>w_7,k * h_k</code>，所以：
+            </p>
+            <div class="formula">
+              dz_7/dw_7,k = h_k
+            </div>
+            <p>
+              所以最终得到：
+            </p>
+            <div class="formula">
+              dLoss/dw_7,k = dLoss/dz_7 * h_k
+            </div>
+            <p>
+              这就是你之前追问的那个公式。更完整的写法正是：
+            </p>
+            <pre><code>dLoss/dw_7,k
+= dLoss/dz_7 * dz_7/dw_7,k
+= dLoss/dz_7 * h_k</code></pre>
+            <div class="callout green">
+              <p>
+                <strong>关键点：</strong><code>h_k * dLoss/dz_7</code> 就是参数 <code>w_7,k</code> 的梯度。它表示：为了降低 loss，<code>w_7,k</code> 这一个数应该往哪个方向调、调的力度大概是多少。
+              </p>
+            </div>
+
+            <h3>11.3 正确类别和错误类别如何被分别调整</h3>
+            <p>
+              假设真实类别是 7。CrossEntropyLoss 给 logits 的梯度是：
+            </p>
+            <div class="formula">
+              g_i = dLoss/dz_i = p_i - y_i
+            </div>
+            <p>
+              这里为了书写方便，把 <code>dLoss/dz_i</code> 记作 <code>g_i</code>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>类别</th>
+                    <th><code>g_i = p_i - y_i</code></th>
+                    <th>weight 梯度</th>
+                    <th>更新后 logit 趋势</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>正确类别 7</td>
+                    <td><code>p_7 - 1</code>，通常是负数。</td>
+                    <td><code>dLoss/dw_7 = g_7 * h</code></td>
+                    <td>梯度下降会让 <code>z_7</code> 上升。</td>
+                  </tr>
+                  <tr>
+                    <td>错误类别 3</td>
+                    <td><code>p_3 - 0 = p_3</code>，是正数。</td>
+                    <td><code>dLoss/dw_3 = g_3 * h</code></td>
+                    <td>梯度下降会让 <code>z_3</code> 下降。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              注意：不是只更新正确类别那一行权重。softmax 后每个类别都有概率，因此每个类别的 logit 都有梯度。正确类别通常被推高，错误类别通常被压低。
+            </p>
+
+            <h3>11.4 用二维小例子直观看一次</h3>
+            <p>
+              假设隐藏向量只有 2 维：
+            </p>
+            <pre><code>h = [2, -1]</code></pre>
+            <p>
+              真实类别是 7。假设模型现在给：
+            </p>
+            <pre><code>p_7 = 0.2
+p_3 = 0.5</code></pre>
+            <p>
+              那么：
+            </p>
+            <div class="formula">
+              g_7 = p_7 - 1 = -0.8<br />
+              g_3 = p_3 - 0 = 0.5
+            </div>
+            <p>
+              对正确类别 7：
+            </p>
+            <div class="formula">
+              dLoss/dw_7 = g_7 * h = -0.8 * [2, -1] = [-1.6, 0.8]
+            </div>
+            <p>
+              梯度下降更新是：
+            </p>
+            <div class="formula">
+              w_7_new = w_7_old - learning_rate * [-1.6, 0.8]
+            </div>
+            <p>
+              这会让 <code>w_7</code> 朝着更贴近 <code>h</code> 的方向移动，从而让类似样本的 <code>z_7 = w_7 · h + b_7</code> 更大。
+            </p>
+            <p>
+              对错误类别 3：
+            </p>
+            <div class="formula">
+              dLoss/dw_3 = g_3 * h = 0.5 * [2, -1] = [1.0, -0.5]
+            </div>
+            <p>
+              梯度下降更新是：
+            </p>
+            <div class="formula">
+              w_3_new = w_3_old - learning_rate * [1.0, -0.5]
+            </div>
+            <p>
+              这会让 <code>w_3</code> 朝着远离 <code>h</code> 的方向移动，从而让类似样本的 <code>z_3</code> 更小。
+            </p>
+
+            <h3>11.5 batch 里有 256 个样本怎么办</h3>
+            <p>
+              你之前问过：如果 batch size 是 256，是不是有 256 个梯度，最后平均一下？答案是：对默认 <code>reduction="mean"</code> 的 CrossEntropyLoss 来说，可以这样理解。
+            </p>
+            <p>
+              单个样本对 <code>w_7,k</code> 的梯度是：
+            </p>
+            <div class="formula">
+              gradient_sample = g_7 * h_k
+            </div>
+            <p>
+              一个 batch 有 256 个样本时，每个样本都会贡献一份梯度。PyTorch 默认把这些样本的 loss 取平均，所以梯度也相当于平均：
+            </p>
+            <div class="formula">
+              dLoss_batch/dw_7,k = (1/256) * sum(g_7^(n) * h_k^(n), n = 1 到 256)
+            </div>
+            <p>
+              optimizer 最后拿到的是聚合后的 <code>parameter.grad</code>，不是 256 份分开更新。一次 <code>optimizer.step()</code> 对这个 batch 做一次参数更新。
+            </p>
+
+            <h3>11.6 梯度如何继续传到更早的层</h3>
+            <p>
+              最后一层 Linear 不只更新自己的 <code>weight</code> 和 <code>bias</code>，还会把梯度传回输入向量 <code>h</code>。
+            </p>
+            <div class="formula">
+              dLoss/dh = sum(g_i * w_i, 对所有类别 i 求和)
+            </div>
+            <p>
+              这句话的意思是：每个类别的 logit 都会对 <code>h</code> 产生影响，最后加在一起，形成 <code>h</code> 的梯度。然后这个梯度继续往前传。
+            </p>
+            <pre><code>Loss
+-> logits 梯度
+-> 最后 Linear 的 weight / bias 梯度
+-> h 的梯度
+-> 前面 Linear / CNN / Attention / Embedding 的参数梯度</code></pre>
+            <div class="callout amber">
+              <p>
+                <strong>不要误解：</strong>隐藏向量 <code>h</code> 本身通常不是长期保存的参数，它是这次 forward 的中间结果。反向传播会通过 <code>h</code> 找到产生它的前面那些参数，并计算那些参数的梯度。
+              </p>
+            </div>
+
+            <h3>11.7 MNIST 和 LLM 在这里如何对应</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对比项</th>
+                    <th>MNIST</th>
+                    <th>LLM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>最后 Linear 输入</td>
+                    <td>图片经过 MLP / CNN 得到的特征向量。</td>
+                    <td>最后一个 token 位置的 hidden state。</td>
+                  </tr>
+                  <tr>
+                    <td>最后 Linear 输出</td>
+                    <td>10 个数字类别 logits。</td>
+                    <td>整个词表大小的 logits。</td>
+                  </tr>
+                  <tr>
+                    <td>正确标签</td>
+                    <td>图片真实数字，例如 7。</td>
+                    <td>当前位置应该预测的下一个 token id。</td>
+                  </tr>
+                  <tr>
+                    <td>梯度效果</td>
+                    <td>正确数字类别分数被推高，错误数字类别分数被压低。</td>
+                    <td>正确 next token 的分数被推高，错误 token 的分数被压低。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="param-gradient-questions">
+            <h2>12. 第三关检查题</h2>
+            <p>
+              这一组题用于检查“logit 梯度”和“参数更新”之间的链路。当前 Week1 已收口，下面保留为复盘自测题。
+            </p>
+            <ol class="todo-list">
+              <li>为什么 <code>dLoss/dw_7,k = dLoss/dz_7 * h_k</code>？这里的 <code>w_7,k</code>、<code>z_7</code>、<code>h_k</code> 分别是什么？</li>
+              <li>如果 batch size 是 256，最终是每个样本单独更新一次参数，还是 256 个样本的梯度聚合后更新一次参数？</li>
+              <li>为什么说 <code>h</code> 本身通常不是参数，但梯度还能通过 <code>h</code> 继续影响更前面的层？</li>
+            </ol>
+          </section>
+
+          <section id="param-gradient-feedback">
+            <h2>13. 第三关讲评</h2>
+            <p class="lead">
+              你的第三关整体可以过。链式求导、batch 聚合、梯度通过 <code>h</code> 往前传这三条线都抓到了。现在把两个模糊点精确化。
+            </p>
+
+            <h3>13.1 链式求导回答是否正确</h3>
+            <p>
+              你说 <code>z = w * h + b</code>，所以 <code>dLoss/dw = dLoss/dz * dz/dw</code>，这是对的。更精确到第 7 类第 <code>k</code> 个参数：
+            </p>
+            <div class="formula">
+              z_7 = w_7,0*h_0 + ... + w_7,k*h_k + ... + b_7<br />
+              dz_7/dw_7,k = h_k<br />
+              dLoss/dw_7,k = dLoss/dz_7 * h_k
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>更精确的解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>w_7,k</code></td>
+                    <td>最后 Linear 层中“类别 7”这一行权重里的第 <code>k</code> 个参数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>z_7</code></td>
+                    <td>类别 7 的 logit，是 forward 计算出来的输出分数，不是参数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>h_k</code></td>
+                    <td>进入最后 Linear 层的隐藏向量 <code>h</code> 的第 <code>k</code> 个数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>b_7</code></td>
+                    <td>类别 7 的 bias，也是最后 Linear 层里的可学习参数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>13.2 batch 里到底平均的是 loss 还是梯度</h3>
+            <p>
+              你说“256 个聚合后更新”是对的。你忘记的是平均位置：PyTorch 默认 <code>nn.CrossEntropyLoss(reduction="mean")</code> 是先把一个 batch 里每个样本的 loss 求平均，得到一个标量 loss。
+            </p>
+            <div class="formula">
+              Loss_batch = (Loss_1 + Loss_2 + ... + Loss_256) / 256
+            </div>
+            <p>
+              然后对这个平均 loss 做 <code>backward()</code>：
+            </p>
+            <div class="formula">
+              dLoss_batch/dw = (1/256) * sum(dLoss_n/dw, n = 1 到 256)
+            </div>
+            <p>
+              所以从效果上看，梯度也是 256 个样本梯度的平均。不是每个样本单独 <code>optimizer.step()</code> 一次，而是：
+            </p>
+            <pre><code>256 个样本 forward
+-> 得到 256 个 loss
+-> 默认求平均成 1 个 batch loss
+-> backward 得到聚合后的 parameter.grad
+-> optimizer.step() 更新 1 次参数</code></pre>
+            <div class="callout amber">
+              <p>
+                <strong>补充：</strong>如果 loss 设置成 <code>reduction="sum"</code>，那就是求和，不是平均。我们当前默认讨论的是最常见的 <code>mean</code>。
+              </p>
+            </div>
+
+            <h3>13.3 <code>h</code> 不是上一层权重矩阵，而是上一层输出</h3>
+            <p>
+              你说“<code>h</code> 也是上一层的权重矩阵计算出来的，可以公式表达”，方向对，但表达要改：<code>h</code> 不是上一层权重矩阵本身，而是上一层用自己的参数和输入算出来的中间结果。
+            </p>
+            <div class="formula">
+              h = previous_layer_output = f(x; theta_previous)
+            </div>
+            <p>
+              这里：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>x</code></td>
+                    <td>更早的输入，例如图片张量、token 向量或上一层 hidden state。</td>
+                  </tr>
+                  <tr>
+                    <td><code>theta_previous</code></td>
+                    <td>前面层的参数，例如卷积核、Linear 权重、Q/K/V 矩阵、Embedding 表等。</td>
+                  </tr>
+                  <tr>
+                    <td><code>h</code></td>
+                    <td>前面层计算出来的输出向量，是中间结果，不是长期保存的参数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              反向传播时，最后 Linear 层先算出 <code>dLoss/dh</code>。因为 <code>h</code> 是由前面层的参数算出来的，所以梯度继续通过 <code>h = f(x; theta_previous)</code> 传回去：
+            </p>
+            <div class="formula">
+              dLoss/dtheta_previous = dLoss/dh * dh/dtheta_previous
+            </div>
+            <p>
+              这就是为什么 <code>h</code> 虽然不是参数，但它仍然是梯度往前传的重要桥梁。
+            </p>
+
+            <div class="callout green">
+              <p>
+                <strong>第三关结论：</strong>可以通过。你已经能把 logits 梯度接到最后 Linear 参数，并能理解 batch 聚合和梯度继续往前传。CNN 参数、Q/K/V 参数和 LoRA 微调留作后续观察项。
+              </p>
+            </div>
+          </section>
+
+          <section id="week1-close">
+            <h2>14. Week1 收口</h2>
+            <p class="lead">
+              Week1 到这里正式收口。后面不再继续追加关卡式问题；本页保留为基础知识回查页。
+            </p>
+            <div class="callout green">
+              <p>
+                <strong>本周主线：</strong>数据变成张量，张量经过模型 forward 得到 logits，loss 根据标签产生梯度，optimizer 用梯度更新参数；训练好的参数在推理阶段固定使用。
+              </p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>已收口主题</th>
+                    <th>当前掌握边界</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>PyTorch 训练主线</td>
+                    <td>能区分 forward、loss、backward、optimizer.step、checkpoint、推理。</td>
+                  </tr>
+                  <tr>
+                    <td>CrossEntropyLoss</td>
+                    <td>能解释 logits、softmax 概率、one-hot 标签、<code>p_i - y_i</code> 梯度方向。</td>
+                  </tr>
+                  <tr>
+                    <td>参数更新</td>
+                    <td>能解释最后 Linear 层参数如何通过链式法则收到 logits 梯度。</td>
+                  </tr>
+                  <tr>
+                    <td>Transformer / LLM 推理</td>
+                    <td>能解释 token、embedding、attention、causal mask、KV Cache、生成参数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              仍可继续加深的概念不在 Week1 里继续追问，而是放到后续学习中自然复用：CNN 卷积核梯度、Transformer Q/K/V 参数梯度、attention weight 与 token probability 的区别、KV Cache 的工程实现、LoRA/QLoRA 微调。
+            </p>
+          </section>
+
+          <section id="next">
+            <h2>15. Week2 入口</h2>
+            <p>
+              下一周进入 <strong>CLIP、ViT 与多模态理解模型</strong>。学习方式继续沿用 HTML 主笔记和 shape demo，但不再用密集问答卡关。
+            </p>
+            <div class="callout violet">
+              <p>
+                <strong>Week2 起点：</strong><a href="../week-02-multimodal-understanding/index.html">打开 Week2 学习入口</a>。先学 ViT 如何把图片切成 patch token，再学 CLIP 如何把图片向量和文本向量对齐。
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Week 2 - CLIP、ViT 与多模态理解</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0c1014;
+        --paper: #141b22;
+        --paper-2: #10161c;
+        --ink: #edf4fb;
+        --muted: #9dafbf;
+        --line: #2b3946;
+        --cyan: #67e8f9;
+        --cyan-soft: #0f3340;
+        --green: #86efac;
+        --green-soft: #143421;
+        --amber: #fbbf24;
+        --amber-soft: #352713;
+        --violet: #c4b5fd;
+        --violet-soft: #261f3d;
+        --code: #070a0d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 66svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 56px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(12, 16, 20, 1), rgba(12, 16, 20, 0.84)),
+          linear-gradient(135deg, rgba(103, 232, 249, 0.12), rgba(196, 181, 253, 0.1));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.94fr) minmax(420px, 1.06fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--cyan);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 800px;
+        font-size: clamp(42px, 6.4vw, 78px);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 720px;
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual,
+      .flow {
+        border: 1px solid var(--line);
+        background: rgba(20, 27, 34, 0.9);
+        overflow: hidden;
+      }
+
+      .hero-visual svg,
+      .flow svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        padding: 8px 0 8px 18px;
+        border-left: 2px solid var(--line);
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--cyan);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 30px 0 12px;
+        font-size: 24px;
+        line-height: 1.22;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202a33;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #e6f6ff;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--cyan);
+        background: var(--cyan-soft);
+      }
+
+      .callout.green {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .callout.violet {
+        border-color: var(--violet);
+        background: var(--violet-soft);
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 18px;
+        margin: 24px 0;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+      }
+
+      .table-wrap {
+        margin: 24px 0;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      th {
+        background: #1b2530;
+        font-weight: 850;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      @media (max-width: 980px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          position: static;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Week 2 - Multimodal Understanding</p>
+          <h1>从图片 patch 到图文向量对齐</h1>
+          <p class="hero-copy">
+            Week1 已经建立了训练、推理、Transformer 和 LLM 的基础。Week2 开始进入多模态理解：先看 ViT 如何把图片变成 token，再看 CLIP 如何把图片和文本放进同一个向量空间。
+          </p>
+        </div>
+        <div class="hero-visual" aria-label="Week2 学习路线图">
+          <svg viewBox="0 0 760 500" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+              </marker>
+            </defs>
+            <rect width="760" height="500" fill="#141b22" />
+            <text x="46" y="54" fill="#edf4fb" font-size="24" font-weight="850">Week2 主线：让图像也变成模型能处理的 token / embedding</text>
+            <text x="46" y="84" fill="#9dafbf" font-size="15">图像理解不是直接“看图片”，而是把图片切块、编码、对齐到向量空间。</text>
+
+            <rect x="54" y="132" width="150" height="74" fill="#0f3340" stroke="#67e8f9" />
+            <text x="84" y="164" fill="#edf4fb" font-size="17" font-weight="850">Image</text>
+            <text x="78" y="187" fill="#9dafbf" font-size="13">RGB 像素张量</text>
+
+            <path d="M204 169 H255" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="274" y="132" width="158" height="74" fill="#143421" stroke="#86efac" />
+            <text x="310" y="164" fill="#edf4fb" font-size="17" font-weight="850">Patches</text>
+            <text x="296" y="187" fill="#9dafbf" font-size="13">图片切成小块</text>
+
+            <path d="M432 169 H483" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="502" y="132" width="180" height="74" fill="#261f3d" stroke="#c4b5fd" />
+            <text x="532" y="164" fill="#edf4fb" font-size="17" font-weight="850">ViT Encoder</text>
+            <text x="530" y="187" fill="#9dafbf" font-size="13">patch token 进 Transformer</text>
+
+            <path d="M592 206 V266" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="502" y="286" width="180" height="74" fill="#352713" stroke="#fbbf24" />
+            <text x="540" y="318" fill="#edf4fb" font-size="17" font-weight="850">Image Embedding</text>
+            <text x="532" y="341" fill="#9dafbf" font-size="13">一张图的向量表示</text>
+
+            <rect x="54" y="286" width="180" height="74" fill="#0f3340" stroke="#67e8f9" />
+            <text x="92" y="318" fill="#edf4fb" font-size="17" font-weight="850">Text Encoder</text>
+            <text x="80" y="341" fill="#9dafbf" font-size="13">一句话的向量表示</text>
+
+            <path d="M234 323 H484" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="282" y="304" fill="#67e8f9" font-size="14" font-weight="850">CLIP 对齐：比较图像向量和文本向量</text>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Week2 页面导航">
+          <div class="nav-label">Week2</div>
+          <a href="#goal">0. 本周目标</a>
+          <a href="#days">1. 学习安排</a>
+          <a href="#day8">2. Day8 起点</a>
+          <a href="#outputs">3. 产出物</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 本周目标</h2>
+            <p class="lead">
+              Week2 的目标是理解多模态理解模型的入口：图片如何变成 patch token，图片向量和文本向量如何对齐，为什么 CLIP 可以做零样本分类和图文检索。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>本周主线：</strong>图片像素 -> patch embedding -> ViT image embedding；文本 token -> text embedding；CLIP 用对比学习把二者拉到同一个语义空间。
+              </p>
+            </div>
+          </section>
+
+          <section id="days">
+            <h2>1. 学习安排</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>天数</th>
+                    <th>主题</th>
+                    <th>目标</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Day 8</td>
+                    <td>ViT 与图像 Patch 表示</td>
+                    <td>理解图片如何从 <code>[B, C, H, W]</code> 变成 patch token 序列。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 9</td>
+                    <td>CLIP 图文对齐</td>
+                    <td>理解 image encoder、text encoder、contrastive loss。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 10</td>
+                    <td>CLIP 图文检索 Demo</td>
+                    <td>准备图片和文本，输出相似度矩阵与 top-k 检索结果。</td>
+                  </tr>
+                  <tr>
+                    <td>Day 11-14</td>
+                    <td>VLM / MLLM 入口</td>
+                    <td>理解视觉特征如何进入语言模型，为后续图片问答打基础。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="day8">
+            <h2>2. Day8 起点：ViT Patch Embedding</h2>
+            <p>
+              下一步不急着加载大模型。先做一个 shape demo：给一张小图片张量，手动切 patch，展平 patch，再用 Linear 把每个 patch 变成 embedding。
+            </p>
+            <pre><code>image.shape = [B, C, H, W]
+patches.shape = [B, num_patches, C * patch_h * patch_w]
+patch_embeddings.shape = [B, num_patches, embed_dim]</code></pre>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>要理解</h3>
+                <p>patch 为什么可以类比 token。</p>
+              </div>
+              <div class="panel">
+                <h3>要打印</h3>
+                <p>图片、patch、patch embedding、position embedding 的 shape。</p>
+              </div>
+              <div class="panel">
+                <h3>暂不做</h3>
+                <p>暂不训练 ViT，暂不追求分类效果。</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="outputs">
+            <h2>3. 产出物</h2>
+            <p>
+              Week2 继续采用“HTML 笔记 + 最小 shape demo + 真实模型推理 demo”的节奏。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>建议路径</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Week2 主笔记</td>
+                    <td><code>docs/week-02-multimodal-understanding/index.html</code></td>
+                  </tr>
+                  <tr>
+                    <td>Day8 shape demo</td>
+                    <td><code>experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py</code></td>
+                  </tr>
+                  <tr>
+                    <td>Day9 CLIP demo</td>
+                    <td><code>experiments/day-09-clip-alignment/clip_similarity_demo.py</code></td>
+                  </tr>
+                  <tr>
+                    <td>Week2 状态笔记</td>
+                    <td><code>notes/week-02-vlm.md</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

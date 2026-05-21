@@ -108,19 +108,22 @@ logs/
 
 ### Day 6：LLM 基础与推理流程
 
-- [ ] 学习：Tokenization、Causal LM、KV Cache、Instruction Tuning、LoRA/QLoRA。
-- [ ] 实践：使用 Transformers 加载一个小型文本模型做生成。
-- [ ] 实践：比较不同 `temperature`、`top_p`、`max_new_tokens` 的输出差异。
-- [ ] 产出：`experiments/llm-inference/text_generation.py`。
-- [ ] 验收：能解释 tokenizer、prompt、decode、sampling 的关系。
+- [x] 学习：Tokenization、Causal LM、KV Cache。
+- [x] 实践：使用 Transformers 加载一个小型文本模型做生成。
+- [x] 实践：比较不同 `temperature`、`top_p`、`max_new_tokens` 的输出差异。
+- [x] 产出：`experiments/day-06-llm-inference/transformers_real_generation_demo.py`。
+- [x] 产出：`experiments/day-06-llm-inference/generation_controls_demo.py`。
+- [x] 产出：`docs/day-06-llm-inference/index.html` 作为最终学习笔记。
+- [x] 验收：能解释 tokenizer、prompt、decode、sampling 的关系。
+- [ ] 后续专题：Instruction Tuning、LoRA/QLoRA。
 
 ### Day 7：第一周复盘
 
-- [ ] 整理：合并本周笔记到 `notes/week-01-foundation.md`。
-- [ ] 整理：列出 5 个仍不理解的概念。
-- [ ] 实践：重跑 Day 3 或 Day 4 中最完整的训练脚本。
-- [ ] 产出：第一周复盘，包含代码路径、结果截图和问题清单。
-- [ ] 验收：能独立写出一个基础 PyTorch 训练脚本。
+- [x] 整理：合并本周笔记到 `notes/week-01-foundation.md`。
+- [x] 整理：列出后续观察概念。
+- [x] 实践：复查 Day 3 checkpoint / 训练曲线与 Day 6 推理结果作为复盘证据。
+- [x] 产出：`docs/week-01-foundation-review/index.html` 作为第一周复盘页。
+- [x] 验收：能解释基础 PyTorch 训练脚本的 forward、loss、backward、step、checkpoint、inference 主线。
 
 ---
 

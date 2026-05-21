@@ -206,3 +206,137 @@
 - 下一步计划：
   - 不再扩写 Day5 概念笔记。
   - 后续进入工程封装：把当前散开的 forward 操作整理成可复用的 `EncoderBlock` 类。
+
+## Day 6 - LLM 基础与推理流程启动
+
+- 日期：2026-05-19
+- 今日目标：延续 Day5 的 HTML 学习方式，先建立 LLM 推理流程的直观主线。
+- 完成内容：
+  - 新增 Day6 主学习笔记：`docs/day-06-llm-inference/index.html`
+  - 新增 Day6 状态笔记：`notes/day-06-llm-inference.md`
+  - 明确 Day6 第一阶段只学习推理流程，不提前完成真实模型加载和训练相关内容。
+- 当前理解重点：
+  - `prompt` 是原始文本。
+  - tokenizer 把文本切成 token，再映射成 `input_ids`。
+  - `input_ids` 是整数 id 序列，不是 token 向量。
+  - embedding 会把 token id 查表变成向量。
+  - Causal LM 按从左到右的方式预测下一个 token。
+  - logits 是词表所有 token 的原始分数。
+- 下一步计划：
+  - 围绕 Day6 HTML 的 Part 1，继续写一个不加载真实模型的 shape demo。
+
+### Day 6 Part 2 - LLM 推理 shape demo
+
+- 新增实验目录：`experiments/day-06-llm-inference/`
+- 新增 demo：`experiments/day-06-llm-inference/llm_inference_shape_demo.py`
+- 新增说明：`experiments/day-06-llm-inference/README.md`
+- 已更新 HTML 主笔记：`docs/day-06-llm-inference/index.html`
+- 当前 demo 覆盖：
+  - prompt 到 tokens
+  - tokens 到 `input_ids`
+  - `input_ids` 到 token vectors
+  - position vectors
+  - hidden states
+  - `lm_head`
+  - logits
+  - `next_token_logits`
+  - softmax 概率
+  - greedy 选择 `next_token_id`
+  - append 后 decode
+- 验证命令：
+  - `.venv/bin/python experiments/day-06-llm-inference/llm_inference_shape_demo.py`
+
+### Day 6 Part 3 - Sampling 采样策略
+
+- 新增 demo：`experiments/day-06-llm-inference/sampling_strategy_demo.py`
+- 已更新 HTML 主笔记：`docs/day-06-llm-inference/index.html`
+- 已更新实验说明：`experiments/day-06-llm-inference/README.md`
+- 当前学习重点：
+  - greedy decoding：永远选择 logit 最大的 token。
+  - temperature：调整概率分布的尖锐程度。
+  - top_p：保留累计概率达到阈值的候选集合，再重新归一化采样。
+  - max_new_tokens：限制最多追加多少个新 token，不直接控制质量。
+  - `<eos>`：生成结束符，可以让生成提前停止。
+- 验证命令：
+  - `.venv/bin/python experiments/day-06-llm-inference/sampling_strategy_demo.py`
+
+### Day 6 Part 4 - KV Cache
+
+- 新增 demo：`experiments/day-06-llm-inference/kv_cache_shape_demo.py`
+- 已更新 HTML 主笔记：`docs/day-06-llm-inference/index.html`
+- 已更新 Day6 状态笔记：`notes/day-06-llm-inference.md`
+- 已更新实验说明：`experiments/day-06-llm-inference/README.md`
+- 当前学习重点：
+  - KV Cache 保存历史 token 的 Key / Value。
+  - Prefill 阶段一次性处理 prompt，并保存每层 K/V。
+  - Decode 阶段每次只计算最新 token 的 Q/K/V。
+  - 不用 cache 时 attention score shape 是 `[B, H, S, S]`。
+  - 使用 cache 时 decode 阶段 score shape 是 `[B, H, 1, T_total]`。
+  - KV Cache 用空间换时间，会增加显存占用。
+- 验证命令：
+  - `.venv/bin/python experiments/day-06-llm-inference/kv_cache_shape_demo.py`
+
+### Day 6 Part 5 - Transformers 真实模型推理
+
+- 新增 demo：`experiments/day-06-llm-inference/transformers_real_generation_demo.py`
+- 本机可选使用本地 pretrained 模型目录：`experiments/day-06-llm-inference/pretrained/sshleifer-tiny-gpt2/`，该目录不提交到 git。
+- 新增模型文件检查脚本：`experiments/day-06-llm-inference/inspect_pretrained_model_files.py`
+- 已更新 HTML 主笔记：`docs/day-06-llm-inference/index.html`
+- 当前学习重点：
+  - `AutoTokenizer.from_pretrained(...)` 加载 tokenizer 文件。
+  - `AutoModelForCausalLM.from_pretrained(...)` 加载 causal language model 权重。
+  - `encoded = tokenizer(prompt, return_tensors="pt")` 得到 `input_ids` 和 `attention_mask`。
+  - `model(**encoded, use_cache=True)` 返回 `logits` 和 `past_key_values`。
+  - `model.generate(...)` 内部仍然是 forward、选 token、append、cache 的循环。
+- 验证命令：
+  - `.venv/bin/python experiments/day-06-llm-inference/transformers_real_generation_demo.py`
+
+### Day 6 Part 6 - 真实生成参数与 Day6 收口
+
+- 新增 demo：`experiments/day-06-llm-inference/generation_controls_demo.py`
+- 已将参数控制运行报告追加到 HTML 主笔记。
+- 已更新 Day6 状态笔记：`notes/day-06-llm-inference.md`
+- 已更新 30 天执行清单中的 Day6 完成状态。
+- 运行命令：
+  - `.venv/bin/python experiments/day-06-llm-inference/generation_controls_demo.py --device cpu --prompt "Deep learning is"`
+- 本次运行输入：
+  - `input_ids = [29744, 4673, 318]`
+  - `tokens = ['Deep', 'Ġlearning', 'Ġis']`
+  - `eos_token_id = 50256`
+  - `pad_token_id = 50256`
+- 结果观察：
+  - greedy baseline 会重复生成 `factors`。
+  - `max_new_tokens=4` 会更早停止，但选择规则没有改变。
+  - 低温采样更保守，高温采样更发散。
+  - `top_k` 固定候选数量，`top_p` 按累计概率动态决定候选集合。
+  - `repetition_penalty` 能缓解重复，但不能提升 tiny-gpt2 的语言能力。
+  - 本次所有 case 都因达到 `max_new_tokens` 停止，没有由 `eos_token_id` 提前停止。
+- Day6 收口判断：
+  - LLM 推理主线已完成，可以进入 Week 1 复盘。
+  - Instruction Tuning、LoRA、QLoRA 属于后续微调专题，暂不塞进 Day6。
+
+## Day 7 - 第一周复盘收口
+
+- 日期：2026-05-21
+- 今日目标：收口 Week1 基础阶段，确认训练 / 推理 / logits / loss / 梯度 / checkpoint / LLM 推理主线已经连起来。
+- 完成内容：
+  - 新增 Week1 HTML 复盘页：`docs/week-01-foundation-review/index.html`
+  - 更新 Week1 复盘笔记：`notes/week-01-foundation.md`
+  - 更新 30 天清单中的 Day7 完成状态。
+  - 新增 Week2 学习入口：`docs/week-02-multimodal-understanding/index.html`
+- 本周收口主线：
+  - 数据或文本先变成张量 / token id。
+  - 模型 forward 得到 logits。
+  - 训练阶段用 loss 和 backward 计算梯度。
+  - `optimizer.step()` 用梯度更新参数。
+  - checkpoint 保存训练后的权重。
+  - 推理阶段固定参数，只做 forward 和输出选择。
+- 后续观察项：
+  - CNN 卷积核梯度。
+  - Transformer Q/K/V 参数梯度。
+  - attention weight 与 token probability 的区别。
+  - KV Cache 工程实现。
+  - LoRA / QLoRA 微调。
+- 下一步计划：
+  - 进入 Week2：CLIP、ViT 与多模态理解。
+  - Day8 从 ViT patch embedding shape demo 开始。
