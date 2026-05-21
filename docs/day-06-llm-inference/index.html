@@ -1,0 +1,3016 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 6 - LLM 基础与推理流程</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1110;
+        --paper: #151b18;
+        --paper-2: #111715;
+        --ink: #edf7f1;
+        --muted: #a9b8af;
+        --line: #2b3832;
+        --teal: #5eead4;
+        --teal-soft: #123532;
+        --blue: #8ab4ff;
+        --blue-soft: #142641;
+        --amber: #fbbf24;
+        --amber-soft: #342514;
+        --red: #fb7185;
+        --red-soft: #351a21;
+        --violet: #c4b5fd;
+        --violet-soft: #261e3a;
+        --code: #070b0a;
+        --shadow: 0 22px 80px rgba(0, 0, 0, 0.45);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 78svh;
+        display: grid;
+        grid-template-columns: minmax(24px, 1fr) minmax(0, 1180px) minmax(24px, 1fr);
+        align-items: center;
+        padding: 58px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(13, 17, 16, 1), rgba(13, 17, 16, 0.86)),
+          linear-gradient(135deg, rgba(94, 234, 212, 0.12), rgba(251, 191, 36, 0.08));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
+        gap: 52px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--teal);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 760px;
+        font-size: clamp(42px, 6.8vw, 86px);
+        line-height: 0.96;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 680px;
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 23px);
+      }
+
+      .hero-points {
+        margin: 34px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 12px;
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      .hero-points li {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--teal);
+      }
+
+      .hero-visual {
+        width: 100%;
+        min-height: 520px;
+        border: 1px solid var(--line);
+        background: rgba(21, 27, 24, 0.86);
+        box-shadow: var(--shadow);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(24px, 1fr) minmax(0, 1180px) minmax(24px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        border-left: 2px solid var(--line);
+        padding: 8px 0 8px 18px;
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--teal);
+      }
+
+      .subnav {
+        margin: -2px 0 10px 8px;
+        padding: 0 0 2px 12px;
+        border-left: 1px solid var(--line);
+      }
+
+      .subnav a {
+        padding: 4px 0;
+        color: #7f9389;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .subnav a:hover {
+        color: var(--blue);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav-label:first-child {
+        margin-top: 0;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 34px 0 12px;
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      .subsection {
+        margin: 22px 0;
+        border: 1px solid var(--line);
+        background: rgba(17, 23, 21, 0.78);
+      }
+
+      .subsection > summary {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        min-height: 58px;
+        padding: 14px 18px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+
+      .subsection > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .subsection > summary::before {
+        content: "+";
+        display: inline-grid;
+        width: 24px;
+        height: 24px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--line);
+        color: var(--teal);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .subsection[open] > summary {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .subsection[open] > summary::before {
+        content: "-";
+      }
+
+      .subsection > summary h3 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .subsection-body {
+        padding: 4px 18px 22px;
+      }
+
+      .subsection-body > :first-child {
+        margin-top: 14px;
+      }
+
+      p {
+        margin: 14px 0;
+        max-width: 880px;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--teal);
+        background: var(--teal-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .callout.blue {
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .callout.red {
+        border-color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .callout.violet {
+        border-color: var(--violet);
+        background: var(--violet-soft);
+      }
+
+      .callout strong {
+        color: var(--ink);
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202b26;
+        color: #e4fff5;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #dff8ee;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin: 24px 0;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin: 24px 0;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--paper);
+        padding: 20px;
+        box-shadow: 0 14px 44px rgba(0, 0, 0, 0.28);
+      }
+
+      .panel h3,
+      .panel h4 {
+        margin-top: 0;
+      }
+
+      .panel p:last-child,
+      .callout p:last-child {
+        margin-bottom: 0;
+      }
+
+      .label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin: 0 6px 8px 0;
+        padding: 3px 9px;
+        border: 1px solid var(--line);
+        background: var(--paper-2);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .flow {
+        margin: 30px 0;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        overflow: hidden;
+      }
+
+      .flow svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .table-wrap {
+        margin: 24px 0;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 680px;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      th {
+        background: #1d2823;
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .tokens {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 20px 0;
+      }
+
+      .token {
+        display: inline-grid;
+        min-width: 78px;
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        text-align: center;
+      }
+
+      .token b {
+        font-size: 18px;
+      }
+
+      .token span {
+        color: var(--muted);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 13px;
+      }
+
+      .formula {
+        margin: 22px 0;
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 16px;
+        line-height: 1.7;
+        overflow-x: auto;
+      }
+
+      .mask-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(44px, 1fr));
+        max-width: 540px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        margin: 24px 0;
+      }
+
+      .mask-cell {
+        min-height: 46px;
+        display: grid;
+        place-items: center;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .mask-cell:nth-child(6n) {
+        border-right: 0;
+      }
+
+      .mask-head {
+        background: #1d2823;
+      }
+
+      .mask-on {
+        background: var(--teal-soft);
+        color: var(--teal);
+      }
+
+      .mask-off {
+        background: #101614;
+        color: #68766e;
+      }
+
+      .shape-line {
+        display: grid;
+        grid-template-columns: 180px minmax(0, 1fr);
+        gap: 12px;
+        align-items: baseline;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .shape-line:last-child {
+        border-bottom: 0;
+      }
+
+      .shape-name {
+        font-weight: 900;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .stage {
+        margin: 36px 0 0;
+        padding: 22px;
+        border: 1px dashed #607269;
+        background: rgba(21, 27, 24, 0.72);
+      }
+
+      .hero-visual svg rect[fill="#ffffff"],
+      .flow svg rect[fill="#ffffff"] {
+        fill: #151b18;
+      }
+
+      .hero-visual svg rect[fill="#dff3ef"],
+      .flow svg rect[fill="#dff3ef"] {
+        fill: #123532;
+      }
+
+      .hero-visual svg rect[fill="#e2ebff"],
+      .flow svg rect[fill="#e2ebff"] {
+        fill: #142641;
+      }
+
+      .hero-visual svg rect[fill="#fff0d2"],
+      .flow svg rect[fill="#fff0d2"] {
+        fill: #342514;
+      }
+
+      .hero-visual svg rect[fill="#eee6ff"],
+      .flow svg rect[fill="#eee6ff"] {
+        fill: #261e3a;
+      }
+
+      .hero-visual svg rect[fill="#ffe5e0"],
+      .flow svg rect[fill="#ffe5e0"] {
+        fill: #351a21;
+      }
+
+      .hero-visual svg rect[stroke="#d9ded8"],
+      .flow svg rect[stroke="#d9ded8"] {
+        stroke: #2b3832;
+      }
+
+      .hero-visual svg rect[stroke="#0f766e"],
+      .flow svg rect[stroke="#0f766e"],
+      .hero-visual svg path[stroke="#0f766e"],
+      .flow svg path[stroke="#0f766e"] {
+        stroke: #5eead4;
+      }
+
+      .hero-visual svg rect[stroke="#2563eb"],
+      .flow svg rect[stroke="#2563eb"],
+      .hero-visual svg path[stroke="#2563eb"],
+      .flow svg path[stroke="#2563eb"] {
+        stroke: #8ab4ff;
+      }
+
+      .hero-visual svg rect[stroke="#b45309"],
+      .flow svg rect[stroke="#b45309"] {
+        stroke: #fbbf24;
+      }
+
+      .hero-visual svg rect[stroke="#6d28d9"],
+      .flow svg rect[stroke="#6d28d9"] {
+        stroke: #c4b5fd;
+      }
+
+      .hero-visual svg rect[stroke="#b42318"],
+      .flow svg rect[stroke="#b42318"] {
+        stroke: #fb7185;
+      }
+
+      .hero-visual svg path[fill="#0f766e"],
+      .flow svg path[fill="#0f766e"] {
+        fill: #5eead4;
+      }
+
+      .flow svg path[fill="#2563eb"] {
+        fill: #8ab4ff;
+      }
+
+      .hero-visual svg text[fill="#17211d"],
+      .flow svg text[fill="#17211d"],
+      .hero-visual svg text[fill="#0f3f3a"],
+      .flow svg text[fill="#0f3f3a"],
+      .hero-visual svg text[fill="#163f9f"],
+      .flow svg text[fill="#163f9f"],
+      .hero-visual svg text[fill="#7a3904"],
+      .flow svg text[fill="#7a3904"],
+      .hero-visual svg text[fill="#44208f"],
+      .flow svg text[fill="#44208f"],
+      .hero-visual svg text[fill="#8b1d15"],
+      .flow svg text[fill="#8b1d15"],
+      .flow svg g[fill="#243029"] {
+        fill: #edf7f1;
+      }
+
+      .hero-visual svg text[fill="#5f6a63"],
+      .flow svg text[fill="#5f6a63"],
+      .hero-visual svg text[fill="#35534d"],
+      .flow svg text[fill="#35534d"] {
+        fill: #a9b8af;
+      }
+
+      .hero-visual svg text[fill="#0f766e"],
+      .flow svg text[fill="#0f766e"] {
+        fill: #5eead4;
+      }
+
+      @media (max-width: 980px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-visual {
+          min-height: 0;
+        }
+
+        nav {
+          position: static;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          min-height: auto;
+          padding-top: 36px;
+        }
+
+        .content {
+          padding-top: 34px;
+        }
+
+        nav {
+          grid-template-columns: 1fr;
+        }
+
+        .shape-line {
+          grid-template-columns: 1fr;
+        }
+
+        .mask-grid {
+          grid-template-columns: repeat(6, minmax(36px, 1fr));
+        }
+
+        .mask-cell {
+          min-height: 40px;
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 6 - LLM Inference</p>
+          <h1>大语言模型如何从一句话生成下一个词</h1>
+          <p class="hero-copy">
+            Day5 学的是 Transformer Encoder 的内部骨架。Day6 开始把它换成生成式语言模型的视角：文字先变成 token id，再进入模型，模型每次只预测下一个 token。
+          </p>
+          <ul class="hero-points">
+            <li><span class="dot"></span><span>先理解推理流程，不急着训练，不急着加载大模型。</span></li>
+            <li><span class="dot"></span><span>继续沿用 Day5 的 shape 思维：每一步都看清楚数据是什么、形状是什么。</span></li>
+            <li><span class="dot"></span><span>后续再逐步展开 tokenizer、causal mask、sampling、KV Cache、LoRA。</span></li>
+          </ul>
+        </div>
+
+        <div class="hero-visual" aria-label="LLM 推理循环示意图">
+          <svg viewBox="0 0 760 560" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#0f766e" />
+              </marker>
+            </defs>
+            <rect x="0" y="0" width="760" height="560" fill="#ffffff" />
+            <text x="48" y="58" font-size="24" font-weight="800" fill="#17211d">一次生成不是一次写完整句子</text>
+            <text x="48" y="88" font-size="15" fill="#5f6a63">它是重复很多次“根据已有 token 预测下一个 token”。</text>
+
+            <rect x="50" y="130" width="170" height="70" fill="#dff3ef" stroke="#0f766e" />
+            <text x="74" y="160" font-size="18" font-weight="800" fill="#0f3f3a">prompt 文本</text>
+            <text x="74" y="184" font-size="14" fill="#35534d">例如：我喜欢</text>
+
+            <path d="M220 165 H285" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="300" y="130" width="170" height="70" fill="#e2ebff" stroke="#2563eb" />
+            <text x="329" y="160" font-size="18" font-weight="800" fill="#163f9f">tokenizer</text>
+            <text x="326" y="184" font-size="14" fill="#35534d">文字切成 token id</text>
+
+            <path d="M470 165 H535" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="550" y="130" width="160" height="70" fill="#fff0d2" stroke="#b45309" />
+            <text x="576" y="160" font-size="18" font-weight="800" fill="#7a3904">input_ids</text>
+            <text x="584" y="184" font-size="14" fill="#35534d">[101, 205]</text>
+
+            <path d="M630 200 V260" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="498" y="280" width="230" height="78" fill="#eee6ff" stroke="#6d28d9" />
+            <text x="536" y="313" font-size="18" font-weight="800" fill="#44208f">Causal Transformer</text>
+            <text x="525" y="337" font-size="14" fill="#35534d">只能看左边已有 token</text>
+
+            <path d="M498 319 H430" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="228" y="280" width="185" height="78" fill="#ffffff" stroke="#d9ded8" />
+            <text x="260" y="313" font-size="18" font-weight="800" fill="#17211d">logits</text>
+            <text x="250" y="337" font-size="14" fill="#35534d">词表每个 token 的分数</text>
+
+            <path d="M228 319 H160" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="50" y="280" width="95" height="78" fill="#ffe5e0" stroke="#b42318" />
+            <text x="72" y="313" font-size="18" font-weight="800" fill="#8b1d15">选择</text>
+            <text x="67" y="337" font-size="14" fill="#35534d">next id</text>
+
+            <path d="M98 358 C98 420 225 442 318 408 C390 382 455 404 512 440 C570 476 668 454 668 382" fill="none" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="238" y="454" font-size="15" font-weight="800" fill="#0f766e">append 回 input_ids，再重复</text>
+
+            <rect x="330" y="474" width="100" height="40" fill="#ffffff" stroke="#d9ded8" />
+            <text x="353" y="499" font-size="15" font-weight="800" fill="#17211d">decode</text>
+            <text x="446" y="499" font-size="14" fill="#5f6a63">最后把 token id 序列还原成文本</text>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day6 页面导航">
+          <div class="nav-label">主线</div>
+          <a href="#goals">0. 当前学习目标</a>
+          <a href="#flow">1. 推理总流程</a>
+          <a href="#tokenizer">2. prompt 到 input_ids</a>
+          <a href="#embedding">3. token id 到向量</a>
+          <a href="#causal">4. Causal LM</a>
+          <a href="#logits">5. logits 与下一个 token</a>
+          <div class="nav-label">收口</div>
+          <a href="#shapes">6. shape 总表</a>
+          <a href="#shape-demo">7. Part 2 代码 demo</a>
+          <a href="#sampling">8. Part 3 Sampling</a>
+          <a href="#kv-cache">9. Part 4 KV Cache</a>
+          <a href="#real-transformers">10. Part 5 真实模型</a>
+          <div class="subnav" aria-label="Part 5 二级导航">
+            <a href="#real-run">10.1 本地模型</a>
+            <a href="#real-files">10.2 模型文件</a>
+            <a href="#real-mainline">10.3 主线变量</a>
+            <a href="#real-flow">10.4 数据流</a>
+            <a href="#real-generate">10.5 generate</a>
+            <a href="#real-reading">10.6 精读路线</a>
+            <a href="#real-qa-context">10.7 mask / batch</a>
+            <a href="#real-vocab-match">10.8 vocab 匹配</a>
+            <a href="#real-mastery">10.9 掌握标准</a>
+          </div>
+          <a href="#generation-controls">11. Part 6 生成参数</a>
+          <div class="subnav" aria-label="Part 6 二级导航">
+            <a href="#generation-run-report">11.1 运行报告</a>
+            <a href="#generation-completion">11.2 Day6 收口</a>
+          </div>
+          <a href="#core-review">12. 阶段复盘</a>
+          <a href="#roadmap">13. 后续学习任务</a>
+        </nav>
+
+        <main>
+          <section id="goals">
+            <h2>0. 当前学习目标</h2>
+            <p class="lead">
+              Day6 的第一阶段只解决一个问题：当你输入一段文字时，LLM 到底如何一步步生成下一个 token。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>先建立主线：</strong>prompt 文本不是直接喂给神经网络。神经网络只处理数字，所以必须先经过 tokenizer，把文字变成一串整数 id，也就是 <code>input_ids</code>。
+              </p>
+            </div>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>你已经有的基础</h3>
+                <p>Day5 已经知道了 token embedding、position embedding、self-attention、FFN、residual、LayerNorm。</p>
+              </div>
+              <div class="panel">
+                <h3>今天新增视角</h3>
+                <p>Encoder 更像“理解整段输入”。Causal Language Model 更像“根据已有内容预测下一个 token”。</p>
+              </div>
+              <div class="panel">
+                <h3>暂时不做的事</h3>
+                <p>本阶段不训练模型，不急着做 LoRA，也不急着讲 KV Cache 的优化细节。</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="flow">
+            <h2>1. LLM 推理总流程</h2>
+            <p>
+              LLM 生成文本的核心循环可以先记成一句话：<strong>已有 token 进去，模型预测下一个 token，把新 token 拼回去，再继续预测。</strong>
+            </p>
+            <pre><code>prompt text
+-> tokenizer.encode
+-> input_ids
+-> token embedding + position embedding
+-> causal transformer blocks
+-> logits
+-> choose next_token_id
+-> append next_token_id to input_ids
+-> repeat
+-> tokenizer.decode</code></pre>
+
+            <div class="flow" aria-label="LLM 推理流水线">
+              <svg viewBox="0 0 980 390" role="img">
+                <defs>
+                  <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#2563eb" />
+                  </marker>
+                </defs>
+                <rect width="980" height="390" fill="#ffffff" />
+                <text x="32" y="46" font-size="24" font-weight="900" fill="#17211d">从文本到生成文本</text>
+                <text x="32" y="76" font-size="15" fill="#5f6a63">注意：模型本体处理的是 id 查表后的向量，不是中文字符本身。</text>
+
+                <g font-size="14" fill="#243029">
+                  <rect x="34" y="124" width="118" height="72" fill="#dff3ef" stroke="#0f766e" />
+                  <text x="63" y="154" font-weight="800">prompt</text>
+                  <text x="58" y="178">"我喜欢"</text>
+
+                  <path d="M152 160 H204" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="214" y="124" width="126" height="72" fill="#e2ebff" stroke="#2563eb" />
+                  <text x="242" y="154" font-weight="800">tokenizer</text>
+                  <text x="238" y="178">切分 + 查 id</text>
+
+                  <path d="M340 160 H392" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="402" y="124" width="126" height="72" fill="#fff0d2" stroke="#b45309" />
+                  <text x="432" y="154" font-weight="800">input_ids</text>
+                  <text x="425" y="178">[101, 205]</text>
+
+                  <path d="M528 160 H580" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="590" y="124" width="142" height="72" fill="#eee6ff" stroke="#6d28d9" />
+                  <text x="623" y="154" font-weight="800">embedding</text>
+                  <text x="610" y="178">id 变成向量</text>
+
+                  <path d="M732 160 H784" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="794" y="124" width="150" height="72" fill="#ffffff" stroke="#d9ded8" />
+                  <text x="826" y="154" font-weight="800">Transformer</text>
+                  <text x="812" y="178">多层计算上下文</text>
+                </g>
+
+                <path d="M870 196 V242" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                <g font-size="14" fill="#243029">
+                  <rect x="766" y="252" width="178" height="72" fill="#ffffff" stroke="#d9ded8" />
+                  <text x="817" y="282" font-weight="800">logits</text>
+                  <text x="786" y="306">词表所有 token 分数</text>
+
+                  <path d="M766 288 H708" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="532" y="252" width="166" height="72" fill="#ffe5e0" stroke="#b42318" />
+                  <text x="565" y="282" font-weight="800">choose next</text>
+                  <text x="562" y="306">例如选择 id=309</text>
+
+                  <path d="M532 288 H474" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="302" y="252" width="162" height="72" fill="#fff0d2" stroke="#b45309" />
+                  <text x="344" y="282" font-weight="800">append</text>
+                  <text x="321" y="306">[101,205,309]</text>
+
+                  <path d="M302 288 H244" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow2)" />
+
+                  <rect x="68" y="252" width="166" height="72" fill="#dff3ef" stroke="#0f766e" />
+                  <text x="120" y="282" font-weight="800">decode</text>
+                  <text x="92" y="306">id 序列变回文本</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="callout blue">
+              <p>
+                <strong>和 Day3 的类比：</strong>MNIST 最后输出 10 个 logits，分别对应 10 个数字类别。LLM 最后输出的是对整个词表的 logits，如果词表有 50000 个 token，就会有 50000 个分数。
+              </p>
+            </div>
+          </section>
+
+          <section id="tokenizer">
+            <h2>2. prompt 如何变成 input_ids</h2>
+            <p>
+              <code>prompt</code> 是你输入给模型的原始文本。比如 <code>"我喜欢"</code>。但是神经网络不能直接处理“我”这个字，也不能直接处理“喜欢”这个词。它只能处理数字张量。
+            </p>
+            <p>
+              所以中间需要一个 <strong>tokenizer</strong>。它通常做两件事：先把文本切成 token，再根据词表把每个 token 映射成一个整数 id。
+            </p>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>token 是什么</h3>
+                <p>
+                  token 是 tokenizer 切出来的最小处理单位。它可能是一个字、一个词、一个词的一部分，也可能包含空格或符号。
+                </p>
+                <p>
+                  对中文来说，tokenizer 可能把 <code>"我喜欢深度学习"</code> 切成 <code>["我", "喜欢", "深度", "学习"]</code>，也可能切成别的形式。具体怎么切由 tokenizer 的词表和规则决定。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>token id 是什么</h3>
+                <p>
+                  token id 是 token 在词表里的编号。它不是向量，也不是“语义详情”，只是一个整数索引。
+                </p>
+                <p>
+                  类比 Day5 的 embedding 表：如果 token id 是 205，就表示去 token embedding 表的第 205 行取出这个 token 的向量。
+                </p>
+              </div>
+            </div>
+
+            <h3>一个只用于理解的例子</h3>
+            <p>
+              下面的 id 是为了帮助理解而编的示意数字，不代表真实 tokenizer 的输出。真实模型的 id 要由它自己的 tokenizer 决定。
+            </p>
+            <div class="tokens" aria-label="token 到 token id 的示意">
+              <div class="token"><b>我</b><span>id 101</span></div>
+              <div class="token"><b>喜欢</b><span>id 205</span></div>
+              <div class="token"><b>深度学习</b><span>id 309</span></div>
+              <div class="token"><b>。</b><span>id 17</span></div>
+            </div>
+            <pre><code>prompt = "我喜欢"
+tokens = ["我", "喜欢"]
+input_ids = [101, 205]</code></pre>
+
+            <div class="callout amber">
+              <p>
+                <strong>关键点：</strong><code>input_ids</code> 里存的不是 token 的完整信息，也不是 token 向量。它只是一串整数编号。真正的向量要等进入 <code>nn.Embedding</code> 之后才出现。
+              </p>
+            </div>
+          </section>
+
+          <section id="embedding">
+            <h2>3. token id 到向量</h2>
+            <p>
+              模型内部不能直接用 <code>[101, 205]</code> 做复杂语义计算。这个整数序列必须先进入 token embedding 表。embedding 表可以理解成一个巨大的可学习矩阵。
+            </p>
+            <div class="formula">
+              token_embedding_table.shape = [V, C]<br />
+              input_ids.shape = [B, T]<br />
+              token_vectors = embedding(input_ids)<br />
+              token_vectors.shape = [B, T, C]
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                    <th>通俗理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>V</code></td>
+                    <td>vocab size，词表大小</td>
+                    <td>词表里一共有多少个 token。比如 50000，就有 50000 个可被预测的候选 token。</td>
+                  </tr>
+                  <tr>
+                    <td><code>C</code></td>
+                    <td>embedding dimension，向量维度</td>
+                    <td>每个 token 用多少个数字描述。Day5 里我们用过 <code>embed_dim</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>B</code></td>
+                    <td>batch size，批大小</td>
+                    <td>一次送进模型多少条序列。学习阶段可以先假设 <code>B = 1</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>T</code></td>
+                    <td>sequence length，序列长度</td>
+                    <td>当前这条输入里有多少个 token。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>token embedding 和 position embedding 会相加</h3>
+            <p>
+              token embedding 表示“这个 token 大概是什么”。position embedding 表示“这个 token 在第几个位置”。LLM 和 Day5 一样，通常会把这两类向量相加，得到每个位置真正送入 Transformer Block 的输入向量。
+            </p>
+            <pre><code>token_vector    = token_embedding(input_ids)
+position_vector = position_embedding(position_ids)
+model_input     = token_vector + position_vector</code></pre>
+          </section>
+
+          <section id="causal">
+            <h2>4. Causal LM：为什么只能看左边</h2>
+            <p>
+              <strong>Causal Language Model</strong> 可以翻译成“因果语言模型”或“自回归语言模型”。这里的 causal 不是哲学里的因果关系，而是一个生成约束：
+              <strong>模型在生成第 <code>t + 1</code> 个 token 时，只能使用第 <code>0</code> 到第 <code>t</code> 个 token 的信息。</strong>
+            </p>
+            <p>
+              换成人话：如果当前 prompt 是 <code>"我 喜欢"</code>，模型要预测后面接什么。它可以看见 <code>"我"</code> 和 <code>"喜欢"</code>，但不能提前看见答案 <code>"深度学习"</code>。因为真实生成时，<code>"深度学习"</code> 还没有被模型生成出来。
+            </p>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>Day5 Encoder</h3>
+                <p>
+                  Encoder 的 self-attention 通常可以让每个 token 看见整个输入序列。适合做理解、分类、提取表示。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>Day6 Causal LM</h3>
+                <p>
+                  Causal LM 生成时必须从左到右。第 3 个位置不能看第 4 个位置，因为第 4 个 token 当时还没生成出来。
+                </p>
+              </div>
+            </div>
+
+            <h3>先说清楚：attention 矩阵的一行一列是什么</h3>
+            <p>
+              假设输入被切成 4 个 token：
+            </p>
+            <div class="tokens" aria-label="causal token index example">
+              <div class="token"><b>我</b><span>位置 0</span></div>
+              <div class="token"><b>喜欢</b><span>位置 1</span></div>
+              <div class="token"><b>深度学习</b><span>位置 2</span></div>
+              <div class="token"><b>。</b><span>位置 3</span></div>
+            </div>
+            <p>
+              Self-Attention 会给每个 token 重新算一个新向量。算“位置 2 的 token 的新向量”时，位置 2 会拿自己的 Query 去和别的位置的 Key 打分。这个分数矩阵可以写成：
+            </p>
+            <div class="formula">
+              attention_scores[t, j] = 第 t 个 token 看第 j 个 token 的原始分数
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>矩阵方向</th>
+                    <th>含义</th>
+                    <th>具体例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>纵向，一行一行看</td>
+                    <td>正在被更新的 token。也就是“现在轮到谁计算自己的新向量”。</td>
+                    <td>第 2 行表示：现在正在给位置 2 的 <code>深度学习</code> 算新向量。</td>
+                  </tr>
+                  <tr>
+                    <td>横向，一列一列看</td>
+                    <td>候选来源 token。也就是“当前 token 可以从谁那里拿信息”。</td>
+                    <td>第 0 列表示：能不能看位置 0 的 <code>我</code>，以及看它的分数是多少。</td>
+                  </tr>
+                  <tr>
+                    <td>某一个格子</td>
+                    <td><code>attention_scores[t, j]</code>，表示第 <code>t</code> 个 token 对第 <code>j</code> 个 token 的注意力打分。</td>
+                    <td><code>attention_scores[2, 0]</code> 表示：<code>深度学习</code> 在更新自己时，看 <code>我</code> 的原始分数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>用 mask 看“能不能看见”</h3>
+            <p>
+              假设输入有 5 个 token。左侧行号表示“正在更新自己的 token 位置 <code>t</code>”，上方列号表示“它准备去看的 token 位置 <code>j</code>”。绿色表示允许看，灰色表示禁止看。
+            </p>
+            <div class="mask-grid" aria-label="causal mask 示意">
+              <div class="mask-cell mask-head"></div>
+              <div class="mask-cell mask-head">0</div>
+              <div class="mask-cell mask-head">1</div>
+              <div class="mask-cell mask-head">2</div>
+              <div class="mask-cell mask-head">3</div>
+              <div class="mask-cell mask-head">4</div>
+
+              <div class="mask-cell mask-head">0</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+
+              <div class="mask-cell mask-head">1</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+
+              <div class="mask-cell mask-head">2</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-off">禁</div>
+              <div class="mask-cell mask-off">禁</div>
+
+              <div class="mask-cell mask-head">3</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-off">禁</div>
+
+              <div class="mask-cell mask-head">4</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+              <div class="mask-cell mask-on">看</div>
+            </div>
+
+            <h3>为什么右上角是禁止的</h3>
+            <p>
+              看第 2 行。第 2 行表示“正在给位置 2 的 token 算新向量”。它可以看位置 0、1、2，因为这些位置在它左边或就是它自己；但它不能看位置 3、4，因为位置 3、4 是未来 token。
+            </p>
+            <pre><code>第 2 行的含义：
+正在更新位置 2 的 token
+
+允许看：位置 0、位置 1、位置 2
+禁止看：位置 3、位置 4
+
+原因：
+生成到位置 2 时，位置 3 和位置 4 还不存在。
+如果训练时允许偷看未来，模型就学会了作弊，推理生成时会对不上。</code></pre>
+
+            <h3>“attention 打分时禁止看见”具体是什么意思</h3>
+            <p>
+              不是把 token id 删除，也不是把 embedding 删除。真正发生的位置在 attention 分数矩阵里。原始分数算出来以后，未来位置对应的分数会被改成一个极小的数，常见写法是 <code>-inf</code> 或者一个很大的负数。
+            </p>
+            <div class="formula">
+              原始分数：score[t, j] = q_t 和 k_j 的匹配分数<br />
+              如果 j &gt; t：masked_score[t, j] = -inf<br />
+              softmax(-inf) = 0<br />
+              所以未来 token 的 attention weight = 0
+            </div>
+            <p>
+              这里每个符号的含义：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>t</code></td>
+                    <td>正在更新的 token 位置。比如 <code>t = 2</code> 表示正在更新第 2 个位置的 token。</td>
+                  </tr>
+                  <tr>
+                    <td><code>j</code></td>
+                    <td>被看的 token 位置。比如 <code>j = 0</code> 表示去看第 0 个位置的 token。</td>
+                  </tr>
+                  <tr>
+                    <td><code>j &gt; t</code></td>
+                    <td>被看的位置在当前 token 的右边，也就是未来位置，所以必须禁止。</td>
+                  </tr>
+                  <tr>
+                    <td><code>-inf</code></td>
+                    <td>负无穷。实际代码里常用一个极大的负数近似。经过 softmax 后，这个位置的权重会变成 0。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>一个具体数字例子</h3>
+            <p>
+              假设第 2 个 token 原本对 5 个位置的 attention score 是下面这样。注意这里还没有 softmax。
+            </p>
+            <pre><code>正在更新位置 t = 2 的 token
+原始分数：
+[ 1.2, 0.4, 2.0, 3.7, 0.8 ]
+  j0   j1   j2   j3   j4
+
+causal mask 后：
+[ 1.2, 0.4, 2.0, -inf, -inf ]
+  j0   j1   j2    j3    j4
+
+softmax 后：
+[0.27, 0.12, 0.61, 0.00, 0.00]</code></pre>
+            <p>
+              最后算新向量时，位置 2 只会混合位置 0、1、2 的 Value。位置 3、4 的权重是 0，所以完全拿不到未来 token 的内容。
+            </p>
+
+            <div class="callout red">
+              <p>
+                <strong>重点：</strong>Causal mask 的本质是“让未来位置在 softmax 后权重变成 0”。这样每个 token 更新自己的向量时，只能从自己和左边 token 聚合信息，不能从右边未来 token 聚合信息。
+              </p>
+            </div>
+          </section>
+
+          <section id="logits">
+            <h2>5. logits 与下一个 token</h2>
+            <p>
+              经过多层 Causal Transformer Block 之后，模型会输出 <code>logits</code>。你可以把 logits 先理解成“原始分数”，它还不是概率。
+            </p>
+            <p>
+              Day3 的 MNIST 分类输出 10 个 logits，因为类别只有 10 个数字。LLM 的输出类别是整个词表里的 token，所以如果词表大小是 <code>V</code>，每个位置都会输出 <code>V</code> 个 logits。也就是说，LLM 在每个位置都做一次“从词表所有 token 中选下一个 token”的分类判断。
+            </p>
+            <div class="formula">
+              logits.shape = [B, T, V]<br />
+              B = batch size，表示一次有几条序列<br />
+              T = 当前输入序列的 token 数量<br />
+              V = vocab size，表示词表里有多少个 token
+            </div>
+            <h3>logits 是从哪里来的</h3>
+            <p>
+              Transformer Block 的输出还不是词表分数。它输出的是每个位置的隐藏向量，常见 shape 是 <code>[B, T, C]</code>。然后模型最后接一个线性层，常叫 <code>lm_head</code>，把每个位置的 <code>C</code> 维向量转换成 <code>V</code> 个词表分数。
+            </p>
+            <div class="formula">
+              hidden_states.shape = [B, T, C]<br />
+              lm_head.weight.shape = [V, C]<br />
+              logits = lm_head(hidden_states)<br />
+              logits.shape = [B, T, V]
+            </div>
+            <p>
+              这里的 <code>C</code> 是模型内部每个 token 向量的维度，和 Day5 的 <code>D</code> 是同类概念。<code>V</code> 是词表大小。<code>lm_head</code> 的作用就是把“内部向量空间”翻译成“词表每个 token 的分数”。
+            </p>
+
+            <h3>一个 logit 到底怎么算出来</h3>
+            <p>
+              先只看一个 batch、最后一个位置、一个候选 token。假设候选 token 是 <code>"深度学习"</code>，它在词表里的 id 是 <code>4</code>。那么 <code>logits[0, -1, 4]</code> 就表示：
+              <strong>第 0 条输入的最后一个位置认为“下一个 token 是深度学习”的原始分数。</strong>
+            </p>
+            <div class="formula">
+              logits[b, t, i] = sum(hidden_states[b, t, k] * lm_head.weight[i, k], k = 0 到 C - 1)
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>b</code></td>
+                    <td>batch 中第几条输入。学习 demo 里通常是 <code>0</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>t</code></td>
+                    <td>当前 token 位置。生成下一个 token 时一般取最后一个位置，所以代码里写 <code>-1</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>i</code></td>
+                    <td>候选 token id。比如 <code>i = 4</code> 表示候选 token 是 <code>"深度学习"</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>k</code></td>
+                    <td>隐藏向量内部第几个维度。若 <code>C = 6</code>，那 <code>k</code> 从 <code>0</code> 到 <code>5</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>hidden_states[b, t, k]</code></td>
+                    <td>第 <code>b</code> 条输入、第 <code>t</code> 个位置的隐藏向量中第 <code>k</code> 个数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>lm_head.weight[i, k]</code></td>
+                    <td><code>lm_head</code> 中候选 token <code>i</code> 对第 <code>k</code> 个隐藏维度的权重。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以 <code>lm_head(hidden_states)</code> 并不神秘。它是在每个位置上，把这个位置的隐藏向量分别和词表里每个 token 的输出权重行做点积。做完以后，一个位置就得到 <code>V</code> 个分数。
+            </p>
+            <pre><code>last_hidden.shape = [C]
+weight_for_深度学习.shape = [C]
+
+logit_for_深度学习 =
+  last_hidden[0] * weight_for_深度学习[0]
++ last_hidden[1] * weight_for_深度学习[1]
++ ...
++ last_hidden[C-1] * weight_for_深度学习[C-1]</code></pre>
+
+            <h3>为什么只看最后一个位置的 logits</h3>
+            <p>
+              假设当前输入是 <code>["我", "喜欢"]</code>，位置分别是 0 和 1。模型会输出两个位置的 logits：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>位置</th>
+                    <th>这个位置已经看见了什么</th>
+                    <th>这个位置的 logits 负责预测什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>位置 0：<code>我</code></td>
+                    <td>只能看见 <code>我</code></td>
+                    <td>训练时负责预测下一个 token：<code>喜欢</code></td>
+                  </tr>
+                  <tr>
+                    <td>位置 1：<code>喜欢</code></td>
+                    <td>可以看见 <code>我</code> 和 <code>喜欢</code></td>
+                    <td>推理时负责预测 prompt 后面的下一个 token，比如 <code>深度学习</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以生成下一个 token 时，通常只看最后一个位置 <code>T - 1</code> 的 logits。因为它是“读完整个 prompt 之后”的那个位置。
+            </p>
+            <pre><code>input_ids = [101, 205]
+logits.shape = [1, 2, 50000]
+
+# 只拿最后一个位置
+next_token_logits = logits[0, -1, :]
+next_token_logits.shape = [50000]</code></pre>
+
+            <div class="callout blue">
+              <p>
+                <strong><code>-1</code> 的意思：</strong><code>logits[0, -1, :]</code> 里的 <code>-1</code> 表示取序列维度上的最后一个位置。这里输入有 2 个 token，最后一个位置就是位置 1，也就是 <code>"喜欢"</code> 对应的位置。
+              </p>
+            </div>
+
+            <h3>logits 的每一个位置为什么对应一个 token</h3>
+            <p>
+              词表会规定 token id 和 token 的对应关系。比如示意词表里，<code>309</code> 对应 <code>"深度学习"</code>。那么 <code>next_token_logits[309]</code> 就是模型给“下一个 token 是 <code>深度学习</code>”这件事打的原始分数。
+            </p>
+            <pre><code>vocab[309] = "深度学习"
+vocab[415] = "电影"
+vocab[17]  = "。"
+
+next_token_logits[309] = 8.2   # “下一个 token 是 深度学习”的分数
+next_token_logits[415] = 4.1   # “下一个 token 是 电影”的分数
+next_token_logits[17]  = 1.3   # “下一个 token 是 。”的分数</code></pre>
+            <p>
+              这里的顺序不是模型临时发明的，而是 tokenizer 的词表提前规定好的。第 <code>309</code> 个位置就永远对应 token id <code>309</code>。模型训练的过程，就是让这些位置上的分数逐渐变得合理。
+            </p>
+
+            <h3>从 logits 到概率</h3>
+            <p>
+              后续学习 sampling 时会展开。现在先只看最基本的 softmax：它会把每个 token 的原始分数转换成概率，并且所有概率加起来等于 1。
+            </p>
+            <div class="formula">
+              p_i = exp(z_i) / sum(exp(z_j), j = 0 到 V - 1)
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>z_i</code></td>
+                    <td>第 <code>i</code> 个 token 的 logit，也就是模型给这个候选 token 的原始分数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>exp(z_i)</code></td>
+                    <td>以自然常数 <code>e</code> 为底的指数函数，也就是 <code>e</code> 的 <code>z_i</code> 次方，作用是把分数变成正数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>sum(exp(z_j), j = 0 到 V - 1)</code></td>
+                    <td>把词表里所有候选 token 的 <code>exp(logit)</code> 加起来，作为归一化分母。</td>
+                  </tr>
+                  <tr>
+                    <td><code>p_i</code></td>
+                    <td>第 <code>i</code> 个 token 被选为下一个 token 的概率。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>具体例子</h3>
+            <p>
+              还是用示意词表。模型读完 <code>"我喜欢"</code> 后，只取最后一个位置的 <code>next_token_logits</code>。如果 <code>"深度学习"</code> 的分数最高，那么最简单的 greedy decoding 会选择它。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>候选 token</th>
+                    <th>token id</th>
+                    <th>logit 原始分数</th>
+                    <th>可能的结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>深度学习</td>
+                    <td>309</td>
+                    <td>8.2</td>
+                    <td>最高，可能被选中</td>
+                  </tr>
+                  <tr>
+                    <td>电影</td>
+                    <td>415</td>
+                    <td>4.1</td>
+                    <td>也可能，但分数低很多</td>
+                  </tr>
+                  <tr>
+                    <td>。</td>
+                    <td>17</td>
+                    <td>1.3</td>
+                    <td>概率较低</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code>next_token_id = 309
+new_input_ids = [101, 205, 309]
+decoded_text = "我喜欢深度学习"</code></pre>
+            <div class="callout amber">
+              <p>
+                <strong>一句话收口：</strong>logits 不是最终文字，而是“词表每个 token 的候选分数表”。生成时先从最后一个位置的 logits 里选出一个 token id，再把这个 id append 回 <code>input_ids</code>，然后继续下一轮。
+              </p>
+            </div>
+          </section>
+
+          <section id="shapes">
+            <h2>6. shape 总表</h2>
+            <p>
+              这部分先建立 Day6 最重要的 shape 直觉。后面写代码时，我们会像 Day5 一样逐行打印这些 shape。
+            </p>
+            <div class="panel">
+              <div class="shape-line">
+                <div class="shape-name">prompt</div>
+                <div>普通字符串，例如 <code>"我喜欢"</code>。</div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">tokens</div>
+                <div>tokenizer 切出来的 token 列表，例如 <code>["我", "喜欢"]</code>。</div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">input_ids</div>
+                <div>整数 id 张量，常见 shape 是 <code>[B, T]</code>。</div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">embedding output</div>
+                <div>每个 token id 查表后得到的向量，shape 是 <code>[B, T, C]</code>。</div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">logits</div>
+                <div>每个位置对词表所有 token 的分数，shape 是 <code>[B, T, V]</code>。</div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">next_token_logits</div>
+                <div>最后一个位置的词表分数，shape 是 <code>[V]</code> 或 <code>[B, V]</code>。</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="shape-demo">
+            <h2>7. Part 2：把推理流程跑成 shape demo</h2>
+            <p class="lead">
+              当前阶段新增一个不加载真实大模型的脚本，只用一个手写小词表和极简 tokenizer，把一轮 next-token 生成过程打印出来。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>注意边界：</strong>这个脚本不是训练好的 LLM，也不是最终 Day6 的 Transformers 实践。它的目的只有一个：把 <code>prompt</code>、<code>input_ids</code>、<code>embedding</code>、<code>logits</code>、<code>next_token_id</code> 这些对象的形状和含义看清楚。
+              </p>
+            </div>
+
+            <h3>运行入口</h3>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/llm_inference_shape_demo.py</code></pre>
+
+            <h3>脚本路径</h3>
+            <div class="panel">
+              <div class="shape-line">
+                <div class="shape-name">代码</div>
+                <div><code>experiments/day-06-llm-inference/llm_inference_shape_demo.py</code></div>
+              </div>
+              <div class="shape-line">
+                <div class="shape-name">说明</div>
+                <div><code>experiments/day-06-llm-inference/README.md</code></div>
+              </div>
+            </div>
+
+            <h3>代码里的主流程</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>步骤</th>
+                    <th>代码对象</th>
+                    <th>shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>文本输入</td>
+                    <td><code>prompt = "我喜欢"</code></td>
+                    <td>普通字符串</td>
+                    <td>用户给模型的原始文本。</td>
+                  </tr>
+                  <tr>
+                    <td>tokenizer</td>
+                    <td><code>tokens = ["我", "喜欢"]</code></td>
+                    <td>列表</td>
+                    <td>手写 tokenizer 按最长匹配切出来的 token。</td>
+                  </tr>
+                  <tr>
+                    <td>整数 id</td>
+                    <td><code>input_ids = [[2, 3]]</code></td>
+                    <td><code>[B, T] = [1, 2]</code></td>
+                    <td>token 在词表里的编号；这一步还不是向量。</td>
+                  </tr>
+                  <tr>
+                    <td>token embedding</td>
+                    <td><code>token_vectors</code></td>
+                    <td><code>[B, T, C] = [1, 2, 6]</code></td>
+                    <td>每个 token id 查表得到一个 6 维向量。</td>
+                  </tr>
+                  <tr>
+                    <td>position embedding</td>
+                    <td><code>position_vectors</code></td>
+                    <td><code>[B, T, C] = [1, 2, 6]</code></td>
+                    <td>每个位置 id 查表得到一个 6 维位置向量。</td>
+                  </tr>
+                  <tr>
+                    <td>模型内部表示</td>
+                    <td><code>hidden_states</code></td>
+                    <td><code>[B, T, C] = [1, 2, 6]</code></td>
+                    <td>真实 LLM 会经过很多 causal Transformer block；这个 demo 暂时跳过它们，只保留 shape 主线。</td>
+                  </tr>
+                  <tr>
+                    <td>词表分数</td>
+                    <td><code>logits</code></td>
+                    <td><code>[B, T, V] = [1, 2, 10]</code></td>
+                    <td>每个位置都对词表里的 10 个 token 给出原始分数。</td>
+                  </tr>
+                  <tr>
+                    <td>下一个 token</td>
+                    <td><code>next_token_logits = logits[0, -1, :]</code></td>
+                    <td><code>[V] = [10]</code></td>
+                    <td>取最后一个位置的词表分数，用来选 prompt 后面的下一个 token。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>为什么 demo 里会稳定选出“深度学习”</h3>
+            <p>
+              脚本为了让输出容易读，手动调整了 <code>lm_head.weight</code> 的几行，让最后一个位置更倾向于 token <code>"深度学习"</code>。这不是训练，也不代表真实模型会这么写。真实 LLM 里的 <code>lm_head</code> 是通过大规模训练学出来的。
+            </p>
+            <pre><code>next_token_logits = logits[0, -1, :]
+probabilities = softmax(next_token_logits)
+next_token_id = argmax(next_token_logits)
+new_input_ids = [2, 3, 4]
+decoded_text = "我喜欢深度学习"</code></pre>
+
+            <div class="callout blue">
+              <p>
+                <strong>当前要掌握：</strong>生成一步的核心不是“模型直接吐出一句中文”，而是“最后一个位置输出词表分数，从中选一个 token id，拼回 input_ids，再 decode 成文本”。
+              </p>
+            </div>
+          </section>
+
+          <section id="sampling">
+            <h2>8. Part 3：Sampling 采样策略</h2>
+            <p class="lead">
+              模型算出 <code>next_token_logits</code> 之后，还没有真正生成文字。Sampling 解决的是最后一步：从词表候选 token 里选出一个 <code>next_token_id</code>。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>先抓主线：</strong>模型负责给每个候选 token 打分；sampling 策略负责根据这些分数选择一个 token。模型能力和 sampling 策略是两件事，sampling 不能让模型知道它本来不知道的知识。
+              </p>
+            </div>
+
+            <h3>运行入口</h3>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/sampling_strategy_demo.py</code></pre>
+
+            <h3>从 logits 到选择 token 的四步</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>步骤</th>
+                    <th>对象</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td><code>next_token_logits</code></td>
+                    <td>最后一个位置对词表所有 token 的原始分数，shape 是 <code>[V]</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>2</td>
+                    <td><code>temperature</code></td>
+                    <td>可选。先调整 logits 的尖锐程度，影响高分 token 和低分 token 的差距。</td>
+                  </tr>
+                  <tr>
+                    <td>3</td>
+                    <td><code>softmax</code></td>
+                    <td>把 logits 转成概率分布，所有候选 token 的概率加起来等于 1。</td>
+                  </tr>
+                  <tr>
+                    <td>4</td>
+                    <td><code>greedy / sampling / top_p</code></td>
+                    <td>根据策略从概率分布里选出一个 token id。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Greedy Decoding：永远选最高分</h3>
+            <p>
+              Greedy decoding 可以翻译成“贪心解码”。它不随机，不抽样，只做一件事：找到 logit 最大的 token id。
+            </p>
+            <div class="formula">
+              next_token_id = argmax(next_token_logits)
+            </div>
+            <p>
+              <code>argmax</code> 的意思是“返回最大值所在的位置”。如果 <code>"深度学习"</code> 的 logit 最大，那么 greedy 就一定选择 <code>"深度学习"</code>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>特点</th>
+                    <th>解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>稳定</td>
+                    <td>同一组 logits 每次都会选同一个 token。</td>
+                  </tr>
+                  <tr>
+                    <td>不发散</td>
+                    <td>低分但可能有趣的 token 永远没有机会被选中。</td>
+                  </tr>
+                  <tr>
+                    <td>容易重复</td>
+                    <td>长文本生成时可能陷入固定套路，因为每一步都只选局部最高分。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Temperature：调节概率分布的尖锐程度</h3>
+            <p>
+              Temperature 不直接选择 token。它先修改 logits，再 softmax。公式是：
+            </p>
+            <div class="formula">
+              adjusted_logit_i = logit_i / temperature<br />
+              probability_i = softmax(adjusted_logit_i)
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>temperature</th>
+                    <th>效果</th>
+                    <th>直观理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>&lt; 1</code></td>
+                    <td>分布更尖锐</td>
+                    <td>高分 token 更高，低分 token 更低，输出更保守。</td>
+                  </tr>
+                  <tr>
+                    <td><code>= 1</code></td>
+                    <td>不改变 logits</td>
+                    <td>使用模型原始分布。</td>
+                  </tr>
+                  <tr>
+                    <td><code>&gt; 1</code></td>
+                    <td>分布更平</td>
+                    <td>低分 token 获得更多机会，输出更发散。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout amber">
+              <p>
+                <strong>容易误解：</strong>temperature 不是“创造力按钮”。它只是改变候选 token 概率的集中程度。模型本身不知道的东西，不会因为 temperature 变高就突然知道。
+              </p>
+            </div>
+
+            <h3>Top-p：只保留累计概率足够高的一小组候选</h3>
+            <p>
+              Top-p 也叫 nucleus sampling。它不是保留固定数量的 token，而是保留“累计概率达到 p 的最小候选集合”。
+            </p>
+            <pre><code>原始概率从高到低排序：
+深度学习 0.55
+AI       0.25
+电影     0.07
+音乐     0.05
+...
+
+如果 top_p = 0.85：
+0.55 + 0.25 = 0.80，还没到 0.85
+再加入 0.07，累计 0.87，达到 0.85
+所以候选集合保留：深度学习、AI、电影
+其他 token 概率置为 0，再重新归一化</code></pre>
+            <p>
+              Top-p 的作用是切掉概率很低的长尾 token，减少胡乱跳到离谱 token 的机会，同时又保留一定随机性。
+            </p>
+
+            <h3>Temperature 和 top_p 通常怎么组合</h3>
+            <p>
+              常见顺序是先用 temperature 调整 logits，再 softmax 得到概率，接着做 top_p 过滤，最后从剩余候选中随机抽样。
+            </p>
+            <pre><code>adjusted_logits = logits / temperature
+probabilities = softmax(adjusted_logits)
+filtered_probabilities = top_p_filter(probabilities, top_p)
+next_token_id = multinomial_sample(filtered_probabilities)</code></pre>
+            <p>
+              <code>multinomial_sample</code> 的意思是按概率抽样。概率越高越容易被抽中，但不是最高概率必定被抽中。
+            </p>
+
+            <h3>max_new_tokens：控制最多生成多少个新 token</h3>
+            <p>
+              <code>max_new_tokens</code> 不改变每一步的概率分布，也不直接控制答案质量。它只是生成循环的上限：最多允许 append 多少个新 token。
+            </p>
+            <pre><code>for step in range(max_new_tokens):
+    logits = model(input_ids)
+    next_token_id = choose_from_logits(logits)
+    input_ids.append(next_token_id)
+    if next_token_id == eos_token_id:
+        break</code></pre>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>停止原因 1：达到上限</h3>
+                <p>
+                  如果一直没有生成结束符，循环会在达到 <code>max_new_tokens</code> 后强制停止。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>停止原因 2：生成结束符</h3>
+                <p>
+                  如果模型生成 <code>&lt;eos&gt;</code> 这类结束 token，即使还没达到上限，也可以提前停止。
+                </p>
+              </div>
+            </div>
+
+            <h3>参数关系总表</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>参数 / 策略</th>
+                    <th>控制什么</th>
+                    <th>不控制什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>greedy</td>
+                    <td>永远选最高分 token。</td>
+                    <td>不提供随机性，不探索其他候选。</td>
+                  </tr>
+                  <tr>
+                    <td>temperature</td>
+                    <td>概率分布尖锐还是平坦。</td>
+                    <td>不限制候选集合大小。</td>
+                  </tr>
+                  <tr>
+                    <td>top_p</td>
+                    <td>保留多少累计概率质量。</td>
+                    <td>不直接表示保留几个 token。</td>
+                  </tr>
+                  <tr>
+                    <td>max_new_tokens</td>
+                    <td>最多追加多少个新 token。</td>
+                    <td>不保证生成完整句子，也不提高质量。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="kv-cache">
+            <h2>9. Part 4：KV Cache 为什么能加速生成</h2>
+            <p class="lead">
+              KV Cache 解决的是生成阶段的重复计算问题：历史 token 的 Key 和 Value 一旦算出来，后续步骤可以直接复用，不必每生成一个 token 就从头重算整段历史。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>先抓结论：</strong>KV Cache 不改变模型参数，不改变 attention 的数学含义，也不让模型更聪明。它只是把过去 token 的 K/V 存起来，让推理更快，但会占用更多显存或内存。
+              </p>
+            </div>
+
+            <h3>运行入口</h3>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/kv_cache_shape_demo.py</code></pre>
+
+            <h3>为什么会有重复计算</h3>
+            <p>
+              自回归生成每次只新增一个 token。假设 prompt 有 4 个 token，要继续生成 3 个 token。如果没有 cache，模型每一步都会把当前完整序列重新送进 Transformer。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>生成步</th>
+                    <th>当前序列长度</th>
+                    <th>不用 cache 时会重新计算什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>step 1</td>
+                    <td>4</td>
+                    <td>重新计算 4 个 token 的 Q/K/V 和 attention。</td>
+                  </tr>
+                  <tr>
+                    <td>step 2</td>
+                    <td>5</td>
+                    <td>重新计算之前 4 个旧 token + 1 个新 token 的 Q/K/V。</td>
+                  </tr>
+                  <tr>
+                    <td>step 3</td>
+                    <td>6</td>
+                    <td>再次重新计算所有历史 token 的 Q/K/V。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              这里浪费的地方在于：旧 token 的隐藏向量在当前层中已经确定，它们算出来的 Key / Value 后面不会改变。下一步还把它们重算一遍，就很浪费。
+            </p>
+
+            <h3>K/V 为什么可以缓存</h3>
+            <p>
+              在 self-attention 中，一个新 token 需要拿自己的 Query 去看所有历史 Key，然后按权重混合对应 Value。
+            </p>
+            <div class="formula">
+              score_new,j = q_new · k_j<br />
+              attention_weight_new = softmax(score_new)<br />
+              output_new = sum(attention_weight_new,j * v_j)
+            </div>
+            <p>
+              对新 token 来说，历史 token 的 <code>k_j</code> 和 <code>v_j</code> 只是被拿来读取。它们不是这一步新算出来的目标，因此可以提前保存。
+            </p>
+
+            <h3>两次疑问收口：prefill、mask、K/V 到底在做什么</h3>
+            <div class="callout blue">
+              <p>
+                <strong>你的问题很关键：</strong>如果 prompt 是 <code>"深度学习是什么？"</code>，模型是不是先拿整段序列一起算？如果一起算，为什么又说每个 token 只能看左边？第一位 token 前面没有内容，它的 hidden state 又从哪里来？
+              </p>
+            </div>
+            <p>
+              推理开始时通常不是一个 token 一个 token 地把 prompt 慢慢送进去，而是先做一次 <strong>prefill</strong>：把整个 prompt 切成 token 后，一次性形成一个张量。
+            </p>
+            <pre><code>tokens = ["深度", "学习", "是", "什么", "？"]
+input_vectors.shape = [B, T, D]
+
+B = 1      # batch size，一次处理 1 条 prompt
+T = 5      # token 数量
+D = 6      # 每个 token 的向量维度，这里只是举例</code></pre>
+            <p>
+              这 5 个 token 会在矩阵层面一起计算每一层的 Q/K/V。这里的“一起计算”指的是用矩阵并行把所有位置的向量都投影出来，不是让它们随便互相看。真正决定“谁能看谁”的，是后面的 causal mask。
+            </p>
+            <pre><code>           被看的 token
+           深度   学习    是   什么    ？
+正在 深度    看    禁    禁    禁    禁
+计算 学习    看    看    禁    禁    禁
+的   是      看    看    看    禁    禁
+token 什么   看    看    看    看    禁
+     ？      看    看    看    看    看</code></pre>
+            <p>
+              这张表的读法是：每一行代表“正在更新哪个位置的 hidden state”，每一列代表“它可以读取哪个位置的 K/V”。所以第一行的“深度”只能看自己；第二行的“学习”可以看“深度”和自己；最后一行的“？”可以看整个 prompt。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>第一位 token 为什么也能得到 hidden state：</strong>它至少可以看自己。即使前面没有其他 token，<code>深度</code> 仍然有自己的 token embedding、position embedding、Q/K/V、attention 输出、残差连接、FFN 输出。如果序列前面还有 <code>&lt;BOS&gt;</code> 这类起始符，它还可以看起始符。
+              </p>
+            </div>
+
+            <h3>常见误区：V 不是“更新后的 hidden state”</h3>
+            <p>
+              你问“mask 之后是不是更新出了每个 token 的 V，然后 KV Cache 缓存这一层的 V”。这里要拆清楚：<strong>K 和 V 不是 attention 之后更新出来的结果，而是 attention 之前由当前层输入线性投影出来的中间张量。</strong>
+            </p>
+            <pre><code>当前层输入 hidden_states
+-> Linear_Q 得到 Q
+-> Linear_K 得到 K
+-> Linear_V 得到 V
+
+attention_scores = Q @ K^T          # 得分来自 Q 和 K，不是 Q 和 V
+attention_weights = softmax(mask(attention_scores) / sqrt(d))
+context = attention_weights @ V     # 按权重读取 V
+
+updated_hidden_states
+= LayerNorm(hidden_states + OutputProjection(context))
+-> 再经过 FFN 和残差，得到这一层最终输出</code></pre>
+            <p>
+              所以 <code>V</code> 更像“可以被读取的内容材料”。真正被更新的是 <code>hidden_states</code>。attention 先用 Q 和 K 算“看谁、看多少”，再用这些权重去混合 V，得到 <code>context</code>。然后 <code>context</code> 经过输出投影、残差连接、归一化和 FFN，才形成新的 hidden state。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>它是什么</th>
+                    <th>在 KV Cache 中是否保存</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>Q</code></td>
+                    <td>当前 token 用来询问“我应该看谁”的向量。</td>
+                    <td>通常不缓存旧 Q。新 token 只需要自己的 Q。</td>
+                  </tr>
+                  <tr>
+                    <td><code>K</code></td>
+                    <td>每个历史 token 提供的“可匹配索引”。新 token 的 Q 要和历史 K 做点积，决定注意力分数。</td>
+                    <td>缓存。否则每一步都要重算所有历史 token 的 K。</td>
+                  </tr>
+                  <tr>
+                    <td><code>V</code></td>
+                    <td>每个历史 token 提供的“可读取内容材料”。权重算好后，会按权重混合这些 V。</td>
+                    <td>缓存。否则权重算好后没有历史内容可读。</td>
+                  </tr>
+                  <tr>
+                    <td><code>hidden_state</code></td>
+                    <td>当前层真正输出给下一层的 token 表示。</td>
+                    <td>KV Cache 通常不保存完整历史 hidden state。cache 保存的是每层 attention 需要复用的 K/V。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>新 token 进来时，每层到底怎么执行</h3>
+            <p>
+              生成出一个新 token 后，下一步 decode 不需要重新更新旧 token。原因是 causal mask 规定旧 token 永远不能看右边未来 token，所以新 token 出现后，旧 token 的历史计算结果不应该被改变。
+            </p>
+            <pre><code># 某一层的 decode 过程，只看一个新 token
+new_hidden.shape = [B, 1, D]
+
+q_new = Linear_Q(new_hidden)     # [B, H, 1, d]
+k_new = Linear_K(new_hidden)     # [B, H, 1, d]
+v_new = Linear_V(new_hidden)     # [B, H, 1, d]
+
+key_cache   = concat(old_key_cache,   k_new, dim=token_dim)
+value_cache = concat(old_value_cache, v_new, dim=token_dim)
+
+scores  = q_new @ key_cache.transpose(-2, -1)   # [B, H, 1, T_total]
+weights = softmax(scores / sqrt(d), dim=-1)
+context = weights @ value_cache                 # [B, H, 1, d]
+
+new_hidden = attention_output_projection(context)
+new_hidden = residual_norm_ffn(new_hidden)</code></pre>
+            <p>
+              这段流程对应你的疑问：新 token 会计算自己的 Q/K/V；它的 Q 马上和缓存里的所有 K 做匹配；匹配得到的权重再去混合缓存里的所有 V。这里不是“拿 Q 去乘 V 算得分”，而是 <code>Q @ K^T</code> 先算分数，<code>weights @ V</code> 再取内容。
+            </p>
+
+            <h3>两个阶段：prefill 和 decode</h3>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>Prefill</h3>
+                <p>
+                  第一次处理 prompt。模型一次性计算 prompt 中所有 token 的 Q/K/V，并把每层的 K/V 存进 cache。
+                </p>
+                <pre><code>prompt length = T
+key_cache.shape = [B, H, T, d]
+value_cache.shape = [B, H, T, d]</code></pre>
+              </div>
+              <div class="panel">
+                <h3>Decode</h3>
+                <p>
+                  后续每次只输入最新 token。只为这个新 token 计算 Q/K/V，再把新 K/V 追加到 cache。
+                </p>
+                <pre><code>new_query.shape = [B, H, 1, d]
+key_cache.shape = [B, H, T_total, d]
+scores.shape = [B, H, 1, T_total]</code></pre>
+              </div>
+            </div>
+
+            <h3>不用 cache vs 使用 cache 的 shape</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>路径</th>
+                    <th>Q/K/V shape</th>
+                    <th>Attention score shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>不用 cache</td>
+                    <td><code>[B, H, S, d]</code></td>
+                    <td><code>[B, H, S, S]</code></td>
+                    <td>当前完整序列长度是 <code>S</code>，每步都重算整个序列。</td>
+                  </tr>
+                  <tr>
+                    <td>使用 cache</td>
+                    <td>新 token：<code>[B, H, 1, d]</code><br />缓存：<code>[B, H, T_total, d]</code></td>
+                    <td><code>[B, H, 1, T_total]</code></td>
+                    <td>只算新 token 的 Query，让它去看所有缓存的历史 Key。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>符号解释</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>B</code></td>
+                    <td>batch size，一次有几条输入。</td>
+                  </tr>
+                  <tr>
+                    <td><code>H</code></td>
+                    <td>attention head 数量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>S</code></td>
+                    <td>不用 cache 时，当前完整序列长度。</td>
+                  </tr>
+                  <tr>
+                    <td><code>T_total</code></td>
+                    <td>cache 中已经保存的总 token 数，包括 prompt token 和已经生成的新 token。</td>
+                  </tr>
+                  <tr>
+                    <td><code>d</code></td>
+                    <td>每个 head 内部的向量维度，通常 <code>d = D / H</code>。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>计算量对比：为什么会更快</h3>
+            <p>
+              在 demo 中，prompt 长度是 4，要生成 3 个 token。不用 cache 的路径需要投影的 token 数是：
+            </p>
+            <pre><code>4 + 5 + 6 = 15</code></pre>
+            <p>
+              使用 cache 的路径是先 prefill 4 个 prompt token，然后每个 decode step 只投影 1 个新 token：
+            </p>
+            <pre><code>4 + 1 + 1 + 1 = 7</code></pre>
+            <p>
+              attention score 的数量也从 demo 中的 <code>154</code> 降到 <code>68</code>。真实大模型有很多层、很多 head、长上下文，所以节省会更明显。
+            </p>
+
+            <h3>KV Cache 的代价</h3>
+            <p>
+              KV Cache 用空间换时间。它要为每一层、每个 head、每个历史 token 保存 Key 和 Value。
+            </p>
+            <div class="formula">
+              cache shape per layer:<br />
+              key_cache.shape = [B, H, T_total, d]<br />
+              value_cache.shape = [B, H, T_total, d]
+            </div>
+            <p>
+              序列越长，cache 越大；batch 越大，cache 也越大。所以 KV Cache 会提升生成速度，但会增加显存占用。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>一句话收口：</strong>KV Cache 保存的是每层 attention 里历史 token 的 K/V。新 token 仍然要计算自己的 Q/K/V，但它可以直接看缓存里的历史 K/V，从而避免重复计算旧 token。
+              </p>
+            </div>
+          </section>
+
+          <section id="real-transformers">
+            <h2>10. Part 5：真实 Transformers 模型推理</h2>
+            <p class="lead">
+              这一节只做一件事：把前面 toy demo 里的推理主线，换成真实 Hugging Face Transformers 代码，并把主线和问答澄清分开整理。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先抓边界：</strong><code>transformers</code> 是加载和运行模型的库，不是模型本身。真实模型由 tokenizer 文件、config 文件、权重文件共同组成。
+              </p>
+            </div>
+
+            <h3 id="real-run">10.1 本地模型与运行入口</h3>
+            <p>
+              当前 demo 默认离线 / local-only：如果你手动放置了项目内可选 pretrained 目录，就优先从那里加载；如果不存在，就使用 <code>sshleifer/tiny-gpt2</code> 这个模型名并只查本机 Hugging Face 缓存，不会自动访问 Hugging Face Hub。
+            </p>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/transformers_real_generation_demo.py</code></pre>
+            <pre><code>experiments/day-06-llm-inference/pretrained/sshleifer-tiny-gpt2/</code></pre>
+            <p>
+              如果只想检查本地 pretrained 文件和权重 tensor 的名字与 shape，可以运行：
+            </p>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/inspect_pretrained_model_files.py</code></pre>
+            <p>
+              如果模型文件不存在或本机缓存里没有，需要显式传入 <code>--model sshleifer/tiny-gpt2 --allow-download</code> 才允许下载。下载后的 <code>pretrained/</code> 目录不提交到 git。
+            </p>
+
+            <h3 id="real-files">10.2 真实模型文件分别负责什么</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>文件 / 对象</th>
+                    <th>负责什么</th>
+                    <th>对应前面学过的概念</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>vocab.json</code>、<code>merges.txt</code>、tokenizer 配置</td>
+                    <td>规定文本如何切成 token，以及 token 和 token id 如何互相转换。</td>
+                    <td><code>tokenizer.encode()</code>、<code>tokenizer.decode()</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>config.json</code></td>
+                    <td>记录模型结构超参数，例如层数、hidden size、head 数、词表大小。</td>
+                    <td><code>B, T, D, H, V</code> 这些 shape 符号的真实取值。</td>
+                  </tr>
+                  <tr>
+                    <td><code>model.safetensors</code> 或 <code>pytorch_model.bin</code></td>
+                    <td>保存训练好的参数矩阵，例如 embedding、Q/K/V projection、FFN、LM Head。</td>
+                    <td>Day3 到 Day6 一直说的 weight、bias、embedding 表、lm_head 权重。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="real-mainline">10.3 主线：真实代码和 toy demo 的对应关系</h3>
+            <p>
+              第一遍精读只盯住 4 个变量：<code>encoded</code>、<code>outputs</code>、<code>logits</code>、<code>generated_ids</code>。它们就是一轮真实推理的骨架。
+            </p>
+            <pre><code>tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForCausalLM.from_pretrained(model_path)
+
+encoded = tokenizer(prompt, return_tensors="pt")
+outputs = model(**encoded, use_cache=True)
+logits = outputs.logits
+generated_ids = model.generate(...)</code></pre>
+            <div class="grid-2">
+              <div class="panel">
+                <h3><code>encoded</code></h3>
+                <p>
+                  tokenizer 的输出。它不是普通字符串，也不是向量，而是一个类似字典的对象，里面最重要的是 <code>input_ids</code> 和 <code>attention_mask</code>。
+                </p>
+              </div>
+              <div class="panel">
+                <h3><code>outputs</code></h3>
+                <p>
+                  模型 forward 的输出。它不是单个 tensor，而是一个带字段的输出对象，里面有 <code>logits</code> 和 <code>past_key_values</code>。
+                </p>
+              </div>
+              <div class="panel">
+                <h3><code>logits</code></h3>
+                <p>
+                  模型对每个位置、每个词表 token 的原始分数表。形状是 <code>[B, T, V]</code>。
+                </p>
+              </div>
+              <div class="panel">
+                <h3><code>generated_ids</code></h3>
+                <p>
+                  <code>generate()</code> 生成后的完整 token id 序列，包含原始 prompt 的 id 和新生成的 id。
+                </p>
+              </div>
+            </div>
+
+            <h3 id="real-flow">10.4 数据流：从 prompt 到下一个 token</h3>
+            <pre><code>prompt 文本
+-> tokenizer(prompt, return_tensors="pt")
+-> encoded["input_ids"]        # [B, T]，整数 id
+-> model(**encoded, use_cache=True)
+-> outputs.logits              # [B, T, V]，词表分数
+-> logits[:, -1, :]            # [B, V]，最后位置的下一个 token 分数
+-> topk / argmax / sampling
+-> next_token_id
+-> tokenizer.decode(...)
+-> 人能读的文本</code></pre>
+            <div class="stage">
+              <p><span class="label">第一层</span> 看 <code>input_ids.shape = [B, T]</code>，确认 tokenizer 输出的是整数 id。</p>
+              <p><span class="label">第二层</span> 看 <code>logits.shape = [B, T, V]</code>，确认每个位置都有一整张词表分数表。</p>
+              <p><span class="label">第三层</span> 看 <code>next_token_logits.shape = [B, V]</code>，确认生成时只取最后一个位置。</p>
+              <p><span class="label">第四层</span> 看 <code>past_key_values</code>，确认真实模型也在每层保存 K/V。</p>
+              <p><span class="label">第五层</span> 看 <code>generate()</code> 输出，把一轮 logits 预测和多轮生成循环连起来。</p>
+            </div>
+
+            <h3 id="real-generate">10.5 <code>generate()</code> 不是魔法</h3>
+            <p>
+              <code>model.generate()</code> 看起来是一行代码生成文本，但内部做的还是我们已经学过的循环。
+            </p>
+            <pre><code>input_ids = tokenizer(prompt)
+
+repeat max_new_tokens times:
+    outputs = model(input_ids, past_key_values=cache, use_cache=True)
+    next_token_logits = outputs.logits[:, -1, :]
+    next_token_id = greedy / temperature / top_p 选出来
+    input_ids = concat(input_ids, next_token_id)
+    cache = outputs.past_key_values
+
+decoded_text = tokenizer.decode(input_ids)</code></pre>
+            <p>
+              所以真实库没有绕开 Day6 的主线。它只是把 tokenizer、模型前向、KV Cache、sampling、停止条件封装到一个成熟接口里。
+            </p>
+
+            <h3 id="real-reading">10.6 代码精读路线</h3>
+            <p>
+              现在的学习重点不是背 API，而是把每个 API 放回推理主线里：它输入什么、输出什么、输出对象里面有什么、shape 为什么这样。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>学习层级</th>
+                    <th>必须掌握的对象 / 方法</th>
+                    <th>要问自己的问题</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>文件与参数层</td>
+                    <td><code>Path</code>、<code>argparse</code>、<code>--model</code>、<code>--prompt</code></td>
+                    <td>模型文件从哪里来？脚本启动时哪些值可以改？默认模型路径是什么？</td>
+                  </tr>
+                  <tr>
+                    <td>Transformers 加载层</td>
+                    <td><code>AutoTokenizer.from_pretrained</code>、<code>AutoModelForCausalLM.from_pretrained</code></td>
+                    <td>tokenizer 加载了哪些文本规则？model 加载了哪些结构和权重？</td>
+                  </tr>
+                  <tr>
+                    <td>Torch 设备与推理层</td>
+                    <td><code>torch.device</code>、<code>model.to(device)</code>、<code>model.eval()</code>、<code>torch.inference_mode()</code></td>
+                    <td>张量和模型在哪个设备上？为什么推理不需要梯度？</td>
+                  </tr>
+                  <tr>
+                    <td>Tokenizer 输出层</td>
+                    <td><code>tokenizer(prompt, return_tensors="pt")</code>、<code>input_ids</code>、<code>attention_mask</code></td>
+                    <td>文本如何变成整数张量？这些整数为什么还不是向量？</td>
+                  </tr>
+                  <tr>
+                    <td>模型 forward 层</td>
+                    <td><code>model(**encoded, use_cache=True)</code>、<code>outputs.logits</code>、<code>outputs.past_key_values</code></td>
+                    <td>模型前向计算返回了什么？logits 和 KV Cache 分别在主线里承担什么角色？</td>
+                  </tr>
+                  <tr>
+                    <td>选 token 层</td>
+                    <td><code>logits[:, -1, :]</code>、<code>torch.softmax</code>、<code>torch.topk</code>、<code>tokenizer.decode</code></td>
+                    <td>为什么只取最后位置？如何从词表分数变成下一个 token？</td>
+                  </tr>
+                  <tr>
+                    <td>生成循环层</td>
+                    <td><code>torch.cat</code>、<code>model.generate</code>、<code>max_new_tokens</code>、<code>do_sample</code></td>
+                    <td>手动 append 一个 token 和 generate 自动循环，本质上有什么关系？</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>学习方法：</strong>每遇到一个不懂的 API，先不要急着查一堆参数。先问三个问题：它吃进去什么对象？吐出来什么对象？这个对象在推理链路里负责哪一步？
+              </p>
+            </div>
+
+            <h3 id="real-qa-context">10.7 问答澄清：mask、padding、batch、上下文窗口</h3>
+            <p>
+              下面是最近两次问题的整理。它们不改变主线，但会决定你是否真的理解真实服务里的输入组织方式。
+            </p>
+
+            <h3><code>attention_mask</code> 和 causal mask 不是一回事</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>mask</th>
+                    <th>解决的问题</th>
+                    <th>例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>attention_mask</code></td>
+                    <td>告诉模型哪些位置是真 token，哪些位置只是 padding，占位用，不应该参与计算。</td>
+                    <td><code>[1, 1, 1, 0, 0]</code> 表示前三个是真 token，后两个是 padding。</td>
+                  </tr>
+                  <tr>
+                    <td>causal mask</td>
+                    <td>告诉模型当前位置不能看右边未来 token，保证从左到右生成。</td>
+                    <td>第 2 个 token 可以看第 0、1、2 个位置，不能看第 3、4 个位置。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3><code>pad_token</code> 是什么</h3>
+            <p>
+              <code>pad_token</code> 是“补齐用 token”。它不是用户真正输入的内容，而是为了把同一个 batch 里的多条序列补到同样长度，方便组成规则张量。
+            </p>
+            <pre><code>真实输入 A: "Deep learning is"          -> [29744, 4673, 318]
+真实输入 B: "AI is changing the world" -> [20185, 318, 1800, 262, 995]
+
+为了放进同一个 batch，需要补齐到同样长度：
+A: [29744, 4673, 318, PAD, PAD]
+B: [20185, 318, 1800, 262, 995]
+
+attention_mask:
+A: [1, 1, 1, 0, 0]
+B: [1, 1, 1, 1, 1]</code></pre>
+            <p>
+              <code>pad_token</code> 负责补齐形状；<code>attention_mask</code> 负责告诉模型 PAD 位置只是占位，不是真内容。GPT-2 这类模型原本没有专门的 pad token，所以 demo 里临时用 <code>eos_token</code> 充当 <code>pad_token</code>。
+            </p>
+
+            <h3>batch 里的不同序列会互相看见吗</h3>
+            <div class="callout blue">
+              <p>
+                <strong>不会。</strong>batch 不是把多句话首尾拼成一条长序列，而是把多条互相独立的输入并排放进同一次计算。Self-Attention 发生在每条序列自己的 <code>T</code> 维度内部，不跨 batch。
+              </p>
+            </div>
+            <pre><code>input_ids.shape = [B, T]
+
+B = batch size，几条独立输入
+T = 每条输入补齐后的 token 长度
+
+attention_scores.shape = [B, H, T, T]
+
+含义：
+第 0 条输入内部算自己的 [H, T, T]
+第 1 条输入内部算自己的 [H, T, T]
+不同 B 之间不做 attention</code></pre>
+
+            <h3>商业服务里的 batch 和用户 query 是什么关系</h3>
+            <p>
+              商业级模型服务里，batch 通常包含多个独立请求序列。它们可能来自多个用户，也可能来自同一个用户的多个并发任务。但更准确地说，batch 里放的不是“多个 query 字符串”，而是多个已经整理好的 <strong>request sequence</strong>。
+            </p>
+            <pre><code>一个 request sequence 通常包含：
+system prompt
++ developer / tool instructions
++ 历史对话
++ RAG 检索片段
++ 当前用户 query
++ assistant 开始生成前的格式 token</code></pre>
+            <p>
+              所以一个序列不是单纯的用户 query，而是“当前这次请求真正送进模型的完整上下文”。它的实际长度可以是几百、几千、几万 token，但必须小于或等于模型最大上下文窗口。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>概念</th>
+                    <th>准确含义</th>
+                    <th>容易误解的地方</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>sequence length</td>
+                    <td>当前请求实际送进模型的 token 数。</td>
+                    <td>不等于模型最大上下文，只是这次实际用了多少。</td>
+                  </tr>
+                  <tr>
+                    <td>context window</td>
+                    <td>模型最多能接收的 token 数，例如 20k、100k、128k。</td>
+                    <td>这是上限，不代表每次请求都会塞满。</td>
+                  </tr>
+                  <tr>
+                    <td>batch</td>
+                    <td>多个独立 request sequence 并行计算。</td>
+                    <td>不是把多个请求拼成一个可互相 attention 的长上下文。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              模型并行算完后，每个请求通常取自己最后有效位置的 logits，分别预测自己的下一个 token。A 请求不会看 B 请求，B 请求也不会看 C 请求。
+            </p>
+
+            <h3>超过最大上下文时，工业界真的会做上下文优化吗</h3>
+            <p>
+              会。你觉得它像智能体上下文优化策略，这个判断是对的，因为它们本质上解决同一个问题：模型一次只能看有限 token，超过了怎么办。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>层级</th>
+                    <th>常见处理</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>模型服务底层</td>
+                    <td>拒绝请求、报错、截断输入、限制最大输入长度。</td>
+                    <td>负责保护模型和推理服务，不保证替你理解全部历史。</td>
+                  </tr>
+                  <tr>
+                    <td>应用 / 智能体层</td>
+                    <td>RAG、历史摘要、滑动窗口、长期记忆筛选、上下文压缩。</td>
+                    <td>负责决定哪些信息最值得进入当前 context window。</td>
+                  </tr>
+                  <tr>
+                    <td>推理引擎层</td>
+                    <td>continuous batching、paged attention、KV cache block 管理。</td>
+                    <td>负责提高吞吐和显存利用率，不改变“请求之间互相隔离”的原则。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout amber">
+              <p>
+                <strong>一句话收口：</strong>模型本体只能处理有限长度的 token sequence；推理服务把多个独立 sequence 组成 batch 提高吞吐；应用或智能体系统负责决定哪些信息应该进入这个 sequence。
+              </p>
+            </div>
+
+            <h3 id="real-vocab-match">10.8 问答澄清：为什么 tokenizer 词表大小要和 model 匹配</h3>
+            <p>
+              tokenizer 的词表大小决定 token id 的合法范围。模型的 embedding 表和 lm_head 也必须有同样数量的行，才能支持这些 token id。
+            </p>
+            <pre><code>tokenizer vocab_size = 50257
+model.config.vocab_size = 50257
+
+token_embedding.weight.shape = [50257, hidden_size]
+lm_head.weight.shape = [50257, hidden_size]</code></pre>
+            <p>
+              如果 tokenizer 产生了 <code>token_id = 50000</code>，模型的 embedding 表必须至少有第 50000 行可以查。如果模型只支持 30000 个 token，那么这个 id 就越界了。
+            </p>
+            <p>
+              反过来，模型输出 logits 时也会输出 <code>V</code> 个分数。第 <code>i</code> 个 logit 的含义必须由同一个 tokenizer 词表解释。如果 tokenizer 和 model 词表不匹配，模型说“我选择第 5087 个 token”，但 tokenizer 可能把 5087 解释成另一个 token，生成文本就乱了。
+            </p>
+
+            <h3 id="real-mastery">10.9 最小掌握标准</h3>
+            <div class="callout blue">
+              <p>
+                <strong>能算真正掌握：</strong>你可以关闭注释，从 <code>prompt</code> 开始，自己写出加载 tokenizer、加载 model、编码、forward、取最后 logits、softmax/top-k、decode、查看 KV Cache 的完整流程，并且能解释每个张量的 shape。
+              </p>
+            </div>
+          </section>
+
+          <section id="generation-controls">
+            <h2>11. Part 6：真实模型生成参数、停止条件、输出质量</h2>
+            <p class="lead">
+              Part 5 已经把真实模型的一轮 forward、logits、KV Cache 和 generate 主线跑通。Part 6 开始看生成控制参数：它们不改变模型权重，但会改变“如何从 logits 选择下一个 token”。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先抓边界：</strong>生成参数不是训练参数。它们不会让 tiny-gpt2 变聪明，只会改变候选 token 的选择策略、最多生成多长、什么时候停止。
+              </p>
+            </div>
+
+            <h3>运行入口</h3>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/generation_controls_demo.py</code></pre>
+            <p>
+              这个脚本使用 tiny GPT-2 做真实生成参数对比。默认仍然是离线 / local-only；如果本机没有模型文件，需要显式加 <code>--allow-download</code>。
+            </p>
+
+            <h3>generate 参数在生成循环中的位置</h3>
+            <pre><code>repeat:
+    outputs = model(input_ids, past_key_values=cache, use_cache=True)
+    next_token_logits = outputs.logits[:, -1, :]
+
+    # 生成参数主要作用在这里
+    adjusted_logits = repetition_penalty(next_token_logits)
+    probabilities = softmax(adjusted_logits / temperature)
+    candidate_set = top_k_or_top_p_filter(probabilities)
+    next_token_id = greedy_or_sample(candidate_set)
+
+    input_ids = append(input_ids, next_token_id)
+    if next_token_id == eos_token_id: stop
+    if new_token_count == max_new_tokens: stop</code></pre>
+            <p>
+              所以你可以把生成参数理解成“最后一步选 token 的规则”。模型 forward 仍然输出 logits；参数决定如何从 logits 里挑下一个 token。
+            </p>
+
+            <h3>参数总表</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>参数</th>
+                    <th>控制什么</th>
+                    <th>容易误解的地方</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>max_new_tokens</code></td>
+                    <td>最多追加多少个新 token。</td>
+                    <td>不是最终总长度；最终长度约等于 prompt token 数 + new token 数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>do_sample=False</code></td>
+                    <td>不随机采样，通常每一步选择最高分候选。</td>
+                    <td>稳定，但容易重复，也不探索其他可能输出。</td>
+                  </tr>
+                  <tr>
+                    <td><code>do_sample=True</code></td>
+                    <td>从概率分布中随机抽样。</td>
+                    <td>不是乱选，仍然受 logits、temperature、top-k、top-p 约束。</td>
+                  </tr>
+                  <tr>
+                    <td><code>temperature</code></td>
+                    <td>调节概率分布尖锐或平坦。</td>
+                    <td>低温更保守，高温更多样；不是越高越好。</td>
+                  </tr>
+                  <tr>
+                    <td><code>top_k</code></td>
+                    <td>每步只从概率最高的 k 个候选里采样。</td>
+                    <td>限制的是候选数量，不是累计概率。</td>
+                  </tr>
+                  <tr>
+                    <td><code>top_p</code></td>
+                    <td>保留累计概率达到 p 的最小候选集合。</td>
+                    <td>候选数量每一步都可能变化。</td>
+                  </tr>
+                  <tr>
+                    <td><code>repetition_penalty</code></td>
+                    <td>降低已出现 token 再次出现的倾向。</td>
+                    <td>能缓解重复，但不能修复模型知识或推理能力。</td>
+                  </tr>
+                  <tr>
+                    <td><code>eos_token_id</code></td>
+                    <td>如果模型生成结束符，就提前停止。</td>
+                    <td>模型不一定会主动生成 eos，所以很多时候还是由 max_new_tokens 停止。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Greedy 为什么会重复</h3>
+            <p>
+              在 demo 中，greedy 会不断生成 <code>" factors"</code>。原因不是 <code>generate()</code> 坏了，而是每一步都选择当前最高分 token；tiny-gpt2 很小，分布容易塌到某些高分 token 上。
+            </p>
+            <pre><code>do_sample=False
+-> 每一步取最高分
+-> 如果 " factors" 一直最高
+-> 输出就会重复 " factors factors factors"</code></pre>
+            <p>
+              这说明：确定性生成稳定，但不一定好。模型能力弱、上下文短、重复惩罚不足时，greedy 很容易陷入重复。
+            </p>
+
+            <h3>Sampling 为什么更随机</h3>
+            <p>
+              <code>do_sample=True</code> 后，模型不再永远取最高分，而是按照概率抽样。temperature、top-k、top-p 都是在塑造“抽样池”。
+            </p>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>低温</h3>
+                <p>概率更集中，高分 token 更容易被选中，输出相对保守。</p>
+              </div>
+              <div class="panel">
+                <h3>高温</h3>
+                <p>概率更平坦，低分 token 也更容易被抽到，输出更多样但更容易乱。</p>
+              </div>
+              <div class="panel">
+                <h3>top-k / top-p</h3>
+                <p>先缩小候选集合，再在集合里采样，避免从整个词表里乱抽。</p>
+              </div>
+            </div>
+
+            <h3>停止条件如何理解</h3>
+            <p>
+              生成循环必须有停止条件，否则会一直预测下一个 token。当前 demo 主要观察两种停止方式。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>停止方式</th>
+                    <th>发生条件</th>
+                    <th>demo 中的表现</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>max_new_tokens</code></td>
+                    <td>新生成 token 数达到上限。</td>
+                    <td>tiny-gpt2 通常没有主动生成 eos，所以多数 case 都由这个条件停止。</td>
+                  </tr>
+                  <tr>
+                    <td><code>eos_token_id</code></td>
+                    <td>模型生成了结束符。</td>
+                    <td>如果生成结果里出现 eos，generate 会提前停止。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>为什么参数不能拯救 tiny-gpt2 的输出质量</h3>
+            <p>
+              当前模型的 <code>hidden_size = 2</code>、层数也很少，它是测试模型，不是实用聊天模型。生成参数只能改变“怎么选 token”，不能创造模型权重里没有的语言能力。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>一句话收口：</strong>模型能力来自训练好的权重；生成参数只是在推理阶段控制选择策略。好模型 + 合理参数，才能得到可用输出。
+              </p>
+            </div>
+
+            <h3 id="generation-run-report">11.1 运行报告：本次参数对比结果</h3>
+            <p>
+              本次运行使用本机已有的 <code>sshleifer-tiny-gpt2</code> 文件，prompt 是 <code>Deep learning is</code>，设备是 <code>cpu</code>，随机种子是 <code>42</code>。
+            </p>
+            <pre><code>.venv/bin/python experiments/day-06-llm-inference/generation_controls_demo.py \
+  --device cpu \
+  --prompt "Deep learning is"</code></pre>
+            <div class="shape-line">
+              <div class="shape-name">input_ids</div>
+              <div><code>[29744, 4673, 318]</code></div>
+            </div>
+            <div class="shape-line">
+              <div class="shape-name">tokens</div>
+              <div><code>['Deep', 'Ġlearning', 'Ġis']</code></div>
+            </div>
+            <div class="shape-line">
+              <div class="shape-name">eos / pad</div>
+              <div><code>eos_token_id = 50256</code>，<code>pad_token_id = 50256</code></div>
+            </div>
+            <p>
+              GPT-2 tokenizer 里的 <code>Ġ</code> 可以暂时理解成“这个 token 前面带一个空格”。例如 <code>Ġlearning</code> decode 回文本时会变成 <code> learning</code>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>case</th>
+                    <th>关键参数</th>
+                    <th>观察到的输出</th>
+                    <th>停止原因</th>
+                    <th>如何理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>A. greedy baseline</td>
+                    <td><code>max_new_tokens=12</code><br /><code>do_sample=False</code></td>
+                    <td><code>factors</code> 重复 12 次。</td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>每一步都取当前最高分 token；tiny-gpt2 在这个 prompt 后高度偏向 <code>factors</code>，所以不断重复。</td>
+                  </tr>
+                  <tr>
+                    <td>B. shorter greedy</td>
+                    <td><code>max_new_tokens=4</code><br /><code>do_sample=False</code></td>
+                    <td><code>factors</code> 重复 4 次。</td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>选择规则没变，只是循环上限从 12 改成 4，所以更早停下。</td>
+                  </tr>
+                  <tr>
+                    <td>C. low temperature</td>
+                    <td><code>do_sample=True</code><br /><code>temperature=0.7</code><br /><code>top_k=20</code></td>
+                    <td><code>ozyg equate predators ...</code></td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>开始随机采样，但低温让高分候选更占优势，候选池也被 <code>top_k=20</code> 限制住。</td>
+                  </tr>
+                  <tr>
+                    <td>D. high temperature</td>
+                    <td><code>do_sample=True</code><br /><code>temperature=1.4</code><br /><code>top_k=20</code></td>
+                    <td><code>equate deflect448 predators ...</code></td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>高温把概率分布压得更平，低分 token 更有机会被抽到，所以文本更发散、更不稳定。</td>
+                  </tr>
+                  <tr>
+                    <td>E. top-k</td>
+                    <td><code>do_sample=True</code><br /><code>top_k=5</code><br /><code>temperature=1.0</code></td>
+                    <td><code>boils deflect mutual ...</code></td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>每一步只从最高分的 5 个候选里抽样，候选范围固定得更窄。</td>
+                  </tr>
+                  <tr>
+                    <td>F. top-p</td>
+                    <td><code>do_sample=True</code><br /><code>top_p=0.8</code><br /><code>temperature=1.0</code></td>
+                    <td><code>predatorspublic Singapore ...</code></td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>候选集合按累计概率动态决定，不是固定保留几个 token。</td>
+                  </tr>
+                  <tr>
+                    <td>G. repetition penalty</td>
+                    <td><code>do_sample=False</code><br /><code>repetition_penalty=1.25</code></td>
+                    <td><code>factors mutual deflect Television ...</code></td>
+                    <td>达到 <code>max_new_tokens</code>。</td>
+                    <td>重复惩罚压低已经出现过的 token 分数，所以 greedy 不再一直选 <code>factors</code>。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout blue">
+              <p>
+                <strong>本次最重要的观察：</strong>七组实验全部是因为 <code>max_new_tokens</code> 达到上限而停止，不是因为模型主动生成了 <code>eos_token_id</code>。这说明停止条件不是只有“模型说结束”，工程上必须设置长度上限。
+              </p>
+            </div>
+            <p>
+              从结果质量看，tiny-gpt2 明显不会真正解释“Deep learning is ...”。这是预期现象：它是测试用小模型，价值在于让你看清 <code>generate()</code> 的参数如何影响选择下一个 token，而不是拿来评估 GPT 类模型的真实语言能力。
+            </p>
+
+            <h3 id="generation-completion">11.2 Day6 收口判断</h3>
+            <p>
+              到这里，Day6 的“LLM 推理流程”主线已经完成：从 tokenizer、embedding、causal mask、hidden states、logits，到真实模型加载、KV Cache、生成参数和停止条件，都已经有概念解释、代码 demo 和运行结果。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>主题</th>
+                    <th>当前状态</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Tokenizer / prompt / input_ids / decode</td>
+                    <td>已完成</td>
+                    <td>已经能解释文本如何变成 token id，以及 token id 如何 decode 回文本。</td>
+                  </tr>
+                  <tr>
+                    <td>Causal LM / Causal Mask / logits</td>
+                    <td>已完成</td>
+                    <td>已经能解释为什么只能看左侧，以及最后位置 logits 如何代表下一个 token 的词表分数。</td>
+                  </tr>
+                  <tr>
+                    <td>KV Cache</td>
+                    <td>已完成</td>
+                    <td>已经区分 prefill 和 decode，并理解缓存的是每层历史 token 的 K/V。</td>
+                  </tr>
+                  <tr>
+                    <td>Transformers 真实模型推理</td>
+                    <td>已完成</td>
+                    <td>已经使用本机 tiny-gpt2 文件跑通加载、编码、forward、generate。</td>
+                  </tr>
+                  <tr>
+                    <td>temperature / top-k / top-p / repetition penalty</td>
+                    <td>已完成</td>
+                    <td>已经通过真实模型输出观察到不同参数改变的是选 token 策略。</td>
+                  </tr>
+                  <tr>
+                    <td>Instruction Tuning / LoRA / QLoRA</td>
+                    <td>后续主题</td>
+                    <td>这些属于训练或微调路线，不属于本页“推理流程”闭环，后面单独学更清楚。</td>
+                  </tr>
+                  <tr>
+                    <td>Chat template</td>
+                    <td>后续主题</td>
+                    <td>这是聊天模型输入格式问题，适合放在真实聊天模型或 instruction model 阶段学习。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout violet">
+              <p>
+                <strong>进入本周复盘的条件已经满足：</strong>Day6 的推理主线可以收口。下一阶段应做 Week 1 复盘，而不是继续把微调、聊天模板、部署优化全部塞进 Day6。
+              </p>
+            </div>
+          </section>
+
+          <section id="core-review">
+            <h2>12. 阶段复盘：LLM 核心链路</h2>
+            <p class="lead">
+              这一节整理当前阶段已经学过的关键概念，用来把 tokenizer、embedding、causal Transformer、LM Head 和生成循环连成一条线。
+            </p>
+
+            <h3>1. Tokenizer 与词表</h3>
+            <p>
+              Tokenizer 是把文本变成 token id 的程序。它通常先在大量语料上独立构建词表和切分规则，然后在 LLM 主模型训练、推理时作为固定的预处理工具使用。
+            </p>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>词表如何来</h3>
+                <p>
+                  常见算法包括 BPE、WordPiece、Unigram。以 BPE 为例，先从字符或字节开始，再反复统计高频相邻 token 对，把最常见的组合合并成新 token，直到达到目标词表大小。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>编码时如何切</h3>
+                <p>
+                  推理时使用已经确定的词表和规则。一个容易理解的实现是最长匹配：在当前位置优先匹配最长 token，匹配不到就退回 <code>&lt;unk&gt;</code> 或更细粒度单位。
+                </p>
+              </div>
+            </div>
+            <pre><code>for token in tokens_by_length:
+    if text.startswith(token, cursor):
+        matched_token = token
+        break</code></pre>
+            <div class="callout blue">
+              <p>
+                <strong>校准理解：</strong>tokenizer 的词表来自统计和规则，不是神经网络里的可学习 embedding 向量。主模型训练时通常不会通过梯度更新 tokenizer 的切分规则。
+              </p>
+            </div>
+
+            <h3>2. Embedding：token id 变成向量</h3>
+            <p>
+              <code>input_ids</code> 只是整数编号。模型真正计算前，需要用 <code>nn.Embedding</code> 查表，把每个 token id 变成一个连续向量。
+            </p>
+            <div class="formula">
+              token_embedding.weight.shape = [V, C]<br />
+              input_ids.shape = [B, T]<br />
+              token_vectors.shape = [B, T, C]
+            </div>
+            <p>
+              训练开始时，embedding 矩阵通常是随机初始化的。训练过程中，loss 通过反向传播更新这些向量，使模型逐渐学到哪些 token 在语义或用法上更接近。
+            </p>
+
+            <h3>3. Token Embedding + Position Embedding</h3>
+            <p>
+              token embedding 表示“这个位置是什么 token”；position embedding 表示“这个 token 在第几个位置”。二者相加后，模型输入同时包含内容信息和位置信息。
+            </p>
+            <pre><code>model_input = token_vectors + position_vectors</code></pre>
+            <p>
+              position embedding 可以是可学习参数，也可以是固定规则生成的向量，例如正弦位置编码。当前学习阶段先重点掌握：位置也要变成向量，并和 token 向量合并。
+            </p>
+
+            <h3>4. Causal Transformer Block</h3>
+            <p>
+              Causal Decoder 的每一层都接收 <code>hidden_states</code>，常见 shape 是 <code>[B, T, C]</code>。经过多层堆叠后，每个位置的向量会融合它自己和左侧上下文的信息。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>子模块</th>
+                    <th>作用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>LayerNorm</td>
+                    <td>稳定每个 token 向量内部的数值分布。</td>
+                  </tr>
+                  <tr>
+                    <td>Q / K / V projection</td>
+                    <td>把每个 token 的隐藏向量投影成 Query、Key、Value，用于计算 self-attention。</td>
+                  </tr>
+                  <tr>
+                    <td>Causal Self-Attention</td>
+                    <td>让当前位置只能从自己和左侧 token 聚合信息，不能看未来 token。</td>
+                  </tr>
+                  <tr>
+                    <td>Residual</td>
+                    <td>把子层输出加回原路径，保留原始信息并改善深层训练。</td>
+                  </tr>
+                  <tr>
+                    <td>FFN</td>
+                    <td>Feed Forward Network，逐 token 做非线性加工，不负责 token 间交换信息。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>5. Causal Self-Attention 公式</h3>
+            <p>
+              对于位置 <code>t</code>，它先由当前向量产生 <code>q_t</code>，再和所有位置的 <code>k_j</code> 做点积得到分数。mask 会把未来位置 <code>j &gt; t</code> 的分数改成 <code>-inf</code>，使 softmax 后权重变成 0。
+            </p>
+            <div class="formula">
+              q_t = x_t W_Q, k_t = x_t W_K, v_t = x_t W_V<br />
+              score[t, j] = q_t · k_j<br />
+              if j &gt; t: score[t, j] = -inf<br />
+              alpha[t, :] = softmax(score[t, :] / sqrt(d_k))<br />
+              output_t = sum(alpha[t, j] * v_j, j = 0 到 t)
+            </div>
+            <div class="callout red">
+              <p>
+                <strong>为什么必须 mask：</strong>训练时输入通常是完整序列。如果不禁止未来位置，模型在预测当前位置之后的 token 时会偷看答案。这样训练 loss 会虚低，但推理时因为未来 token 还不存在，模型能力会崩。
+              </p>
+            </div>
+
+            <h3>6. Hidden States 到 Logits</h3>
+            <p>
+              Transformer 输出的是隐藏向量，不是文字。最后需要 <code>lm_head</code> 把隐藏向量映射到词表空间，让每个候选 token 都得到一个原始分数。
+            </p>
+            <div class="formula">
+              lm_head = nn.Linear(in_features=C, out_features=V, bias=False)<br />
+              lm_head.weight.shape = [V, C]<br />
+              logits = hidden_states @ lm_head.weight.T<br />
+              logits.shape = [B, T, V]
+            </div>
+            <p>
+              对某一个候选 token <code>i</code> 来说，它的 logit 是最后位置隐藏向量 <code>h</code> 和 <code>lm_head.weight[i]</code> 的点积：
+            </p>
+            <pre><code>logits[i] = h · w_i
+logits[b, t, i] = sum(hidden_states[b, t, k] * lm_head.weight[i, k])</code></pre>
+            <p>
+              一些 LLM 会使用 weight tying，也就是让输出层权重和 token embedding 权重共享或绑定。当前阶段只需要先理解：<code>lm_head</code> 的每一行对应词表中的一个候选 token。
+            </p>
+
+            <h3>7. 推理生成循环</h3>
+            <p>
+              推理时，模型参数已经固定，不再更新。生成不是一次吐出整句，而是不断重复“根据当前序列预测下一个 token”。
+            </p>
+            <pre><code>当前 input_ids
+-> embedding + position embedding
+-> 多层 causal Transformer
+-> hidden_states
+-> 取最后位置 hidden vector
+-> lm_head 得到 next_token_logits
+-> softmax / sampling 选择 next_token_id
+-> append 到 input_ids
+-> 重复直到结束</code></pre>
+            <p>
+              第一个生成 token 也不是凭空出现的。它至少基于用户 prompt，或者基于特殊起始 token，例如 <code>&lt;BOS&gt;</code>。
+            </p>
+
+            <h3>8. 关键概念辨析</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>概念</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Tokenizer</td>
+                    <td>把文本切分并映射成 token id 的程序，使用预先构建的词表和规则。</td>
+                  </tr>
+                  <tr>
+                    <td>Embedding</td>
+                    <td>模型参数矩阵，把 token id 查表变成连续向量，训练时会被优化。</td>
+                  </tr>
+                  <tr>
+                    <td>Causal Mask</td>
+                    <td>让每个位置只能看自己和左侧 token，保证自回归生成。</td>
+                  </tr>
+                  <tr>
+                    <td>Hidden State</td>
+                    <td>经过 Transformer 层处理后的 token 向量，编码了当前位置可见上下文。</td>
+                  </tr>
+                  <tr>
+                    <td>Logits</td>
+                    <td>候选 token 的原始分数，softmax 前还不是概率。</td>
+                  </tr>
+                  <tr>
+                    <td>Autoregressive Generation</td>
+                    <td>基于已生成序列预测下一个 token，再把它拼回去继续预测。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="roadmap">
+            <h2>13. 后续学习任务</h2>
+            <p class="lead">
+              Day6 后面会继续沿着这条主线推进，每一段都先理解概念，再写最小 demo。
+            </p>
+            <div class="stage">
+              <p><span class="label">已完成</span> Part 1 - LLM 推理总流程、prompt、token、token id、input_ids、embedding、logits。</p>
+              <p><span class="label">已完成</span> Part 2 - 不加载大模型的 tokenizer / embedding / logits shape demo。</p>
+              <p><span class="label">已完成</span> Part 3 - sampling：greedy、temperature、top_p、max_new_tokens。</p>
+              <p><span class="label">已完成</span> Part 4 - KV Cache 为什么能加速生成。</p>
+              <p><span class="label">已完成</span> Part 5 - Transformers 加载一个小型文本模型做真实生成。</p>
+              <p><span class="label">已完成</span> Part 6 - 真实模型生成参数、停止条件、输出质量观察。</p>
+              <p><span class="label">下一阶段</span> <a href="../week-01-foundation-review/index.html">Week 1 复盘</a> - 整理 Day1 到 Day6 的主线、代码路径和遗留问题。</p>
+              <p><span class="label">后续主题</span> chat template、Instruction Tuning、LoRA / QLoRA。</p>
+            </div>
+            <div class="callout violet">
+              <p>
+                <strong>学习节奏：</strong>从这一页开始，Day6 的疑问会继续追加到这个 HTML 中。代码只做辅助，不会替代你对流程和公式的理解。
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const section = document.querySelector("#real-transformers");
+        if (!section) return;
+
+        const headings = Array.from(section.querySelectorAll(":scope > h3"));
+        headings.forEach((heading) => {
+          const details = document.createElement("details");
+          details.className = "subsection";
+          details.open = /^10\.[1-6]/.test(heading.textContent || "");
+
+          const summary = document.createElement("summary");
+          const body = document.createElement("div");
+          body.className = "subsection-body";
+
+          heading.before(details);
+          summary.appendChild(heading);
+          details.append(summary, body);
+
+          let next = details.nextSibling;
+          while (next && !(next.nodeType === 1 && next.matches("h3"))) {
+            const current = next;
+            next = next.nextSibling;
+            body.appendChild(current);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -7,4 +7,5 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 experiments/*/data/
-
+experiments/*/pretrained/
+experiments/*/outputs/*.pt
