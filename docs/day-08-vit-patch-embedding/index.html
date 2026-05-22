@@ -1,0 +1,2625 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 8 - ViT Patch Embedding</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --surface: #121922;
+        --surface-2: #17212b;
+        --ink: #eef6ff;
+        --muted: #9fb0c1;
+        --line: #293744;
+        --cyan: #67e8f9;
+        --cyan-soft: #0e3440;
+        --green: #86efac;
+        --green-soft: #123521;
+        --amber: #fbbf24;
+        --amber-soft: #382812;
+        --red: #fca5a5;
+        --code: #070a0e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.74;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 68svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 54px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(11, 15, 20, 1) 0%, rgba(11, 15, 20, 0.92) 48%, rgba(11, 15, 20, 0.72) 100%),
+          linear-gradient(135deg, rgba(103, 232, 249, 0.12), rgba(134, 239, 172, 0.08));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(430px, 1.08fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--cyan);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 780px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 700px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #111821;
+      }
+
+      .hero-visual svg,
+      .diagram svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        padding: 8px 0 8px 18px;
+        border-left: 2px solid var(--line);
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--cyan);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 30px 0 12px;
+        font-size: 24px;
+        line-height: 1.24;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202a34;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #e6f6ff;
+        font-size: 14px;
+        line-height: 1.68;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--cyan);
+        background: var(--cyan-soft);
+      }
+
+      .callout.green {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .formula {
+        margin: 22px 0;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        background: #0f151c;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 16px;
+        color: #eafcff;
+        overflow-x: auto;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .panel {
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+
+      .panel p,
+      .panel li {
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .panel strong {
+        color: var(--ink);
+      }
+
+      .step-list {
+        display: grid;
+        gap: 12px;
+        margin: 24px 0;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 86px minmax(0, 1fr);
+        gap: 18px;
+        padding: 16px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .step-item:first-child {
+        border-top: 0;
+      }
+
+      .step-tag {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .step-item h3 {
+        margin: 0 0 6px;
+      }
+
+      .step-item p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .status {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border: 1px solid var(--line);
+        color: var(--amber);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .diagram {
+        margin: 28px 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #101720;
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      th {
+        background: #1b2530;
+        font-weight: 850;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      ul,
+      ol {
+        padding-left: 22px;
+      }
+
+      li {
+        margin: 9px 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      @media (max-width: 980px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          position: static;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+
+        .step-item {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 8 - Vision Transformer</p>
+          <h1>先把图片变成 patch token</h1>
+          <p class="hero-copy">
+            今天不急着训练 ViT，也不急着跑真实模型。第一目标只有一个：看懂一张图片如何从像素张量变成一串可以送进 Transformer 的 patch token。
+          </p>
+        </div>
+
+        <div class="hero-visual" aria-label="图片切成 patch 的示意图">
+          <svg viewBox="0 0 820 520" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+              </marker>
+            </defs>
+            <rect width="820" height="520" fill="#111821" />
+            <text x="42" y="54" fill="#eef6ff" font-size="25" font-weight="850">Image tensor -> patches -> patch tokens</text>
+            <text x="42" y="84" fill="#9fb0c1" font-size="15">先只看形状变化，不讨论训练效果。</text>
+
+            <g transform="translate(52,126)">
+              <text x="0" y="-22" fill="#67e8f9" font-size="16" font-weight="850">一张 8 x 8 RGB 图片</text>
+              <rect x="0" y="0" width="224" height="224" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+              <g stroke="#293744" stroke-width="1">
+                <path d="M28 0 V224 M56 0 V224 M84 0 V224 M112 0 V224 M140 0 V224 M168 0 V224 M196 0 V224" />
+                <path d="M0 28 H224 M0 56 H224 M0 84 H224 M0 112 H224 M0 140 H224 M0 168 H224 M0 196 H224" />
+              </g>
+              <path d="M112 0 V224 M0 112 H224" stroke="#fbbf24" stroke-width="4" />
+              <text x="56" y="254" fill="#9fb0c1" font-size="14">shape = [B, C, H, W]</text>
+            </g>
+
+            <path d="M310 238 H380" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <g transform="translate(410,126)">
+              <text x="0" y="-22" fill="#86efac" font-size="16" font-weight="850">切成 4 个 patch</text>
+              <rect x="0" y="0" width="96" height="96" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <rect x="116" y="0" width="96" height="96" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <rect x="0" y="116" width="96" height="96" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <rect x="116" y="116" width="96" height="96" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <text x="35" y="56" fill="#eef6ff" font-size="22" font-weight="850">P0</text>
+              <text x="151" y="56" fill="#eef6ff" font-size="22" font-weight="850">P1</text>
+              <text x="35" y="172" fill="#eef6ff" font-size="22" font-weight="850">P2</text>
+              <text x="151" y="172" fill="#eef6ff" font-size="22" font-weight="850">P3</text>
+              <text x="4" y="254" fill="#9fb0c1" font-size="14">num_patches = 4</text>
+            </g>
+
+            <path d="M645 238 H705" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+
+            <g transform="translate(54,414)">
+              <rect x="0" y="0" width="154" height="46" fill="#382812" stroke="#fbbf24" />
+              <rect x="176" y="0" width="154" height="46" fill="#382812" stroke="#fbbf24" />
+              <rect x="352" y="0" width="154" height="46" fill="#382812" stroke="#fbbf24" />
+              <rect x="528" y="0" width="154" height="46" fill="#382812" stroke="#fbbf24" />
+              <text x="48" y="29" fill="#eef6ff" font-size="15" font-weight="850">patch 0</text>
+              <text x="224" y="29" fill="#eef6ff" font-size="15" font-weight="850">patch 1</text>
+              <text x="400" y="29" fill="#eef6ff" font-size="15" font-weight="850">patch 2</text>
+              <text x="576" y="29" fill="#eef6ff" font-size="15" font-weight="850">patch 3</text>
+              <text x="0" y="76" fill="#9fb0c1" font-size="14">下一步才会把每个 patch 展平并投影成 embedding。</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day8 学习导航">
+          <div class="nav-label">Day8</div>
+          <a href="#goal">0. 今天怎么学</a>
+          <a href="#plan">1. 分阶段计划</a>
+          <a href="#step1">2. Step 01：图片张量</a>
+          <a href="#patch-intuition">3. Patch 是什么</a>
+          <a href="#example">4. 具体数字例子</a>
+          <a href="#step2">5. Step 02：手动切 patch</a>
+          <a href="#unfold">6. unfold 做了什么</a>
+          <a href="#unfold-qa">7. unfold 追问澄清</a>
+          <a href="#reorder">8. permute 与 reshape</a>
+          <a href="#patch-embedding">9. Step 03：Patch Embedding</a>
+          <a href="#linear-detail">10. Linear 计算细节</a>
+          <a href="#token-compare">11. 和 Token Embedding 对比</a>
+          <a href="#position-embedding">12. Step 04：Position Embedding</a>
+          <a href="#cls-token">13. CLS token</a>
+          <a href="#vit-input">14. ViT 最终输入</a>
+          <a href="#shape-demo">15. Step 05：Shape Demo</a>
+          <a href="#demo-output">16. Demo 输出解读</a>
+          <a href="#code-map">17. 代码主线</a>
+          <a href="#code-walkthrough">18. Step 06：逐行拆解</a>
+          <a href="#learnable-params">19. 哪些是参数</a>
+          <a href="#encoder-block">20. Step 07：Encoder Block</a>
+          <a href="#encoder-output">21. Encoder 输出解读</a>
+          <a href="#mini-vit">22. Step 08：MiniViT 类</a>
+          <a href="#mini-vit-forward">23. forward 主线</a>
+          <a href="#mini-vit-params">24. 参数表</a>
+          <a href="#day8-close">25. Day8 收口</a>
+          <a href="#extra-qa">26. 额外知识问答</a>
+          <a href="#architecture-boundary">27. 多模态架构边界</a>
+          <a href="#checkpoint">28. 当前检查点</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天怎么学</h2>
+            <p class="lead">
+              Day8 的完整主题是 ViT Patch Embedding。当前已完成收口：从图片张量、patch embedding、position embedding、CLS token 到最小 MiniViT forward，形成一条完整可运行链路。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>学习边界：</strong>现在不讲 ViT Encoder 内部，不讲 Self-Attention 在图像上的完整计算，也不写训练代码。先把输入形状吃透。
+              </p>
+            </div>
+          </section>
+
+          <section id="plan">
+            <h2>1. 分阶段计划</h2>
+            <p>
+              你已经学过文本里的 token。Day8 要建立一个类比：图片也可以先切成一块一块的 patch，再把每个 patch 当成“图像 token”送进 Transformer。
+            </p>
+            <div class="step-list">
+              <div class="step-item">
+                <div class="step-tag">Step 01</div>
+                <div>
+                  <h3>图片张量与 patch 直觉 <span class="status">已展开</span></h3>
+                  <p>理解 <code>[B, C, H, W]</code>，以及为什么一张图片需要先切块。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 02</div>
+                <div>
+                  <h3>手动切 patch <span class="status">已展开</span></h3>
+                  <p>从 <code>[B, C, H, W]</code> 变成 <code>[B, num_patches, C * P * P]</code>。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 03</div>
+                <div>
+                  <h3>Patch Embedding <span class="status">已展开</span></h3>
+                  <p>用 Linear 把每个展平 patch 变成固定维度向量，类比 token embedding。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 04</div>
+                <div>
+                  <h3>Position Embedding 与 CLS token <span class="status">已展开</span></h3>
+                  <p>让模型知道 patch 的位置，并理解为什么有些 ViT 会加一个汇总 token。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 05</div>
+                <div>
+                  <h3>最小 shape demo <span class="status">已展开</span></h3>
+                  <p>写一个不训练的 PyTorch 脚本，只打印每一步 shape 和少量数值。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 06</div>
+                <div>
+                  <h3>逐行拆解 demo <span class="status">已展开</span></h3>
+                  <p>把脚本分成“构造图片、切 patch、投影、CLS、位置向量”几段逐行理解。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 07</div>
+                <div>
+                  <h3>最小 Transformer Encoder Block <span class="status">已展开</span></h3>
+                  <p>把 <code>vit_input</code> 送进一层 Encoder，观察输出 shape 和 CLS 汇总向量。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 08</div>
+                <div>
+                  <h3>封装成 MiniViT 类 <span class="status">当前展开</span></h3>
+                  <p>用 <code>nn.Module</code> 把 patchify、projection、CLS、position、encoder 组织成一个 forward。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="step1">
+            <h2>2. Step 01：图片张量</h2>
+            <p>
+              在 PyTorch 里，一批图片通常表示成四维张量：
+            </p>
+            <div class="formula">image.shape = [B, C, H, W]</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>全称 / 含义</th>
+                    <th>通俗解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>B</code></td>
+                    <td>batch size</td>
+                    <td>一次送进模型的图片数量。比如 <code>B = 2</code> 表示一次处理 2 张图。</td>
+                  </tr>
+                  <tr>
+                    <td><code>C</code></td>
+                    <td>channels</td>
+                    <td>通道数。RGB 彩色图通常有 3 个通道，分别可以理解为红、绿、蓝三层数值。</td>
+                  </tr>
+                  <tr>
+                    <td><code>H</code></td>
+                    <td>height</td>
+                    <td>图片高度，有多少行像素。</td>
+                  </tr>
+                  <tr>
+                    <td><code>W</code></td>
+                    <td>width</td>
+                    <td>图片宽度，有多少列像素。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>先抓住本质：</strong>图片不是一句话，但它也是一堆数字。文本先变成 token id，图片先表现为像素张量。两者都要继续变成模型能处理的向量序列。
+              </p>
+            </div>
+          </section>
+
+          <section id="patch-intuition">
+            <h2>3. Patch 是什么</h2>
+            <p>
+              <strong>Patch</strong> 的意思是图片中的一个小块。ViT 的核心入口思想是：不要像 CNN 那样用卷积核一层层扫图，而是先把图片切成固定大小的小块，再把每个小块当成一个“图像 token”。
+            </p>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>文本里的 token</h3>
+                <p>一句话可以切成多个 token，例如 <code>深度</code>、<code>学习</code>、<code>是什么</code>。</p>
+                <p>每个 token 后续会变成一个向量。</p>
+              </div>
+              <div class="panel">
+                <h3>图片里的 patch</h3>
+                <p>一张图片可以切成多个 patch，例如左上、右上、左下、右下。</p>
+                <p>每个 patch 后续也会变成一个向量。</p>
+              </div>
+            </div>
+            <div class="callout amber">
+              <p>
+                <strong>注意：</strong>patch 还不是 embedding。patch 只是图片的一块原始像素区域；patch embedding 才是这块区域经过 Linear 投影后得到的向量。
+              </p>
+            </div>
+          </section>
+
+          <section id="example">
+            <h2>4. 具体数字例子</h2>
+            <p>
+              假设我们现在有一批图片：
+            </p>
+            <div class="formula">image.shape = [1, 3, 8, 8]</div>
+            <p>
+              这句话逐项解释就是：一次处理 <code>1</code> 张 RGB 图片，每张图有 <code>3</code> 个通道，高度 <code>8</code>，宽度 <code>8</code>。
+            </p>
+            <p>
+              如果 patch 大小设为 <code>P = 4</code>，意思是每个 patch 是 <code>4 x 4</code> 的小块。那么高度方向可以切出 <code>8 / 4 = 2</code> 块，宽度方向也可以切出 <code>8 / 4 = 2</code> 块。
+            </p>
+            <div class="formula">num_patches = (H / P) * (W / P) = (8 / 4) * (8 / 4) = 4</div>
+            <p>
+              每个 patch 不是只有 <code>4 * 4</code> 个数，因为 RGB 图片有 <code>3</code> 个通道。所以一个 patch 包含：
+            </p>
+            <div class="formula">patch_flatten_dim = C * P * P = 3 * 4 * 4 = 48</div>
+            <p>
+              因此，切 patch 并展平后，形状会变成：
+            </p>
+            <div class="formula">patches.shape = [1, 4, 48]</div>
+
+            <div class="diagram" aria-label="8x8 图片切成 4 个 4x4 patch 后展平">
+              <svg viewBox="0 0 980 360" role="img">
+                <defs>
+                  <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="360" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">一个具体形状变化</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">先切块，再把每块内部的像素数字排成一行。</text>
+
+                <g transform="translate(44,112)">
+                  <rect x="0" y="0" width="172" height="172" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+                  <path d="M86 0 V172 M0 86 H172" stroke="#fbbf24" stroke-width="4" />
+                  <text x="37" y="205" fill="#9fb0c1" font-size="14">[1, 3, 8, 8]</text>
+                </g>
+
+                <path d="M250 198 H330" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow2)" />
+                <text x="258" y="176" fill="#67e8f9" font-size="14" font-weight="850">切 patch</text>
+
+                <g transform="translate(360,118)">
+                  <rect x="0" y="0" width="70" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="88" y="0" width="70" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="88" width="70" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="88" y="88" width="70" height="70" fill="#143521" stroke="#86efac" />
+                  <text x="25" y="43" fill="#eef6ff" font-size="18" font-weight="850">P0</text>
+                  <text x="113" y="43" fill="#eef6ff" font-size="18" font-weight="850">P1</text>
+                  <text x="25" y="131" fill="#eef6ff" font-size="18" font-weight="850">P2</text>
+                  <text x="113" y="131" fill="#eef6ff" font-size="18" font-weight="850">P3</text>
+                  <text x="8" y="205" fill="#9fb0c1" font-size="14">4 个 patch</text>
+                </g>
+
+                <path d="M560 198 H640" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow2)" />
+                <text x="570" y="176" fill="#67e8f9" font-size="14" font-weight="850">展平</text>
+
+                <g transform="translate(670,114)">
+                  <rect x="0" y="0" width="230" height="32" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="45" width="230" height="32" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="90" width="230" height="32" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="135" width="230" height="32" fill="#382812" stroke="#fbbf24" />
+                  <text x="16" y="22" fill="#eef6ff" font-size="14">patch 0: 48 numbers</text>
+                  <text x="16" y="67" fill="#eef6ff" font-size="14">patch 1: 48 numbers</text>
+                  <text x="16" y="112" fill="#eef6ff" font-size="14">patch 2: 48 numbers</text>
+                  <text x="16" y="157" fill="#eef6ff" font-size="14">patch 3: 48 numbers</text>
+                  <text x="26" y="205" fill="#9fb0c1" font-size="14">[1, 4, 48]</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section id="step2">
+            <h2>5. Step 02：手动切 patch</h2>
+            <p class="lead">
+              现在进入第二阶段：不用真实图片，先用一个很小的数字矩阵模拟图片。这样你能直接看见每个 patch 里到底拿走了哪些数字。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>为了降低干扰：</strong>先假设这是一张灰度图，所以 <code>C = 1</code>。真实 RGB 图片只是把每个 patch 内部从一层数字变成三层数字，切 patch 的逻辑不变。
+              </p>
+            </div>
+
+            <p>
+              构造一张形状为 <code>[1, 1, 4, 4]</code> 的“图片”：
+            </p>
+            <pre><code>image[0, 0] =
+[[ 1,  2,  3,  4],
+ [ 5,  6,  7,  8],
+ [ 9, 10, 11, 12],
+ [13, 14, 15, 16]]
+
+image.shape = [1, 1, 4, 4]
+patch_size = 2</code></pre>
+
+            <p>
+              <code>patch_size = 2</code> 表示每个 patch 是 <code>2 x 2</code> 的小块。高度方向 <code>4 / 2 = 2</code> 块，宽度方向 <code>4 / 2 = 2</code> 块，所以总共有 <code>4</code> 个 patch。
+            </p>
+
+            <div class="diagram" aria-label="4x4 数字图片切成 4 个 2x2 patch">
+              <svg viewBox="0 0 980 420" role="img">
+                <defs>
+                  <marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="420" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">看见每个 patch 拿走哪些数字</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">先用 C = 1 的灰度图解释，真实 RGB 只是多了通道维度。</text>
+
+                <g transform="translate(60,112)">
+                  <rect x="0" y="0" width="220" height="220" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+                  <g stroke="#293744" stroke-width="1">
+                    <path d="M55 0 V220 M110 0 V220 M165 0 V220" />
+                    <path d="M0 55 H220 M0 110 H220 M0 165 H220" />
+                  </g>
+                  <path d="M110 0 V220 M0 110 H220" stroke="#fbbf24" stroke-width="4" />
+                  <text x="22" y="36" fill="#eef6ff" font-size="18" font-weight="850">1</text>
+                  <text x="78" y="36" fill="#eef6ff" font-size="18" font-weight="850">2</text>
+                  <text x="132" y="36" fill="#eef6ff" font-size="18" font-weight="850">3</text>
+                  <text x="188" y="36" fill="#eef6ff" font-size="18" font-weight="850">4</text>
+                  <text x="22" y="91" fill="#eef6ff" font-size="18" font-weight="850">5</text>
+                  <text x="78" y="91" fill="#eef6ff" font-size="18" font-weight="850">6</text>
+                  <text x="132" y="91" fill="#eef6ff" font-size="18" font-weight="850">7</text>
+                  <text x="188" y="91" fill="#eef6ff" font-size="18" font-weight="850">8</text>
+                  <text x="18" y="146" fill="#eef6ff" font-size="18" font-weight="850">9</text>
+                  <text x="73" y="146" fill="#eef6ff" font-size="18" font-weight="850">10</text>
+                  <text x="128" y="146" fill="#eef6ff" font-size="18" font-weight="850">11</text>
+                  <text x="183" y="146" fill="#eef6ff" font-size="18" font-weight="850">12</text>
+                  <text x="18" y="201" fill="#eef6ff" font-size="18" font-weight="850">13</text>
+                  <text x="73" y="201" fill="#eef6ff" font-size="18" font-weight="850">14</text>
+                  <text x="128" y="201" fill="#eef6ff" font-size="18" font-weight="850">15</text>
+                  <text x="183" y="201" fill="#eef6ff" font-size="18" font-weight="850">16</text>
+                </g>
+
+                <path d="M320 222 H386" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow3)" />
+                <text x="326" y="196" fill="#67e8f9" font-size="14" font-weight="850">切成 2 x 2 小块</text>
+
+                <g transform="translate(420,102)">
+                  <rect x="0" y="0" width="188" height="86" fill="#143521" stroke="#86efac" />
+                  <rect x="224" y="0" width="188" height="86" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="126" width="188" height="86" fill="#143521" stroke="#86efac" />
+                  <rect x="224" y="126" width="188" height="86" fill="#143521" stroke="#86efac" />
+                  <text x="16" y="30" fill="#86efac" font-size="15" font-weight="850">patch 0</text>
+                  <text x="16" y="60" fill="#eef6ff" font-size="18">[[1, 2], [5, 6]]</text>
+                  <text x="240" y="30" fill="#86efac" font-size="15" font-weight="850">patch 1</text>
+                  <text x="240" y="60" fill="#eef6ff" font-size="18">[[3, 4], [7, 8]]</text>
+                  <text x="16" y="156" fill="#86efac" font-size="15" font-weight="850">patch 2</text>
+                  <text x="16" y="186" fill="#eef6ff" font-size="18">[[9, 10], [13, 14]]</text>
+                  <text x="240" y="156" fill="#86efac" font-size="15" font-weight="850">patch 3</text>
+                  <text x="240" y="186" fill="#eef6ff" font-size="18">[[11, 12], [15, 16]]</text>
+                </g>
+
+                <text x="420" y="358" fill="#9fb0c1" font-size="15">顺序通常是从左到右、从上到下：左上、右上、左下、右下。</text>
+              </svg>
+            </div>
+
+            <p>
+              接下来把每个 <code>2 x 2</code> patch 展平成一行。因为 <code>C = 1</code> 且 <code>P = 2</code>，所以每个 patch 展平后长度是：
+            </p>
+            <div class="formula">C * P * P = 1 * 2 * 2 = 4</div>
+            <pre><code>patches[0] =
+[[ 1,  2,  5,  6],
+ [ 3,  4,  7,  8],
+ [ 9, 10, 13, 14],
+ [11, 12, 15, 16]]
+
+patches.shape = [1, 4, 4]
+# 含义：[B, num_patches, C * P * P]</code></pre>
+          </section>
+
+          <section id="unfold">
+            <h2>6. unfold 做了什么</h2>
+            <p>
+              PyTorch 里可以用 <code>unfold</code> 从一个维度上滑动取窗口。它的基本形式是：
+            </p>
+            <div class="formula">tensor.unfold(dimension, size, step)</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>参数</th>
+                    <th>含义</th>
+                    <th>在切 patch 里的对应关系</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>dimension</code></td>
+                    <td>沿着哪个维度切</td>
+                    <td><code>2</code> 表示高度 <code>H</code>，<code>3</code> 表示宽度 <code>W</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>size</code></td>
+                    <td>每次取多大的窗口</td>
+                    <td>patch 大小。这里是 <code>2</code>，表示每次取 2 行或 2 列。</td>
+                  </tr>
+                  <tr>
+                    <td><code>step</code></td>
+                    <td>窗口每次移动多少</td>
+                    <td>这里也是 <code>2</code>，表示不重叠地切 patch。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <pre><code>patch_size = 2
+
+patches_6d = image.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
+
+print(patches_6d.shape)
+# torch.Size([1, 1, 2, 2, 2, 2])</code></pre>
+
+            <p>
+              这个 <code>[1, 1, 2, 2, 2, 2]</code> 看起来抽象，但按维度标签写清楚就很直观：
+            </p>
+            <div class="formula">patches_6d.shape = [B, C, patch_rows, patch_cols, patch_h, patch_w]</div>
+            <ul>
+              <li><code>B = 1</code>：还是一张图。</li>
+              <li><code>C = 1</code>：还是一个通道。</li>
+              <li><code>patch_rows = 2</code>：高度方向切出 2 行 patch。</li>
+              <li><code>patch_cols = 2</code>：宽度方向切出 2 列 patch。</li>
+              <li><code>patch_h = 2</code>，<code>patch_w = 2</code>：每个 patch 内部是 2 x 2。</li>
+            </ul>
+
+            <div class="callout green">
+              <p>
+                <strong>关键点：</strong><code>unfold</code> 不是把图片变成 embedding，它只是把原始像素按窗口取出来，形成“patch 的网格”。
+              </p>
+            </div>
+          </section>
+
+          <section id="unfold-qa">
+            <h2>7. unfold 追问澄清</h2>
+            <p class="lead">
+              你问得很关键：<code>patch_rows</code>、<code>patch_h</code>、<code>unfold</code> 的关系如果没拆清楚，后面 patch embedding 一定会混。
+            </p>
+
+            <h3>7.1 这行代码到底在干嘛</h3>
+            <pre><code>patches_6d = image.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)</code></pre>
+            <p>
+              假设 <code>image.shape = [B, C, H, W]</code>。在 PyTorch 里，这 4 个维度编号是：
+            </p>
+            <div class="formula">第 0 维 = B， 第 1 维 = C， 第 2 维 = H， 第 3 维 = W</div>
+            <p>
+              所以第一个 <code>unfold(2, patch_size, patch_size)</code> 的意思是：沿着高度 <code>H</code> 这个维度切窗口。它还没有切宽度，只是先把图片按高度方向分段。
+            </p>
+            <pre><code>after_height = image.unfold(2, patch_size, patch_size)
+
+# 如果 image.shape = [1, 1, 4, 4]，patch_size = 2
+after_height.shape = [1, 1, 2, 4, 2]
+
+# 按含义写：
+after_height.shape = [B, C, patch_rows, W, patch_h]</code></pre>
+            <p>
+              注意这里：宽度 <code>W</code> 还在，说明现在只是“把高度切成几段”，还没有形成完整的二维 patch。
+            </p>
+            <p>
+              第二个 <code>unfold(3, patch_size, patch_size)</code> 的意思是：在当前张量上，沿着第 3 维继续切。此时第 3 维仍然是宽度 <code>W</code>，所以它负责把宽度也切成窗口。
+            </p>
+            <pre><code>patches_6d = after_height.unfold(3, patch_size, patch_size)
+
+patches_6d.shape = [1, 1, 2, 2, 2, 2]
+
+# 按含义写：
+patches_6d.shape = [B, C, patch_rows, patch_cols, patch_h, patch_w]</code></pre>
+
+            <div class="callout">
+              <p>
+                <strong>一句话：</strong>第一个 <code>unfold</code> 切高度，第二个 <code>unfold</code> 切宽度。两个都做完后，才得到真正的 patch 网格。
+              </p>
+            </div>
+
+            <h3>7.2 patch_rows 和 patch_h 不是同一个东西</h3>
+            <p>
+              <code>patch_rows</code> 表示“高度方向切出了几排 patch”；<code>patch_h</code> 表示“每个 patch 自己有多高”。一个是数量，一个是尺寸。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>它回答的问题</th>
+                    <th>例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>patch_h</code></td>
+                    <td>每个 patch 高多少个像素？</td>
+                    <td>如果你设 <code>patch_h = 4</code>，每个 patch 就占 4 行像素。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch_rows</code></td>
+                    <td>整张图片在高度方向能切出几排 patch？</td>
+                    <td>如果 <code>H = 8</code> 且 <code>patch_h = 4</code>，就能切出 2 排。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以你问“如果高度是 8，那么一个 patch 的高就是 4 吗？”答案是：<strong>不是由高度 8 自动决定的，而是由你传给 <code>unfold</code> 的 <code>size</code> 决定的。</strong>
+            </p>
+            <div class="formula">patch_rows = floor((H - patch_h) / stride_h) + 1</div>
+            <p>
+              如果不重叠切 patch，通常 <code>stride_h = patch_h</code>。这时如果刚好整除，就可以简单理解为：
+            </p>
+            <div class="formula">patch_rows = H / patch_h</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>图片高度 H</th>
+                    <th>每个 patch 的高度 patch_h</th>
+                    <th>移动步长 stride_h</th>
+                    <th>切出几排 patch_rows</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>8</td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>2 排：第 0-3 行、第 4-7 行</td>
+                  </tr>
+                  <tr>
+                    <td>8</td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>4 排：0-1、2-3、4-5、6-7</td>
+                  </tr>
+                  <tr>
+                    <td>8</td>
+                    <td>4</td>
+                    <td>2</td>
+                    <td>3 排：0-3、2-5、4-7，这种是重叠窗口</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>7.3 长方形 patch 怎么办</h3>
+            <p>
+              之前为了简单，我们写 <code>patch_size</code>，默认 patch 是正方形，比如 <code>4 x 4</code>。但这不是强制的。你完全可以用长方形 patch。
+            </p>
+            <pre><code>patch_h = 4
+patch_w = 3
+stride_h = 4
+stride_w = 3
+
+patches_6d = image.unfold(2, patch_h, stride_h).unfold(3, patch_w, stride_w)</code></pre>
+            <p>
+              如果 <code>image.shape = [1, 3, 8, 12]</code>，也就是 1 张 RGB 图片，高 8，宽 12：
+            </p>
+            <div class="formula">patch_rows = 8 / 4 = 2</div>
+            <div class="formula">patch_cols = 12 / 3 = 4</div>
+            <div class="formula">patches_6d.shape = [1, 3, 2, 4, 4, 3]</div>
+            <p>
+              按含义写就是：
+            </p>
+            <div class="formula">[B, C, patch_rows, patch_cols, patch_h, patch_w]</div>
+            <p>
+              每个 patch 展平后的长度也要跟着变：
+            </p>
+            <div class="formula">patch_dim = C * patch_h * patch_w = 3 * 4 * 3 = 36</div>
+
+            <h3>7.4 unfold 是在指定策略，还是已经执行切 patch</h3>
+            <p>
+              两者都可以这样理解，但要分清层次：
+            </p>
+            <ul>
+              <li>从代码语义上看，<code>unfold(2, patch_h, stride_h)</code> 指定了沿高度怎么切：窗口多高、每次移动几行。</li>
+              <li>从张量结果上看，它已经返回了一个新的张量视图，你可以通过索引直接拿到每个 patch 的数值。</li>
+              <li>从底层实现上看，PyTorch 通常不会立刻复制所有像素，而是返回一个 view；但对学习 shape 来说，你可以把它理解为“已经把 patch 取出来并组织好了”。</li>
+            </ul>
+            <pre><code># 这个索引就能拿到左上角 patch 的原始数字
+patches_6d[0, 0, 0, 0]
+
+# 对 4 x 4 的小例子，结果是：
+[[1, 2],
+ [5, 6]]</code></pre>
+
+            <div class="callout green">
+              <p>
+                <strong>最终收口：</strong><code>patch_h / patch_w</code> 是你选择的切块尺寸；<code>patch_rows / patch_cols</code> 是根据图片大小、切块尺寸和移动步长算出来的 patch 网格数量。
+              </p>
+            </div>
+          </section>
+
+          <section id="reorder">
+            <h2>8. permute 与 reshape</h2>
+            <p>
+              <code>unfold</code> 之后的维度顺序是：
+            </p>
+            <div class="formula">[B, C, patch_rows, patch_cols, patch_h, patch_w]</div>
+            <p>
+              但我们想要的是“第 2 个维度就是 patch 序列”。也就是说，我们希望先把 patch 的行列位置放到前面，再把每个 patch 内部的通道和像素压成一行：
+            </p>
+            <div class="formula">[B, patch_rows, patch_cols, C, patch_h, patch_w]</div>
+
+            <pre><code>patches_ordered = patches_6d.permute(0, 2, 3, 1, 4, 5)
+
+print(patches_ordered.shape)
+# torch.Size([1, 2, 2, 1, 2, 2])</code></pre>
+
+            <p>
+              <code>permute(0, 2, 3, 1, 4, 5)</code> 的意思是：按照新的顺序重新排列维度。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>新位置</th>
+                    <th>拿原来的哪个维度</th>
+                    <th>结果含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>第 0 维</td>
+                    <td>原第 0 维</td>
+                    <td><code>B</code>，batch 不动。</td>
+                  </tr>
+                  <tr>
+                    <td>第 1 维</td>
+                    <td>原第 2 维</td>
+                    <td><code>patch_rows</code>，patch 在高度方向的行号。</td>
+                  </tr>
+                  <tr>
+                    <td>第 2 维</td>
+                    <td>原第 3 维</td>
+                    <td><code>patch_cols</code>，patch 在宽度方向的列号。</td>
+                  </tr>
+                  <tr>
+                    <td>第 3 维</td>
+                    <td>原第 1 维</td>
+                    <td><code>C</code>，通道放进每个 patch 内部。</td>
+                  </tr>
+                  <tr>
+                    <td>第 4 / 5 维</td>
+                    <td>原第 4 / 5 维</td>
+                    <td><code>patch_h</code> 和 <code>patch_w</code>，patch 内部像素位置。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              最后把 <code>patch_rows</code> 和 <code>patch_cols</code> 合并成 <code>num_patches</code>，再把 <code>C</code>、<code>patch_h</code>、<code>patch_w</code> 合并成每个 patch 的一行数字：
+            </p>
+            <pre><code>B, C, H, W = image.shape
+num_patches = (H // patch_size) * (W // patch_size)
+patch_dim = C * patch_size * patch_size
+
+patches = patches_ordered.reshape(B, num_patches, patch_dim)
+
+print(patches.shape)
+# torch.Size([1, 4, 4])</code></pre>
+
+            <div class="callout amber">
+              <p>
+                <strong>不要混淆：</strong><code>permute</code> 只是换维度顺序；<code>reshape</code> 是把相邻维度合并成我们想要的形状。到这里仍然没有可学习参数，也还没有 Linear。
+              </p>
+            </div>
+          </section>
+
+          <section id="patch-embedding">
+            <h2>9. Step 03：Patch Embedding</h2>
+            <p class="lead">
+              到目前为止，patch 只是原始像素数字。Patch Embedding 的作用是：把每个展平后的 patch 向量，转换成 Transformer 内部统一使用的隐藏向量。
+            </p>
+            <p>
+              上一步我们得到了：
+            </p>
+            <div class="formula">patches.shape = [B, num_patches, patch_dim]</div>
+            <p>
+              其中：
+            </p>
+            <ul>
+              <li><code>B</code>：batch size，一次处理几张图。</li>
+              <li><code>num_patches</code>：一张图切出了多少个 patch。</li>
+              <li><code>patch_dim</code>：每个 patch 展平后的长度，等于 <code>C * patch_h * patch_w</code>。</li>
+            </ul>
+
+            <p>
+              Patch Embedding 用一个线性层完成：
+            </p>
+            <pre><code>patch_projection = nn.Linear(
+    in_features=patch_dim,
+    out_features=embed_dim,
+)
+
+patch_embeddings = patch_projection(patches)</code></pre>
+            <p>
+              输出形状是：
+            </p>
+            <div class="formula">patch_embeddings.shape = [B, num_patches, embed_dim]</div>
+
+            <div class="callout">
+              <p>
+                <strong>关键边界：</strong>切 patch 和展平没有可学习参数；Patch Embedding 里的 <code>Linear</code> 有可学习参数。以后训练 ViT 时，这个 Linear 的 weight 和 bias 会被 loss 通过反向传播更新。
+              </p>
+            </div>
+
+            <div class="diagram" aria-label="Patch 序列经过 Linear 变成 embedding 序列">
+              <svg viewBox="0 0 980 360" role="img">
+                <defs>
+                  <marker id="arrow4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="360" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">从原始 patch 数字到 patch embedding</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">Linear 只改变最后一维：patch_dim -> embed_dim。B 和 num_patches 不变。</text>
+
+                <g transform="translate(46,118)">
+                  <rect x="0" y="0" width="238" height="34" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="48" width="238" height="34" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="96" width="238" height="34" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="144" width="238" height="34" fill="#382812" stroke="#fbbf24" />
+                  <text x="18" y="22" fill="#eef6ff" font-size="14">patch 0: patch_dim numbers</text>
+                  <text x="18" y="70" fill="#eef6ff" font-size="14">patch 1: patch_dim numbers</text>
+                  <text x="18" y="118" fill="#eef6ff" font-size="14">patch 2: patch_dim numbers</text>
+                  <text x="18" y="166" fill="#eef6ff" font-size="14">patch 3: patch_dim numbers</text>
+                  <text x="42" y="218" fill="#9fb0c1" font-size="14">[B, num_patches, patch_dim]</text>
+                </g>
+
+                <path d="M320 205 H420" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow4)" />
+                <text x="328" y="179" fill="#67e8f9" font-size="14" font-weight="850">同一个 Linear 作用到每个 patch</text>
+
+                <g transform="translate(454,130)">
+                  <rect x="0" y="0" width="158" height="118" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+                  <text x="30" y="43" fill="#eef6ff" font-size="18" font-weight="850">Linear</text>
+                  <text x="24" y="74" fill="#9fb0c1" font-size="13">patch_dim</text>
+                  <text x="48" y="96" fill="#9fb0c1" font-size="13">-> embed_dim</text>
+                </g>
+
+                <path d="M650 205 H732" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow4)" />
+
+                <g transform="translate(762,118)">
+                  <rect x="0" y="0" width="170" height="34" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="48" width="170" height="34" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="96" width="170" height="34" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="144" width="170" height="34" fill="#143521" stroke="#86efac" />
+                  <text x="20" y="22" fill="#eef6ff" font-size="14">embedding 0</text>
+                  <text x="20" y="70" fill="#eef6ff" font-size="14">embedding 1</text>
+                  <text x="20" y="118" fill="#eef6ff" font-size="14">embedding 2</text>
+                  <text x="20" y="166" fill="#eef6ff" font-size="14">embedding 3</text>
+                  <text x="-12" y="218" fill="#9fb0c1" font-size="14">[B, num_patches, embed_dim]</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section id="linear-detail">
+            <h2>10. Linear 计算细节</h2>
+            <p>
+              假设一个展平后的 patch 是向量 <code>x</code>：
+            </p>
+            <div class="formula">x.shape = [patch_dim]</div>
+            <p>
+              线性层有一组可学习参数：
+            </p>
+            <div class="formula">weight.shape = [embed_dim, patch_dim]</div>
+            <div class="formula">bias.shape = [embed_dim]</div>
+            <p>
+              对输出向量中的第 <code>j</code> 个位置，计算公式是：
+            </p>
+            <div class="formula">embedding_j = x_0 * weight[j, 0] + x_1 * weight[j, 1] + ... + x_(patch_dim-1) * weight[j, patch_dim-1] + bias[j]</div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>符号</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>x_k</code></td>
+                    <td>当前 patch 展平后第 <code>k</code> 个像素数值。RGB 图片里也包括不同通道里的像素。</td>
+                  </tr>
+                  <tr>
+                    <td><code>weight[j, k]</code></td>
+                    <td>Linear 层中第 <code>j</code> 个输出维度对第 <code>k</code> 个输入数字的权重。</td>
+                  </tr>
+                  <tr>
+                    <td><code>bias[j]</code></td>
+                    <td>第 <code>j</code> 个输出维度的偏置。</td>
+                  </tr>
+                  <tr>
+                    <td><code>embedding_j</code></td>
+                    <td>当前 patch embedding 向量的第 <code>j</code> 个数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>10.1 一个极小例子</h3>
+            <p>
+              假设当前 patch 展平后是：
+            </p>
+            <div class="formula">x = [1, 2, 5, 6]</div>
+            <p>
+              如果我们设置 <code>embed_dim = 3</code>，那么 Linear 会把长度为 4 的 patch 向量，变成长度为 3 的 embedding 向量：
+            </p>
+            <div class="formula">[1, 2, 5, 6] -> [e_0, e_1, e_2]</div>
+            <p>
+              比如第 0 个输出维度可以这样算：
+            </p>
+            <pre><code>w_0 = [0.1, 0.2, 0.0, -0.1]
+b_0 = 0.0
+
+e_0 = 1 * 0.1 + 2 * 0.2 + 5 * 0.0 + 6 * (-0.1) + 0.0
+    = -0.1</code></pre>
+            <p>
+              第 1、第 2 个输出维度也有各自的一行权重。也就是说，<code>embed_dim = 3</code> 时，Linear 里会有 3 行权重，每一行负责算出 embedding 的一个位置。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>注意：</strong><code>embed_dim</code> 不是图片天然自带的属性，而是模型设计者选择的隐藏向量维度。后面的 Transformer Block 会一直使用这个维度。
+              </p>
+            </div>
+
+            <h3>10.2 Linear 作用在哪个维度</h3>
+            <p>
+              当输入是三维张量 <code>[B, num_patches, patch_dim]</code> 时，<code>nn.Linear(patch_dim, embed_dim)</code> 只处理最后一维。
+            </p>
+            <pre><code>patches.shape = [1, 4, 4]
+patch_projection = nn.Linear(4, 6)
+
+patch_embeddings = patch_projection(patches)
+
+patch_embeddings.shape = [1, 4, 6]</code></pre>
+            <p>
+              这里 <code>B = 1</code> 没变，<code>num_patches = 4</code> 也没变。只有最后一维从 <code>4</code> 变成 <code>6</code>。
+            </p>
+          </section>
+
+          <section id="token-compare">
+            <h2>11. 和 Token Embedding 对比</h2>
+            <p>
+              你可以把 patch embedding 和之前学过的 token embedding 放在一起理解，但它们的入口不一样。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对比项</th>
+                    <th>文本 Token Embedding</th>
+                    <th>图像 Patch Embedding</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>输入是什么</td>
+                    <td>离散的 token id，例如 <code>318</code>。</td>
+                    <td>连续的像素向量，例如 <code>[1, 2, 5, 6]</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>怎么变成向量</td>
+                    <td>用 token id 去 embedding 表里查一行。</td>
+                    <td>用 Linear 对展平 patch 做矩阵乘法。</td>
+                  </tr>
+                  <tr>
+                    <td>可学习参数</td>
+                    <td><code>nn.Embedding(vocab_size, embed_dim)</code> 的向量表。</td>
+                    <td><code>nn.Linear(patch_dim, embed_dim)</code> 的 weight 和 bias。</td>
+                  </tr>
+                  <tr>
+                    <td>输出形状</td>
+                    <td><code>[B, seq_len, embed_dim]</code></td>
+                    <td><code>[B, num_patches, embed_dim]</code></td>
+                  </tr>
+                  <tr>
+                    <td>共同点</td>
+                    <td colspan="2">最终都得到一串长度为 <code>embed_dim</code> 的向量，后面就可以进入 Transformer。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>最重要的类比：</strong>文本里一个 token 变成一个 token vector；图像里一个 patch 变成一个 patch vector。ViT 正是利用这个类比，把图片也送进 Transformer。
+              </p>
+            </div>
+          </section>
+
+          <section id="position-embedding">
+            <h2>12. Step 04：Position Embedding</h2>
+            <p class="lead">
+              Patch Embedding 让模型知道“每个 patch 里有什么”。Position Embedding 让模型知道“这个 patch 原来在图片的哪个位置”。
+            </p>
+            <p>
+              上一步的输出是：
+            </p>
+            <div class="formula">patch_embeddings.shape = [B, num_patches, embed_dim]</div>
+            <p>
+              但如果只把这些 patch 向量丢进 Transformer，模型看到的是一串向量。Self-Attention 本身主要比较向量之间的关系，它不会天然知道“第 0 个 patch 是左上角，第 1 个 patch 是右上角”。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>核心问题：</strong>patch embedding 表示内容，position embedding 表示位置。两者相加后，一个 patch 向量才同时带有“是什么”和“在哪里”。
+              </p>
+            </div>
+
+            <h3>12.1 位置 id 是什么</h3>
+            <p>
+              如果一张图被切成 <code>4</code> 个 patch，通常会按从左到右、从上到下的顺序编号：
+            </p>
+            <div class="formula">position_ids = [0, 1, 2, 3]</div>
+            <p>
+              这些 id 不是像素值，也不是模型算出来的特征。它们只是人为约定的序号，用来告诉模型：这 4 个 patch 在序列里分别处于哪个位置。
+            </p>
+
+            <div class="diagram" aria-label="Patch 位置 id 与位置向量">
+              <svg viewBox="0 0 980 360" role="img">
+                <defs>
+                  <marker id="arrow5" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="360" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">Position Embedding：给每个 patch 加上位置身份</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">位置 id 查表得到位置向量，再与 patch embedding 相加。</text>
+
+                <g transform="translate(62,122)">
+                  <rect x="0" y="0" width="116" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="136" y="0" width="116" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="0" y="92" width="116" height="70" fill="#143521" stroke="#86efac" />
+                  <rect x="136" y="92" width="116" height="70" fill="#143521" stroke="#86efac" />
+                  <text x="34" y="31" fill="#eef6ff" font-size="18" font-weight="850">patch</text>
+                  <text x="50" y="55" fill="#86efac" font-size="18" font-weight="850">0</text>
+                  <text x="170" y="31" fill="#eef6ff" font-size="18" font-weight="850">patch</text>
+                  <text x="186" y="55" fill="#86efac" font-size="18" font-weight="850">1</text>
+                  <text x="34" y="123" fill="#eef6ff" font-size="18" font-weight="850">patch</text>
+                  <text x="50" y="147" fill="#86efac" font-size="18" font-weight="850">2</text>
+                  <text x="170" y="123" fill="#eef6ff" font-size="18" font-weight="850">patch</text>
+                  <text x="186" y="147" fill="#86efac" font-size="18" font-weight="850">3</text>
+                  <text x="10" y="204" fill="#9fb0c1" font-size="14">从左到右、从上到下编号</text>
+                </g>
+
+                <path d="M350 205 H426" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow5)" />
+                <text x="350" y="180" fill="#67e8f9" font-size="14" font-weight="850">查 position embedding 表</text>
+
+                <g transform="translate(460,126)">
+                  <rect x="0" y="0" width="196" height="38" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="48" width="196" height="38" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="96" width="196" height="38" fill="#382812" stroke="#fbbf24" />
+                  <rect x="0" y="144" width="196" height="38" fill="#382812" stroke="#fbbf24" />
+                  <text x="18" y="25" fill="#eef6ff" font-size="14">pos 0 vector</text>
+                  <text x="18" y="73" fill="#eef6ff" font-size="14">pos 1 vector</text>
+                  <text x="18" y="121" fill="#eef6ff" font-size="14">pos 2 vector</text>
+                  <text x="18" y="169" fill="#eef6ff" font-size="14">pos 3 vector</text>
+                </g>
+
+                <path d="M686 205 H754" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow5)" />
+                <text x="694" y="180" fill="#67e8f9" font-size="14" font-weight="850">相加</text>
+
+                <g transform="translate(786,126)">
+                  <rect x="0" y="0" width="140" height="38" fill="#0e3440" stroke="#67e8f9" />
+                  <rect x="0" y="48" width="140" height="38" fill="#0e3440" stroke="#67e8f9" />
+                  <rect x="0" y="96" width="140" height="38" fill="#0e3440" stroke="#67e8f9" />
+                  <rect x="0" y="144" width="140" height="38" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="18" y="25" fill="#eef6ff" font-size="14">input 0</text>
+                  <text x="18" y="73" fill="#eef6ff" font-size="14">input 1</text>
+                  <text x="18" y="121" fill="#eef6ff" font-size="14">input 2</text>
+                  <text x="18" y="169" fill="#eef6ff" font-size="14">input 3</text>
+                </g>
+              </svg>
+            </div>
+
+            <h3>12.2 位置向量表是什么</h3>
+            <p>
+              位置 id 本身只是整数。模型真正使用的是一张可学习的位置向量表：
+            </p>
+            <div class="formula">position_embedding_table.shape = [num_patches, embed_dim]</div>
+            <p>
+              如果 <code>num_patches = 4</code>，<code>embed_dim = 6</code>：
+            </p>
+            <pre><code>position_embedding_table.shape = [4, 6]
+
+position_ids = [0, 1, 2, 3]
+position_vectors = position_embedding_table[position_ids]
+
+position_vectors.shape = [4, 6]</code></pre>
+            <p>
+              加到 batch 里时，可以把它看成：
+            </p>
+            <div class="formula">position_vectors.shape = [1, num_patches, embed_dim]</div>
+            <p>
+              然后与 patch embedding 相加：
+            </p>
+            <pre><code>vit_input = patch_embeddings + position_vectors
+
+patch_embeddings.shape = [B, num_patches, embed_dim]
+position_vectors.shape = [1, num_patches, embed_dim]
+vit_input.shape = [B, num_patches, embed_dim]</code></pre>
+
+            <div class="callout green">
+              <p>
+                <strong>为什么能相加：</strong>二者最后两维完全一致，都是 <code>[num_patches, embed_dim]</code>。相加不是拼接，不会改变 shape，只是把位置向量的信息叠加到每个 patch 向量里。
+              </p>
+            </div>
+          </section>
+
+          <section id="cls-token">
+            <h2>13. CLS token</h2>
+            <p class="lead">
+              有些 ViT 会在 patch 序列最前面加一个特殊向量，叫 <code>CLS token</code>。CLS 是 classification 的缩写，可以理解为“整张图片的汇总位置”。
+            </p>
+            <p>
+              这个 <code>CLS token</code> 不是从图片切出来的 patch。它是模型里一个可学习的向量，形状通常是：
+            </p>
+            <div class="formula">cls_token.shape = [1, 1, embed_dim]</div>
+            <p>
+              对 batch 扩展后：
+            </p>
+            <div class="formula">cls_tokens.shape = [B, 1, embed_dim]</div>
+            <p>
+              然后把它拼到 patch embeddings 前面：
+            </p>
+            <pre><code>tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)
+
+patch_embeddings.shape = [B, num_patches, embed_dim]
+cls_tokens.shape = [B, 1, embed_dim]
+
+tokens.shape = [B, 1 + num_patches, embed_dim]</code></pre>
+
+            <h3>13.1 为什么需要 CLS token</h3>
+            <p>
+              Transformer 会让每个位置通过 Self-Attention 和其他位置交换信息。加入 <code>CLS token</code> 后，它也参与 attention。经过多层 Transformer 后，CLS 位置就可以吸收其他 patch 的信息，成为整张图片的汇总表示。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>位置</th>
+                    <th>来源</th>
+                    <th>作用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>CLS</code></td>
+                    <td>模型中的可学习向量，不来自图片像素。</td>
+                    <td>经过 Transformer 后，作为整张图的汇总向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch 0..N-1</code></td>
+                    <td>图片切 patch 后经过 Linear 得到。</td>
+                    <td>保留局部图像区域的信息。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              如果任务是分类，后面通常会取 Transformer 输出里的 CLS 位置：
+            </p>
+            <div class="formula">image_vector = final_hidden_states[:, 0, :]</div>
+            <p>
+              这里的 <code>0</code> 表示序列第一个位置，也就是 CLS token 位置。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>注意边界：</strong>不是所有视觉模型都必须用 CLS token。有些模型会对所有 patch 的输出做平均池化。但经典 ViT 经常使用 CLS token 作为分类汇总位置。
+              </p>
+            </div>
+          </section>
+
+          <section id="vit-input">
+            <h2>14. ViT 最终输入</h2>
+            <p>
+              如果不使用 CLS token，进入 ViT Encoder 前通常是：
+            </p>
+            <div class="formula">vit_input.shape = [B, num_patches, embed_dim]</div>
+            <p>
+              如果使用 CLS token，就要多一个位置：
+            </p>
+            <div class="formula">vit_input.shape = [B, 1 + num_patches, embed_dim]</div>
+            <p>
+              这时 position embedding 表也要多一行，因为 CLS token 也需要一个位置向量：
+            </p>
+            <div class="formula">position_embedding_table.shape = [1 + num_patches, embed_dim]</div>
+
+            <pre><code># 1. patch embeddings
+patch_embeddings.shape = [B, num_patches, embed_dim]
+
+# 2. prepend CLS token
+tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)
+tokens.shape = [B, 1 + num_patches, embed_dim]
+
+# 3. add position embeddings
+position_embeddings.shape = [1, 1 + num_patches, embed_dim]
+vit_input = tokens + position_embeddings
+vit_input.shape = [B, 1 + num_patches, embed_dim]</code></pre>
+
+            <div class="diagram" aria-label="ViT 输入序列包含 CLS token、patch token 和位置向量">
+              <svg viewBox="0 0 980 330" role="img">
+                <defs>
+                  <marker id="arrow6" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="330" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">进入 ViT Encoder 前的序列</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">CLS token 与 patch token 排成一串，每个位置都加上自己的 position embedding。</text>
+
+                <g transform="translate(50,128)">
+                  <rect x="0" y="0" width="110" height="58" fill="#0e3440" stroke="#67e8f9" />
+                  <rect x="128" y="0" width="110" height="58" fill="#143521" stroke="#86efac" />
+                  <rect x="256" y="0" width="110" height="58" fill="#143521" stroke="#86efac" />
+                  <rect x="384" y="0" width="110" height="58" fill="#143521" stroke="#86efac" />
+                  <rect x="512" y="0" width="110" height="58" fill="#143521" stroke="#86efac" />
+                  <text x="30" y="36" fill="#eef6ff" font-size="17" font-weight="850">CLS</text>
+                  <text x="154" y="36" fill="#eef6ff" font-size="17" font-weight="850">P0</text>
+                  <text x="282" y="36" fill="#eef6ff" font-size="17" font-weight="850">P1</text>
+                  <text x="410" y="36" fill="#eef6ff" font-size="17" font-weight="850">P2</text>
+                  <text x="538" y="36" fill="#eef6ff" font-size="17" font-weight="850">P3</text>
+                  <text x="130" y="96" fill="#9fb0c1" font-size="14">tokens.shape = [B, 1 + num_patches, embed_dim]</text>
+                </g>
+
+                <path d="M706 156 H784" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow6)" />
+                <text x="708" y="134" fill="#67e8f9" font-size="14" font-weight="850">+ position</text>
+
+                <g transform="translate(814,128)">
+                  <rect x="0" y="0" width="118" height="58" fill="#382812" stroke="#fbbf24" />
+                  <text x="20" y="28" fill="#eef6ff" font-size="15" font-weight="850">ViT</text>
+                  <text x="20" y="48" fill="#eef6ff" font-size="15" font-weight="850">Encoder</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section id="shape-demo">
+            <h2>15. Step 05：最小 PyTorch Shape Demo</h2>
+            <p class="lead">
+              前面几节是概念拆解。现在把整条链路写成一个可运行脚本，只打印 shape 和少量关键数值，不训练、不加载真实模型。
+            </p>
+            <p>
+              新增脚本：
+            </p>
+            <pre><code>experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py</code></pre>
+            <p>
+              运行命令：
+            </p>
+            <pre><code>.venv/bin/python experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py</code></pre>
+
+            <div class="callout">
+              <p>
+                <strong>学习目标：</strong>这段代码不是为了写出完整 ViT，而是为了确认每一步 shape 为什么这样变化。只要你能解释输出里的每个 shape，Day8 的入口部分就算扎实了。
+              </p>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>步骤</th>
+                    <th>代码动作</th>
+                    <th>输出 shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td>构造小图片</td>
+                    <td><code>[1, 1, 4, 4]</code></td>
+                    <td>1 张灰度图，高 4、宽 4。</td>
+                  </tr>
+                  <tr>
+                    <td>2</td>
+                    <td><code>unfold</code> 切 patch</td>
+                    <td><code>[1, 1, 2, 2, 2, 2]</code></td>
+                    <td>高度 2 排 patch，宽度 2 列 patch，每个 patch 是 2 x 2。</td>
+                  </tr>
+                  <tr>
+                    <td>3</td>
+                    <td><code>permute + reshape</code></td>
+                    <td><code>[1, 4, 4]</code></td>
+                    <td>4 个 patch，每个 patch 展平成 4 个数。</td>
+                  </tr>
+                  <tr>
+                    <td>4</td>
+                    <td><code>nn.Linear(4, 6)</code></td>
+                    <td><code>[1, 4, 6]</code></td>
+                    <td>每个 patch 从长度 4 的像素行变成长度 6 的 embedding。</td>
+                  </tr>
+                  <tr>
+                    <td>5</td>
+                    <td>拼接 <code>CLS token</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>4 个 patch token 前面加 1 个汇总 token。</td>
+                  </tr>
+                  <tr>
+                    <td>6</td>
+                    <td>加 <code>position embedding</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>相加不改变 shape，只把位置信息叠加进去。</td>
+                  </tr>
+                  <tr>
+                    <td>7</td>
+                    <td>一层 <code>TransformerEncoderLayer</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>token 之间交换信息，但序列长度和 embedding 维度保持不变。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="demo-output">
+            <h2>16. Demo 输出解读</h2>
+            <p>
+              这次运行的核心输出如下：
+            </p>
+            <pre><code>image.shape = (1, 1, 4, 4)
+
+after_height.shape = (1, 1, 2, 4, 2)
+patches_6d.shape = (1, 1, 2, 2, 2, 2)
+
+patches.shape = (1, 4, 4)
+patch_embeddings.shape = (1, 4, 6)
+
+cls_tokens.shape = (1, 1, 6)
+tokens.shape = (1, 5, 6)
+
+position_embeddings.shape = (1, 5, 6)
+vit_input.shape = (1, 5, 6)
+
+encoder_output.shape = (1, 5, 6)
+cls_output.shape = (1, 6)</code></pre>
+
+            <h3>16.1 为什么 after_height 是五维</h3>
+            <p>
+              第一次 <code>unfold</code> 只切高度，还没有切宽度：
+            </p>
+            <div class="formula">after_height.shape = [B, C, patch_rows, W, patch_h]</div>
+            <p>
+              对当前例子就是：
+            </p>
+            <div class="formula">[1, 1, 2, 4, 2]</div>
+            <p>
+              它表示：高度方向已经切成 2 排窗口；但宽度仍然是原来的 <code>4</code>，所以还不是最终 patch 网格。
+            </p>
+
+            <h3>16.2 为什么 patches 是 [1, 4, 4]</h3>
+            <p>
+              当前图片是 <code>4 x 4</code>，patch 是 <code>2 x 2</code>：
+            </p>
+            <div class="formula">num_patches = (4 / 2) * (4 / 2) = 4</div>
+            <div class="formula">patch_dim = C * patch_h * patch_w = 1 * 2 * 2 = 4</div>
+            <p>
+              所以整理成序列后：
+            </p>
+            <div class="formula">patches.shape = [1, 4, 4]</div>
+            <p>
+              运行输出里也打印了具体 patch 内容：
+            </p>
+            <pre><code>patches[0] =
+[[ 1.,  2.,  5.,  6.],
+ [ 3.,  4.,  7.,  8.],
+ [ 9., 10., 13., 14.],
+ [11., 12., 15., 16.]]</code></pre>
+
+            <h3>16.3 为什么 vit_input 是 [1, 5, 6]</h3>
+            <p>
+              <code>patch_embeddings.shape = [1, 4, 6]</code> 表示：1 张图，4 个 patch token，每个 token 是 6 维。
+            </p>
+            <p>
+              加入 <code>CLS token</code> 后，序列长度从 4 变成 5：
+            </p>
+            <div class="formula">tokens.shape = [1, 1 + 4, 6] = [1, 5, 6]</div>
+            <p>
+              再加 <code>position_embeddings.shape = [1, 5, 6]</code>，相加不会改变 shape，所以最终：
+            </p>
+            <div class="formula">vit_input.shape = [1, 5, 6]</div>
+
+            <h3>16.4 为什么 encoder_output 仍然是 [1, 5, 6]</h3>
+            <p>
+              Transformer Encoder Block 的工作是让序列里的 token 互相看见、互相交换信息。它会改变每个 token 向量里的数值，但通常不会改变序列长度和 embedding 维度。
+            </p>
+            <div class="formula">vit_input.shape = [B, S, D]</div>
+            <div class="formula">encoder_output.shape = [B, S, D]</div>
+            <p>
+              当前例子里 <code>B = 1</code>，<code>S = 5</code>，<code>D = 6</code>，所以输出仍然是：
+            </p>
+            <div class="formula">encoder_output.shape = [1, 5, 6]</div>
+            <p>
+              取第 0 个位置，也就是 CLS 位置：
+            </p>
+            <div class="formula">cls_output.shape = [1, 6]</div>
+          </section>
+
+          <section id="code-map">
+            <h2>17. 代码主线</h2>
+            <p>
+              下面是脚本里最核心的几行。你读代码时不要先陷入所有变量名，而是按 shape 流转读。
+            </p>
+            <pre><code># 1. [B, C, H, W]
+image = torch.arange(1, 17, dtype=torch.float32).reshape(1, 1, 4, 4)
+
+# 2. [B, C, patch_rows, patch_cols, patch_h, patch_w]
+patches_6d = image.unfold(2, patch_h, stride_h).unfold(3, patch_w, stride_w)
+
+# 3. [B, num_patches, patch_dim]
+patches_ordered = patches_6d.permute(0, 2, 3, 1, 4, 5)
+patches = patches_ordered.reshape(batch_size, num_patches, patch_dim)
+
+# 4. [B, num_patches, embed_dim]
+patch_projection = nn.Linear(patch_dim, embed_dim)
+patch_embeddings = patch_projection(patches)
+
+# 5. [B, 1 + num_patches, embed_dim]
+tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)
+
+# 6. [B, 1 + num_patches, embed_dim]
+vit_input = tokens + position_embeddings
+
+# 7. [B, 1 + num_patches, embed_dim]
+encoder_block = nn.TransformerEncoderLayer(
+    d_model=embed_dim,
+    nhead=2,
+    dim_feedforward=12,
+    batch_first=True,
+)
+encoder_output = encoder_block(vit_input)
+cls_output = encoder_output[:, 0, :]</code></pre>
+
+            <div class="diagram" aria-label="Day8 shape demo 的完整形状链路">
+              <svg viewBox="0 0 980 360" role="img">
+                <defs>
+                  <marker id="arrow7" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="360" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">Shape Demo 总链路</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">每一步只做一件事，最终得到 ViT Encoder 可以接收的输入序列。</text>
+
+                <g transform="translate(42,128)">
+                  <rect x="0" y="0" width="132" height="64" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="26" y="28" fill="#eef6ff" font-size="15" font-weight="850">Image</text>
+                  <text x="18" y="50" fill="#9fb0c1" font-size="13">[1,1,4,4]</text>
+                </g>
+                <path d="M184 160 H244" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow7)" />
+
+                <g transform="translate(258,128)">
+                  <rect x="0" y="0" width="132" height="64" fill="#143521" stroke="#86efac" />
+                  <text x="24" y="28" fill="#eef6ff" font-size="15" font-weight="850">Patches</text>
+                  <text x="20" y="50" fill="#9fb0c1" font-size="13">[1,4,4]</text>
+                </g>
+                <path d="M400 160 H460" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow7)" />
+
+                <g transform="translate(474,128)">
+                  <rect x="0" y="0" width="132" height="64" fill="#382812" stroke="#fbbf24" />
+                  <text x="16" y="28" fill="#eef6ff" font-size="15" font-weight="850">Projection</text>
+                  <text x="18" y="50" fill="#9fb0c1" font-size="13">[1,4,6]</text>
+                </g>
+                <path d="M616 160 H676" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow7)" />
+
+                <g transform="translate(690,128)">
+                  <rect x="0" y="0" width="132" height="64" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="26" y="28" fill="#eef6ff" font-size="15" font-weight="850">+ CLS</text>
+                  <text x="20" y="50" fill="#9fb0c1" font-size="13">[1,5,6]</text>
+                </g>
+                <path d="M832 160 H892" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow7)" />
+
+                <g transform="translate(672,238)">
+                  <rect x="0" y="0" width="186" height="64" fill="#101720" stroke="#293744" />
+                  <text x="26" y="28" fill="#eef6ff" font-size="15" font-weight="850">+ position</text>
+                  <text x="22" y="50" fill="#9fb0c1" font-size="13">shape still [1,5,6]</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>读代码顺序：</strong>先盯住 shape，再看每一步为什么只改变某些维度。等 shape 稳了，再回来看具体数值。
+              </p>
+            </div>
+          </section>
+
+          <section id="code-walkthrough">
+            <h2>18. Step 06：逐行拆解 demo</h2>
+            <p class="lead">
+              现在不再只看输出，而是反过来读代码。读这类 shape demo 时，最有效的方法是把代码分段：每段只问两个问题，输入 shape 是什么，输出 shape 变成什么。
+            </p>
+
+            <h3>18.1 辅助函数只负责打印</h3>
+            <pre><code>def section(title: str) -> None:
+    print("\n" + "=" * 96)
+    print(title)
+    print("=" * 96)
+
+
+def show_shape(name: str, tensor: torch.Tensor, note: str) -> None:
+    print(f"{name}.shape = {tuple(tensor.shape)}")
+    print(f"{name}.dtype = {tensor.dtype}")
+    print(note)</code></pre>
+            <p>
+              这两个函数不参与模型计算。它们只是为了让输出更容易读：
+            </p>
+            <ul>
+              <li><code>section(...)</code> 打印分隔线。</li>
+              <li><code>show_shape(...)</code> 打印张量 shape、dtype 和解释文字。</li>
+            </ul>
+
+            <h3>18.2 构造图片张量</h3>
+            <pre><code>image = torch.arange(1, 17, dtype=torch.float32).reshape(1, 1, 4, 4)</code></pre>
+            <p>
+              这行代码分两步理解：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>代码</th>
+                    <th>作用</th>
+                    <th>结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>torch.arange(1, 17)</code></td>
+                    <td>生成从 1 到 16 的一维数字序列。</td>
+                    <td><code>[1, 2, ..., 16]</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>reshape(1, 1, 4, 4)</code></td>
+                    <td>把一维数字重新排成图片张量。</td>
+                    <td><code>[B, C, H, W] = [1, 1, 4, 4]</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              这不是读取真实图片，而是故意造一个小数字图片，方便你直接看清 patch 是怎么取数的。
+            </p>
+
+            <h3>18.3 读取基础维度和切 patch 策略</h3>
+            <pre><code>batch_size, channels, height, width = image.shape
+patch_h = 2
+patch_w = 2
+stride_h = 2
+stride_w = 2</code></pre>
+            <p>
+              第一行把 <code>[1, 1, 4, 4]</code> 解包成四个变量，后面计算 <code>num_patches</code> 和 <code>patch_dim</code> 会用到。
+            </p>
+            <p>
+              <code>patch_h = 2</code>、<code>patch_w = 2</code> 表示每个 patch 是 <code>2 x 2</code>；<code>stride_h = 2</code>、<code>stride_w = 2</code> 表示每次移动 2 格，所以 patch 不重叠。
+            </p>
+
+            <h3>18.4 unfold：从图片取出 patch 网格</h3>
+            <pre><code>after_height = image.unfold(2, patch_h, stride_h)
+patches_6d = after_height.unfold(3, patch_w, stride_w)</code></pre>
+            <p>
+              第一行只切高度：
+            </p>
+            <div class="formula">after_height.shape = [B, C, patch_rows, W, patch_h] = [1, 1, 2, 4, 2]</div>
+            <p>
+              第二行再切宽度：
+            </p>
+            <div class="formula">patches_6d.shape = [B, C, patch_rows, patch_cols, patch_h, patch_w] = [1, 1, 2, 2, 2, 2]</div>
+            <p>
+              这一步还没有把 patch 展平成一行，只是把 patch 以网格形式取出来。
+            </p>
+
+            <h3>18.5 permute + reshape：整理成 patch 序列</h3>
+            <pre><code>patches_ordered = patches_6d.permute(0, 2, 3, 1, 4, 5)
+
+patch_rows = height // patch_h
+patch_cols = width // patch_w
+num_patches = patch_rows * patch_cols
+patch_dim = channels * patch_h * patch_w
+
+patches = patches_ordered.reshape(batch_size, num_patches, patch_dim)</code></pre>
+            <p>
+              <code>permute(0, 2, 3, 1, 4, 5)</code> 把维度顺序从：
+            </p>
+            <div class="formula">[B, C, patch_rows, patch_cols, patch_h, patch_w]</div>
+            <p>
+              改成：
+            </p>
+            <div class="formula">[B, patch_rows, patch_cols, C, patch_h, patch_w]</div>
+            <p>
+              这样 patch 的行列位置就排在前面，后面再用 <code>reshape</code> 合并维度：
+            </p>
+            <div class="formula">patch_rows * patch_cols = 2 * 2 = 4</div>
+            <div class="formula">channels * patch_h * patch_w = 1 * 2 * 2 = 4</div>
+            <div class="formula">patches.shape = [1, 4, 4]</div>
+
+            <h3>18.6 Linear：把 patch_dim 变成 embed_dim</h3>
+            <pre><code>embed_dim = 6
+patch_projection = nn.Linear(in_features=patch_dim, out_features=embed_dim)
+
+patch_embeddings = patch_projection(patches)</code></pre>
+            <p>
+              这里 <code>patch_dim = 4</code>，<code>embed_dim = 6</code>，所以这层 Linear 的参数形状是：
+            </p>
+            <div class="formula">patch_projection.weight.shape = [6, 4]</div>
+            <div class="formula">patch_projection.bias.shape = [6]</div>
+            <p>
+              它只改变最后一维：
+            </p>
+            <div class="formula">[1, 4, 4] -> [1, 4, 6]</div>
+
+            <h3>18.7 CLS token 与 position embedding</h3>
+            <pre><code>cls_token = nn.Parameter(torch.full((1, 1, embed_dim), 0.5))
+cls_tokens = cls_token.expand(batch_size, -1, -1)
+
+tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)</code></pre>
+            <p>
+              <code>cls_token</code> 是一个可学习参数，先做成 <code>[1, 1, 6]</code>。当前 batch size 是 1，所以扩展后还是 <code>[1, 1, 6]</code>。
+            </p>
+            <p>
+              <code>torch.cat(..., dim=1)</code> 沿着序列长度这一维拼接，所以：
+            </p>
+            <div class="formula">[1, 1, 6] + [1, 4, 6] -> [1, 5, 6]</div>
+
+            <pre><code>position_embeddings = nn.Parameter(torch.zeros(1, 1 + num_patches, embed_dim))
+vit_input = tokens + position_embeddings</code></pre>
+            <p>
+              <code>position_embeddings</code> 也是可学习参数，shape 是 <code>[1, 5, 6]</code>。它和 <code>tokens</code> 相加后 shape 不变：
+            </p>
+            <div class="formula">vit_input.shape = [1, 5, 6]</div>
+          </section>
+
+          <section id="learnable-params">
+            <h2>19. 哪些是参数</h2>
+            <p>
+              这段 demo 里有些东西只是中间结果，有些东西才是模型参数。这个边界一定要清楚。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>是不是可学习参数</th>
+                    <th>原因</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>image</code></td>
+                    <td>不是</td>
+                    <td>输入数据。它来自图片本身，不是模型要学习的权重。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patches_6d</code> / <code>patches</code></td>
+                    <td>不是</td>
+                    <td>切 patch 和 reshape 得到的中间张量，没有自己的 weight。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch_projection.weight</code></td>
+                    <td>是</td>
+                    <td>Linear 层权重，负责把 patch 像素向量投影到 embedding 空间。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch_projection.bias</code></td>
+                    <td>是</td>
+                    <td>Linear 层偏置，每个输出维度一个 bias。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch_embeddings</code></td>
+                    <td>不是参数本身</td>
+                    <td>它是 Linear 根据 <code>patches</code> 和参数算出来的中间结果。</td>
+                  </tr>
+                  <tr>
+                    <td><code>cls_token</code></td>
+                    <td>是</td>
+                    <td>模型专门学习出来的汇总向量，不来自图片像素。</td>
+                  </tr>
+                  <tr>
+                    <td><code>position_embeddings</code></td>
+                    <td>是</td>
+                    <td>每个位置对应的可学习位置向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>vit_input</code></td>
+                    <td>不是参数本身</td>
+                    <td>它是 token 向量加位置向量后的输入张量，会送进后面的 Transformer。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>和 Day3 类比：</strong><code>patch_projection.weight</code> 就像 MNIST 最后一层 Linear 的 weight，都是可学习矩阵；<code>patch_embeddings</code> 像中间 hidden state，是计算结果，不是长期保存的参数本身。
+              </p>
+            </div>
+          </section>
+
+          <section id="encoder-block">
+            <h2>20. Step 07：最小 Transformer Encoder Block</h2>
+            <p class="lead">
+              现在 <code>vit_input</code> 已经是一个标准 Transformer 输入序列。接下来只接一层 Encoder Block，观察 shape 如何保持不变。
+            </p>
+            <p>
+              脚本新增的核心代码是：
+            </p>
+            <pre><code>num_heads = 2
+dim_feedforward = 12
+
+encoder_block = nn.TransformerEncoderLayer(
+    d_model=embed_dim,
+    nhead=num_heads,
+    dim_feedforward=dim_feedforward,
+    dropout=0.0,
+    activation="gelu",
+    batch_first=True,
+    norm_first=True,
+)
+
+encoder_output = encoder_block(vit_input)
+cls_output = encoder_output[:, 0, :]</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>参数</th>
+                    <th>含义</th>
+                    <th>当前例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>d_model</code></td>
+                    <td>Transformer 内部使用的向量维度，必须等于输入最后一维。</td>
+                    <td><code>d_model = embed_dim = 6</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>nhead</code></td>
+                    <td>multi-head attention 的 head 数量。</td>
+                    <td><code>nhead = 2</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>head_dim</code></td>
+                    <td>每个 head 分到的向量维度。</td>
+                    <td><code>head_dim = 6 / 2 = 3</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>dim_feedforward</code></td>
+                    <td>FFN 中间层维度，通常比 <code>d_model</code> 大。</td>
+                    <td><code>12</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>batch_first=True</code></td>
+                    <td>告诉 PyTorch 输入格式是 <code>[B, S, D]</code>。</td>
+                    <td><code>[1, 5, 6]</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <p>
+                <strong>先抓主线：</strong>Encoder Block 会让 5 个 token 通过 Self-Attention 交换信息，再经过 FFN 处理每个位置。但它的输入输出 shape 都保持 <code>[B, S, D]</code>。
+              </p>
+            </div>
+
+            <div class="diagram" aria-label="ViT input 进入一层 Transformer Encoder Block 后 shape 不变">
+              <svg viewBox="0 0 980 340" role="img">
+                <defs>
+                  <marker id="arrow8" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="980" height="340" fill="#101720" />
+                <text x="34" y="42" fill="#eef6ff" font-size="22" font-weight="850">Encoder Block 改数值，不改外形</text>
+                <text x="34" y="72" fill="#9fb0c1" font-size="15">输入是一串 5 个 6 维 token，输出仍然是一串 5 个 6 维 token。</text>
+
+                <g transform="translate(48,128)">
+                  <rect x="0" y="0" width="170" height="66" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="34" y="29" fill="#eef6ff" font-size="16" font-weight="850">vit_input</text>
+                  <text x="32" y="52" fill="#9fb0c1" font-size="14">[1, 5, 6]</text>
+                </g>
+
+                <path d="M240 160 H318" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow8)" />
+
+                <g transform="translate(348,102)">
+                  <rect x="0" y="0" width="250" height="118" fill="#143521" stroke="#86efac" />
+                  <text x="44" y="34" fill="#eef6ff" font-size="17" font-weight="850">Transformer Encoder</text>
+                  <text x="44" y="62" fill="#9fb0c1" font-size="14">Self-Attention: tokens mix</text>
+                  <text x="44" y="88" fill="#9fb0c1" font-size="14">FFN: each token is transformed</text>
+                </g>
+
+                <path d="M628 160 H706" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow8)" />
+
+                <g transform="translate(736,128)">
+                  <rect x="0" y="0" width="170" height="66" fill="#382812" stroke="#fbbf24" />
+                  <text x="22" y="29" fill="#eef6ff" font-size="16" font-weight="850">encoder_output</text>
+                  <text x="32" y="52" fill="#9fb0c1" font-size="14">[1, 5, 6]</text>
+                </g>
+
+                <text x="356" y="272" fill="#9fb0c1" font-size="14">CLS 位置输出：encoder_output[:, 0, :] -> [1, 6]</text>
+              </svg>
+            </div>
+          </section>
+
+          <section id="encoder-output">
+            <h2>21. Encoder 输出解读</h2>
+            <p>
+              脚本运行后的关键输出是：
+            </p>
+            <pre><code>encoder_block.self_attn.num_heads = 2
+head_dim = embed_dim // num_heads = 6 // 2 = 3
+self_attn.in_proj_weight.shape = (18, 6)
+self_attn.out_proj.weight.shape = (6, 6)
+linear1.weight.shape = (12, 6)
+linear2.weight.shape = (6, 12)
+
+encoder_output.shape = (1, 5, 6)
+cls_output.shape = (1, 6)</code></pre>
+
+            <h3>21.1 为什么 QKV 权重是 (18, 6)</h3>
+            <p>
+              在 PyTorch 的 <code>TransformerEncoderLayer</code> 里，Self-Attention 通常把 Q、K、V 三个投影矩阵打包在一起存：
+            </p>
+            <div class="formula">in_proj_weight.shape = [3 * d_model, d_model]</div>
+            <p>
+              当前 <code>d_model = 6</code>，所以：
+            </p>
+            <div class="formula">3 * d_model = 18</div>
+            <div class="formula">in_proj_weight.shape = [18, 6]</div>
+            <p>
+              这和 Day5 的 <code>qkv_projection = nn.Linear(embed_dim, 3 * embed_dim)</code> 是同一类思想：一次 Linear 同时算出 Q、K、V。
+            </p>
+
+            <h3>21.2 为什么 FFN 参数是 (12, 6) 和 (6, 12)</h3>
+            <p>
+              FFN 的全称是 Feed-Forward Network。当前设置：
+            </p>
+            <div class="formula">d_model = 6, dim_feedforward = 12</div>
+            <p>
+              所以第一层 Linear 把维度从 6 扩到 12：
+            </p>
+            <div class="formula">linear1.weight.shape = [12, 6]</div>
+            <p>
+              第二层 Linear 再把维度从 12 压回 6：
+            </p>
+            <div class="formula">linear2.weight.shape = [6, 12]</div>
+            <p>
+              这就是为什么 Encoder Block 内部可以临时扩维处理信息，但最终输出仍然回到 <code>d_model = 6</code>。
+            </p>
+
+            <h3>21.3 CLS 输出是什么</h3>
+            <p>
+              <code>encoder_output</code> 的第 0 个位置对应 CLS token：
+            </p>
+            <div class="formula">cls_output = encoder_output[:, 0, :]</div>
+            <p>
+              当前 shape 是：
+            </p>
+            <div class="formula">cls_output.shape = [B, embed_dim] = [1, 6]</div>
+            <p>
+              直观理解：它是这张图经过一层 Transformer 后的“整图表示”。真实分类任务里，后面可以接一个 Linear 分类头，把这个向量转成类别 logits。
+            </p>
+          </section>
+
+          <section id="mini-vit">
+            <h2>22. Step 08：封装成 MiniViT 类</h2>
+            <p class="lead">
+              到这里，ViT 输入链路已经清楚。下一步不是增加新数学，而是把散开的步骤封装成一个模型类：初始化时定义参数，<code>forward()</code> 里组织数据流。
+            </p>
+            <p>
+              新增脚本：
+            </p>
+            <pre><code>experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py</code></pre>
+            <p>
+              运行命令：
+            </p>
+            <pre><code>.venv/bin/python experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py</code></pre>
+
+            <div class="callout">
+              <p>
+                <strong>为什么要封装：</strong>前面的 demo 是为了教学，把每一步摊开写。真实模型通常会继承 <code>nn.Module</code>，在 <code>__init__()</code> 里创建可学习层，在 <code>forward()</code> 里定义输入如何流过这些层。
+              </p>
+            </div>
+
+            <h3>22.1 配置对象</h3>
+            <pre><code>@dataclass(frozen=True)
+class MiniViTConfig:
+    image_height: int = 4
+    image_width: int = 4
+    patch_height: int = 2
+    patch_width: int = 2
+    in_channels: int = 1
+    embed_dim: int = 6
+    num_heads: int = 2
+    mlp_dim: int = 12</code></pre>
+            <p>
+              这个配置对象不是模型层，也没有参数。它只是把“图片尺寸、patch 尺寸、embedding 维度、head 数量”集中放在一起，避免在代码里到处写数字。
+            </p>
+
+            <h3>22.2 __init__ 里创建可学习组件</h3>
+            <pre><code>self.patch_projection = nn.Linear(self.patch_dim, config.embed_dim)
+self.cls_token = nn.Parameter(torch.zeros(1, 1, config.embed_dim))
+self.position_embeddings = nn.Parameter(
+    torch.zeros(1, 1 + self.num_patches, config.embed_dim)
+)
+self.encoder_block = nn.TransformerEncoderLayer(
+    d_model=config.embed_dim,
+    nhead=config.num_heads,
+    dim_feedforward=config.mlp_dim,
+    batch_first=True,
+    norm_first=True,
+)</code></pre>
+            <p>
+              这些才是模型真正会长期保存、训练时会更新的部分。<code>patch_projection</code> 负责把 patch 投影成向量；<code>cls_token</code> 负责整图汇总；<code>position_embeddings</code> 负责位置；<code>encoder_block</code> 负责 token 之间的信息交换。
+            </p>
+          </section>
+
+          <section id="mini-vit-forward">
+            <h2>23. forward 主线</h2>
+            <p>
+              MiniViT 的 <code>forward()</code> 本质上就是把 Day8 的链路按顺序写下来：
+            </p>
+            <pre><code>def forward(self, images: torch.Tensor) -> dict[str, torch.Tensor]:
+    batch_size = images.shape[0]
+
+    patches = self.patchify(images)
+    patch_embeddings = self.patch_projection(patches)
+    cls_tokens = self.cls_token.expand(batch_size, -1, -1)
+    tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)
+    vit_input = tokens + self.position_embeddings
+    encoder_output = self.encoder_block(vit_input)
+    cls_output = encoder_output[:, 0, :]
+
+    return {
+        "patches": patches,
+        "patch_embeddings": patch_embeddings,
+        "cls_tokens": cls_tokens,
+        "tokens": tokens,
+        "vit_input": vit_input,
+        "encoder_output": encoder_output,
+        "cls_output": cls_output,
+    }</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>forward 里的变量</th>
+                    <th>shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>images</code></td>
+                    <td><code>[1, 1, 4, 4]</code></td>
+                    <td>输入图片。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patches</code></td>
+                    <td><code>[1, 4, 4]</code></td>
+                    <td>切 patch 并展平。</td>
+                  </tr>
+                  <tr>
+                    <td><code>patch_embeddings</code></td>
+                    <td><code>[1, 4, 6]</code></td>
+                    <td>每个 patch 经过 Linear 后的向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>tokens</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>CLS token 加在 patch tokens 前面。</td>
+                  </tr>
+                  <tr>
+                    <td><code>vit_input</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>加上位置向量后的 Transformer 输入。</td>
+                  </tr>
+                  <tr>
+                    <td><code>encoder_output</code></td>
+                    <td><code>[1, 5, 6]</code></td>
+                    <td>一层 Encoder Block 输出。</td>
+                  </tr>
+                  <tr>
+                    <td><code>cls_output</code></td>
+                    <td><code>[1, 6]</code></td>
+                    <td>取第 0 个位置作为整图表示。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>读 forward 的方法：</strong>不要先想“模型很复杂”。先按变量顺序读 shape，你会发现它就是一条清晰的数据加工流水线。
+              </p>
+            </div>
+          </section>
+
+          <section id="mini-vit-params">
+            <h2>24. MiniViT 参数表</h2>
+            <p>
+              脚本运行时会打印所有可学习参数。当前输出如下：
+            </p>
+            <pre><code>cls_token                                  shape = (1, 1, 6)
+position_embeddings                        shape = (1, 5, 6)
+patch_projection.weight                    shape = (6, 4)
+patch_projection.bias                      shape = (6,)
+encoder_block.self_attn.in_proj_weight     shape = (18, 6)
+encoder_block.self_attn.in_proj_bias       shape = (18,)
+encoder_block.self_attn.out_proj.weight    shape = (6, 6)
+encoder_block.self_attn.out_proj.bias      shape = (6,)
+encoder_block.linear1.weight               shape = (12, 6)
+encoder_block.linear1.bias                 shape = (12,)
+encoder_block.linear2.weight               shape = (6, 12)
+encoder_block.linear2.bias                 shape = (6,)
+encoder_block.norm1.weight                 shape = (6,)
+encoder_block.norm1.bias                   shape = (6,)
+encoder_block.norm2.weight                 shape = (6,)
+encoder_block.norm2.bias                   shape = (6,)</code></pre>
+            <p>
+              你现在应该能看懂这些参数来自哪里：
+            </p>
+            <ul>
+              <li><code>patch_projection.*</code> 来自 patch embedding 的 Linear。</li>
+              <li><code>cls_token</code> 是整图汇总 token。</li>
+              <li><code>position_embeddings</code> 是每个序列位置的向量。</li>
+              <li><code>self_attn.*</code> 来自 Encoder Block 里的 Multi-Head Self-Attention。</li>
+              <li><code>linear1 / linear2</code> 来自 Encoder Block 里的 Feed-Forward Network。</li>
+              <li><code>norm1 / norm2</code> 来自 LayerNorm。</li>
+            </ul>
+            <p>
+              这些参数现在只是随机初始化。真正训练 ViT 时，loss 会通过反向传播更新它们。
+            </p>
+          </section>
+
+          <section id="day8-close">
+            <h2>25. Day8 收口</h2>
+            <p class="lead">
+              Day8 到这里收口。你现在已经不是只知道“ViT 把图片切 patch”，而是能把一张图片如何变成 Transformer 输入序列讲成一条完整链路。
+            </p>
+            <div class="diagram" aria-label="Day8 完整流程图">
+              <svg viewBox="0 0 1040 430" role="img">
+                <defs>
+                  <marker id="arrow9" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="1040" height="430" fill="#101720" />
+                <text x="36" y="44" fill="#eef6ff" font-size="23" font-weight="850">Day8 完整主线：图片如何进入 ViT</text>
+                <text x="36" y="74" fill="#9fb0c1" font-size="15">先把图像变成 patch token 序列，再像文本 token 一样送进 Transformer。</text>
+
+                <g transform="translate(38,124)">
+                  <rect x="0" y="0" width="128" height="62" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="28" y="27" fill="#eef6ff" font-size="15" font-weight="850">Image</text>
+                  <text x="20" y="49" fill="#9fb0c1" font-size="13">[B,C,H,W]</text>
+                </g>
+                <path d="M176 155 H232" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(246,124)">
+                  <rect x="0" y="0" width="128" height="62" fill="#143521" stroke="#86efac" />
+                  <text x="32" y="27" fill="#eef6ff" font-size="15" font-weight="850">Patchify</text>
+                  <text x="18" y="49" fill="#9fb0c1" font-size="13">[B,N,patch_dim]</text>
+                </g>
+                <path d="M384 155 H440" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(454,124)">
+                  <rect x="0" y="0" width="128" height="62" fill="#382812" stroke="#fbbf24" />
+                  <text x="22" y="27" fill="#eef6ff" font-size="15" font-weight="850">Projection</text>
+                  <text x="22" y="49" fill="#9fb0c1" font-size="13">[B,N,D]</text>
+                </g>
+                <path d="M592 155 H648" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(662,124)">
+                  <rect x="0" y="0" width="128" height="62" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="32" y="27" fill="#eef6ff" font-size="15" font-weight="850">+ CLS</text>
+                  <text x="20" y="49" fill="#9fb0c1" font-size="13">[B,1+N,D]</text>
+                </g>
+                <path d="M800 155 H856" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(870,124)">
+                  <rect x="0" y="0" width="128" height="62" fill="#382812" stroke="#fbbf24" />
+                  <text x="24" y="27" fill="#eef6ff" font-size="15" font-weight="850">+ Position</text>
+                  <text x="20" y="49" fill="#9fb0c1" font-size="13">[B,1+N,D]</text>
+                </g>
+
+                <path d="M934 196 V250" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(714,268)">
+                  <rect x="0" y="0" width="180" height="66" fill="#143521" stroke="#86efac" />
+                  <text x="30" y="29" fill="#eef6ff" font-size="15" font-weight="850">Transformer Encoder</text>
+                  <text x="36" y="52" fill="#9fb0c1" font-size="13">shape still [B,1+N,D]</text>
+                </g>
+                <path d="M704 301 H618" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow9)" />
+
+                <g transform="translate(448,268)">
+                  <rect x="0" y="0" width="152" height="66" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="30" y="29" fill="#eef6ff" font-size="15" font-weight="850">CLS Output</text>
+                  <text x="42" y="52" fill="#9fb0c1" font-size="13">[B,D]</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>Day8 最终一句话：</strong>ViT 的入口不是直接“看图片”，而是把图片切成 patch，把 patch 投影成向量，加上位置和 CLS token，再送进 Transformer Encoder。
+              </p>
+            </div>
+          </section>
+
+          <section id="extra-qa">
+            <h2>26. 额外知识问答</h2>
+            <p class="lead">
+              下面是本轮对话里延伸出来的知识点。这里作为 Day8 之后的回查资料，不要求一次全背下来。
+            </p>
+
+            <h3>26.1 ViT Patch Embedding</h3>
+            <ul>
+              <li><strong>作用：</strong>把图像转化为 Transformer 能处理的一维 token 序列，相当于 NLP 中的 token embedding 入口。</li>
+              <li><strong>三步流程：</strong>切分图像 -> 展平 patch -> 线性投影。</li>
+              <li><strong>常见高效实现：</strong>真实工程里经常用 <code>Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)</code> 一步完成 patchify + projection。</li>
+              <li><strong>后续必备：</strong>Patch Embedding 后通常还要拼接 class token，并添加 position embedding，才形成完整 ViT 输入。</li>
+              <li><strong>设计思想：</strong>把图片“词汇化”，让图像也能进入 Transformer。它弱化了 CNN 的局部归纳偏置，因此通常更依赖数据规模、预训练和增强策略。</li>
+            </ul>
+
+            <h3>26.2 ViT 的地位与多模态应用</h3>
+            <ul>
+              <li><strong>提出背景：</strong>ViT 来自 Google Research / Brain 体系研究者，论文 <em>An Image is Worth 16x16 Words</em> 于 2020 年发布预印本，后续成为视觉 Transformer 的标志性工作。</li>
+              <li><strong>核心地位：</strong>Patch Embedding + Transformer Encoder 成为很多多模态模型视觉编码器的重要基础。</li>
+              <li><strong>模块化路线：</strong>公开论文和开源模型中，常见结构是视觉编码器（如 ViT / CLIP ViT）+ 投影层（MLP / Linear）+ LLM，例如 LLaVA、Qwen-VL 这类模型。</li>
+              <li><strong>原生统一路线：</strong>另一些模型会从底层尝试统一处理文本、图像、音频、视频等多模态输入。闭源商业模型的内部细节通常不会完整公开，因此这里只讨论公开资料能确认的架构方向。</li>
+            </ul>
+
+            <h3>26.3 MLP 是什么</h3>
+            <p>
+              <strong>MLP</strong> 全称是 Multi-Layer Perceptron，多层感知机。通俗地说，它是多层全连接层加激活函数的组合，本质是“线性变换 + 非线性”反复堆叠。
+            </p>
+            <p>
+              在多模态模型里，MLP 常作为投影层或翻译层，把 ViT 输出的视觉 token 维度映射到 LLM 能接收的 hidden size。
+            </p>
+
+            <h3>26.4 Class Token</h3>
+            <ul>
+              <li><strong>感性理解：</strong>Class token 像一个“汇总代表”。它自己不来自局部图像块，但会通过 Self-Attention 读取所有 patch token 的信息。</li>
+              <li><strong>理性定义：</strong>它是一个可学习参数向量，拼在 patch 序列最前面。</li>
+              <li><strong>共享初始值：</strong>所有图片一开始共享同一个 class token 参数；但进入 attention 后，因为每张图的 patch token 不同，最终输出的 class token 表示也不同。</li>
+              <li><strong>替代方案：</strong>可以不用 class token，而是对所有 patch 输出做全局平均池化，也就是 Global Average Pooling。</li>
+            </ul>
+
+            <h3>26.5 Self-Attention 如何让 Class Token 聚合信息</h3>
+            <ol>
+              <li>对 class token 和所有 patch token 分别线性投影，得到 Q、K、V。</li>
+              <li>计算 class token 对每个 token 的注意力分数：<code>score(cls, j) = Q_cls · K_j</code>。</li>
+              <li>经过 softmax 得到权重 <code>alpha_cls_to_j</code>。</li>
+              <li>按权重加权求和：<code>new_cls = sum(alpha_cls_to_j * V_j)</code>。</li>
+            </ol>
+            <p>
+              动态性来自 patch token：不同图片的 K 和 V 不同，所以同一个初始 class token 会对不同图片聚合出不同结果。经过第一层后，class token 已经携带图像信息，后续层会继续变得更图像相关。
+            </p>
+
+            <h3>26.6 GAP 与 Class Token 对比</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>特点</th>
+                    <th>Class Token</th>
+                    <th>Global Average Pooling</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>参数</td>
+                    <td>有，可学习</td>
+                    <td>无</td>
+                  </tr>
+                  <tr>
+                    <td>聚合方式</td>
+                    <td>动态加权，权重来自 attention</td>
+                    <td>静态等权，直接求平均</td>
+                  </tr>
+                  <tr>
+                    <td>计算开销</td>
+                    <td>序列长度多 1，略增计算</td>
+                    <td>几乎无额外开销</td>
+                  </tr>
+                  <tr>
+                    <td>直觉</td>
+                    <td>学会关注关键 patch</td>
+                    <td>保留所有 patch 的整体平均信息</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              二者可以结合：例如拼接 <code>concat(z_cls, z_gap)</code>，或者做加权求和、门控融合。是否有效取决于任务和模型设计，不是必然涨点。
+            </p>
+
+            <h3>26.7 torch.cat 里的 dim=1</h3>
+            <p>
+              代码：
+            </p>
+            <pre><code>tokens = torch.cat([cls_tokens, patch_embeddings], dim=1)</code></pre>
+            <p>
+              其中：
+            </p>
+            <div class="formula">cls_tokens.shape = [B, 1, D]</div>
+            <div class="formula">patch_embeddings.shape = [B, N, D]</div>
+            <p>
+              <code>dim=1</code> 表示沿序列长度维拼接：
+            </p>
+            <div class="formula">[B, 1, D] + [B, N, D] -> [B, 1 + N, D]</div>
+            <p>
+              如果选 <code>dim=0</code>，是在 batch 维拼；如果选 <code>dim=2</code>，是在特征维拼。它们都不是“把 CLS 放到 patch 序列最前面”的语义。
+            </p>
+          </section>
+
+          <section id="architecture-boundary">
+            <h2>27. 多模态架构边界</h2>
+            <p class="lead">
+              多模态模型架构讨论时要区分“公开可验证”和“推测性描述”。这对后续学习很重要。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>可以怎样表述</th>
+                    <th>不要怎样表述</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>ViT、LLaVA、Qwen-VL 等论文/开源模型</td>
+                    <td>可以按论文或代码说明视觉编码器、投影层、语言模型如何连接。</td>
+                    <td>不要忽略不同版本之间的实现差异。</td>
+                  </tr>
+                  <tr>
+                    <td>GPT-4V、Gemini 等闭源商业模型</td>
+                    <td>可以说公开资料显示它们是多模态系统，部分报告会描述总体训练或输入能力。</td>
+                    <td>不要把内部是否“ViT + MLP + LLM”写成确定事实，除非官方公开确认。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              当前学习阶段的重点不是判断每个商业模型的内部细节，而是掌握一条通用工程路线：视觉输入先变成视觉 token，再通过投影或统一编码进入后续模型。
+            </p>
+            <p class="muted">
+              参考入口：<a href="https://research.google/pubs/an-image-is-worth-16x16-words-transformers-for-image-recognition-at-scale/">Google Research ViT</a>、
+              <a href="https://arxiv.org/abs/2010.11929">ViT arXiv</a>、
+              <a href="https://llava-vl.github.io/">LLaVA</a>、
+              <a href="https://arxiv.org/abs/2308.12966">Qwen-VL arXiv</a>、
+              <a href="https://arxiv.org/abs/2312.11805">Gemini Technical Report</a>。
+            </p>
+          </section>
+
+          <section id="checkpoint">
+            <h2>28. 当前检查点</h2>
+            <p>
+              Day8 已收口。最终你需要掌握下面几句话。
+            </p>
+            <ol>
+              <li><code>[B, C, H, W]</code> 是 PyTorch 里常见的图片 batch 表示。</li>
+              <li>patch 是图片小块，可以类比文本中的 token，但它还不是 embedding。</li>
+              <li><code>unfold</code> 负责从高度和宽度上按窗口取 patch。</li>
+              <li><code>patch_h / patch_w</code> 是每个 patch 的尺寸；<code>patch_rows / patch_cols</code> 是切出来的 patch 网格数量。</li>
+              <li><code>permute + reshape</code> 负责把 patch 网格整理成 <code>[B, num_patches, C * patch_h * patch_w]</code>。</li>
+              <li><code>Patch Embedding</code> 用 <code>Linear</code> 把最后一维从 <code>patch_dim</code> 变成 <code>embed_dim</code>。</li>
+              <li><code>patch_embeddings.shape = [B, num_patches, embed_dim]</code>，这个形状已经很像文本的 <code>[B, seq_len, embed_dim]</code>。</li>
+              <li><code>Position Embedding</code> 让每个 patch 向量带上位置信息，相加后 shape 不变。</li>
+              <li><code>CLS token</code> 是一个可学习汇总向量，拼到序列前面后长度从 <code>num_patches</code> 变成 <code>1 + num_patches</code>。</li>
+              <li>最小 demo 的完整链路是 <code>[1,1,4,4] -> [1,4,4] -> [1,4,6] -> [1,5,6]</code>。</li>
+              <li>代码里真正的可学习参数包括 <code>patch_projection.weight/bias</code>、<code>cls_token</code>、<code>position_embeddings</code>。</li>
+              <li>一层 Transformer Encoder 输入 <code>[1,5,6]</code>，输出仍然是 <code>[1,5,6]</code>，但每个 token 的数值已经混合了上下文。</li>
+              <li><code>cls_output = encoder_output[:, 0, :]</code> 得到 <code>[1,6]</code>，可以作为整张图的表示。</li>
+              <li><code>MiniViT.forward()</code> 只是把 Day8 的步骤封装成模型的数据流。</li>
+              <li><code>named_parameters()</code> 能列出模型中所有会被训练更新的参数。</li>
+              <li>工程上 Patch Embedding 常可用 <code>Conv2d(kernel_size=patch, stride=patch)</code> 高效实现。</li>
+              <li>Class token 和 GAP 都是整图汇总方式，前者动态可学习，后者简单无参数。</li>
+            </ol>
+            <div class="callout">
+              <p>
+                <strong>下一步：</strong>Day8 可以结束。Day9 进入 CLIP 图文对齐：理解 image encoder、text encoder、相似度矩阵和 contrastive loss。
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

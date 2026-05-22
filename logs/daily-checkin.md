@@ -340,3 +340,25 @@
 - 下一步计划：
   - 进入 Week2：CLIP、ViT 与多模态理解。
   - Day8 从 ViT patch embedding shape demo 开始。
+
+## Day 8 - ViT Patch Embedding 收口
+
+- 日期：2026-05-22
+- 今日目标：理解图片如何变成 Transformer 可处理的 patch token 序列。
+- 完成内容：
+  - 新增 Day8 HTML 主笔记：`docs/day-08-vit-patch-embedding/index.html`
+  - 新增 shape demo：`experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py`
+  - 新增 MiniViT demo：`experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py`
+  - 新增 Day8 状态笔记：`notes/day-08-vit-patch-embedding.md`
+- 当前学习重点：
+  - `unfold` 从高度和宽度切 patch。
+  - `permute + reshape` 把 patch 网格整理成 `[B, num_patches, patch_dim]`。
+  - Patch Embedding 用 Linear 把 `patch_dim` 转成 `embed_dim`。
+  - Position Embedding 让 patch token 带上位置信息。
+  - CLS token 是可学习汇总向量，也可以用 GAP 作为替代或补充。
+  - MiniViT 的 `forward()` 只是把 patchify、projection、CLS、position、encoder 串起来。
+- 验证命令：
+  - `.venv/bin/python experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py`
+  - `.venv/bin/python experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py`
+- 下一步计划：
+  - Day9 进入 CLIP 图文对齐。

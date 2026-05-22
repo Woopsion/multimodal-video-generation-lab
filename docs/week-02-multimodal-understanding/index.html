@@ -391,7 +391,7 @@
                   <tr>
                     <td>Day 8</td>
                     <td>ViT 与图像 Patch 表示</td>
-                    <td>理解图片如何从 <code>[B, C, H, W]</code> 变成 patch token 序列。</td>
+                    <td><a href="../day-08-vit-patch-embedding/index.html">已收口：理解图片如何从 <code>[B, C, H, W]</code> 变成 patch token 序列，并封装最小 MiniViT。</a></td>
                   </tr>
                   <tr>
                     <td>Day 9</td>
@@ -416,7 +416,7 @@
           <section id="day8">
             <h2>2. Day8 起点：ViT Patch Embedding</h2>
             <p>
-              下一步不急着加载大模型。先做一个 shape demo：给一张小图片张量，手动切 patch，展平 patch，再用 Linear 把每个 patch 变成 embedding。
+              下一步不急着加载大模型。先从 <a href="../day-08-vit-patch-embedding/index.html">Day8 独立笔记</a> 开始：给一张小图片张量，手动切 patch，展平 patch，再用 Linear 把每个 patch 变成 embedding。
             </p>
             <pre><code>image.shape = [B, C, H, W]
 patches.shape = [B, num_patches, C * patch_h * patch_w]
@@ -458,6 +458,10 @@ patch_embeddings.shape = [B, num_patches, embed_dim]</code></pre>
                   <tr>
                     <td>Day8 shape demo</td>
                     <td><code>experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py</code></td>
+                  </tr>
+                  <tr>
+                    <td>Day8 MiniViT demo</td>
+                    <td><code>experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py</code></td>
                   </tr>
                   <tr>
                     <td>Day9 CLIP demo</td>

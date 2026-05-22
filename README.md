@@ -26,8 +26,9 @@ Week 1 foundation study has been completed. The repo now contains runnable PyTor
 Week 2 has started. The learning format continues the HTML-first pattern: concepts are explained visually first, and code demos are added only after the shape and data flow are clear.
 
 - Active note: `docs/week-02-multimodal-understanding/index.html`
+- Day 8 final note: `docs/day-08-vit-patch-embedding/index.html`
 - Status note: `notes/week-02-vlm.md`
-- Next task: Day 8 ViT patch embedding shape demo.
+- Next task: Day 9 CLIP image-text alignment.
 
 ## Repository Hygiene
 

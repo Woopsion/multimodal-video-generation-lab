@@ -131,11 +131,14 @@ logs/
 
 ### Day 8：ViT 与图像 Patch 表示
 
-- [ ] 学习：ViT 的 patch embedding、class token、position embedding。
-- [ ] 实践：用现成 ViT 模型做图像分类推理。
-- [ ] 实践：打印并记录图像输入、patch、embedding 的 shape。
-- [ ] 产出：`experiments/vit-inference/vit_demo.py`。
-- [ ] 验收：能解释 CNN 特征与 ViT patch token 的区别。
+- [x] 学习：ViT 的 patch embedding、class token、position embedding。
+- [x] 实践：打印并记录图像输入、patch、embedding、CLS token、position embedding、encoder output 的 shape。
+- [x] 实践：封装最小 `MiniViT` 类，解释 `forward()` 数据流与可学习参数。
+- [x] 产出：`docs/day-08-vit-patch-embedding/index.html`。
+- [x] 产出：`experiments/day-08-vit-patch-embedding/vit_patch_shape_demo.py`。
+- [x] 产出：`experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py`。
+- [x] 验收：能解释 CNN 特征与 ViT patch token 的区别，以及图片如何变成 Transformer token 序列。
+- [ ] 后续补充：用现成 ViT 模型做图像分类推理。
 
 ### Day 9：CLIP 图文对齐
 
