@@ -1,0 +1,2736 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 9 - CLIP 图文对齐</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --surface: #121922;
+        --surface-2: #17212b;
+        --ink: #eef6ff;
+        --muted: #9fb0c1;
+        --line: #293744;
+        --cyan: #67e8f9;
+        --cyan-soft: #0e3440;
+        --green: #86efac;
+        --green-soft: #123521;
+        --amber: #fbbf24;
+        --amber-soft: #382812;
+        --code: #070a0e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.74;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 68svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 54px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(11, 15, 20, 1) 0%, rgba(11, 15, 20, 0.9) 48%, rgba(11, 15, 20, 0.68) 100%),
+          linear-gradient(135deg, rgba(103, 232, 249, 0.1), rgba(251, 191, 36, 0.08));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(430px, 1.08fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--cyan);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 720px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual,
+      .diagram {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #101720;
+      }
+
+      .hero-visual svg,
+      .diagram svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        padding: 8px 0 8px 18px;
+        border-left: 2px solid var(--line);
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--cyan);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 30px 0 12px;
+        font-size: 24px;
+        line-height: 1.24;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202a34;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #e6f6ff;
+        font-size: 14px;
+        line-height: 1.68;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--cyan);
+        background: var(--cyan-soft);
+      }
+
+      .callout.green {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .formula {
+        margin: 22px 0;
+        padding: 18px 20px;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: #0f151c;
+        color: #eafcff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 16px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .panel {
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+
+      .panel p,
+      .panel li {
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .step-list {
+        display: grid;
+        gap: 12px;
+        margin: 24px 0;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 86px minmax(0, 1fr);
+        gap: 18px;
+        padding: 16px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .step-item:first-child {
+        border-top: 0;
+      }
+
+      .step-tag {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .step-item h3 {
+        margin: 0 0 6px;
+      }
+
+      .step-item p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .status {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border: 1px solid var(--line);
+        color: var(--amber);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 15px;
+      }
+
+      th {
+        background: #1b2530;
+        font-weight: 850;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      ul,
+      ol {
+        padding-left: 22px;
+      }
+
+      li {
+        margin: 9px 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      @media (max-width: 980px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          position: static;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 20px;
+        }
+
+        .step-item {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 9 - CLIP Alignment</p>
+          <h1>让图片和文字在同一个向量空间相遇</h1>
+          <p class="hero-copy">
+            Day8 学会了图片如何变成 patch token。Day9 开始学习 CLIP：图片走 image encoder，文本走 text encoder，最后用相似度判断哪张图和哪句话最匹配。
+          </p>
+        </div>
+
+        <div class="hero-visual" aria-label="CLIP 双塔架构示意图">
+          <svg viewBox="0 0 860 540" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+              </marker>
+            </defs>
+            <rect width="860" height="540" fill="#101720" />
+            <text x="46" y="54" fill="#eef6ff" font-size="25" font-weight="850">CLIP: image encoder + text encoder</text>
+            <text x="46" y="84" fill="#9fb0c1" font-size="15">两个编码器各自处理不同模态，最后把结果放到同一个向量空间比较相似度。</text>
+
+            <g transform="translate(64,132)">
+              <rect x="0" y="0" width="180" height="72" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+              <text x="46" y="31" fill="#eef6ff" font-size="17" font-weight="850">Image</text>
+              <text x="34" y="54" fill="#9fb0c1" font-size="13">pixels / patches</text>
+              <path d="M180 36 H248" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+              <rect x="268" y="0" width="190" height="72" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <text x="302" y="31" fill="#eef6ff" font-size="17" font-weight="850">Image Encoder</text>
+              <text x="312" y="54" fill="#9fb0c1" font-size="13">ViT / CNN family</text>
+              <path d="M458 36 H526" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+              <rect x="548" y="0" width="184" height="72" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+              <text x="586" y="31" fill="#eef6ff" font-size="17" font-weight="850">image vector</text>
+              <text x="584" y="54" fill="#9fb0c1" font-size="13">shape: [D]</text>
+            </g>
+
+            <g transform="translate(64,278)">
+              <rect x="0" y="0" width="180" height="72" fill="#0e3440" stroke="#67e8f9" stroke-width="2" />
+              <text x="50" y="31" fill="#eef6ff" font-size="17" font-weight="850">Text</text>
+              <text x="42" y="54" fill="#9fb0c1" font-size="13">tokens</text>
+              <path d="M180 36 H248" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+              <rect x="268" y="0" width="190" height="72" fill="#143521" stroke="#86efac" stroke-width="2" />
+              <text x="309" y="31" fill="#eef6ff" font-size="17" font-weight="850">Text Encoder</text>
+              <text x="314" y="54" fill="#9fb0c1" font-size="13">Transformer text tower</text>
+              <path d="M458 36 H526" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+              <rect x="548" y="0" width="184" height="72" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+              <text x="590" y="31" fill="#eef6ff" font-size="17" font-weight="850">text vector</text>
+              <text x="584" y="54" fill="#9fb0c1" font-size="13">shape: [D]</text>
+            </g>
+
+            <path d="M704 204 C758 226 758 258 704 278" fill="none" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrow)" />
+            <text x="718" y="246" fill="#fbbf24" font-size="14" font-weight="850">cosine similarity</text>
+
+            <rect x="270" y="426" width="320" height="58" fill="#17212b" stroke="#293744" />
+            <text x="306" y="450" fill="#eef6ff" font-size="16" font-weight="850">目标：匹配的图文更近，不匹配的图文更远</text>
+            <text x="328" y="473" fill="#9fb0c1" font-size="13">Day9 先理解这件事，再进入相似度矩阵和 loss。</text>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day9 学习导航">
+          <div class="nav-label">Day9</div>
+          <a href="#goal">0. 今天怎么学</a>
+          <a href="#plan">1. 分阶段计划</a>
+          <a href="#problem">2. CLIP 解决什么问题</a>
+          <a href="#dual-encoder">3. 双塔结构</a>
+          <a href="#encoder-shapes">4. 编码器 shape</a>
+          <a href="#similarity-matrix">5. 相似度矩阵</a>
+          <a href="#contrastive-loss">6. Contrastive Loss</a>
+	          <a href="#shape-demo">7. 最小 shape demo</a>
+	          <a href="#real-clip">8. 真实 CLIP 推理</a>
+	          <a href="#processor">9. AutoProcessor</a>
+	          <a href="#clip-forward">10. CLIPModel.forward</a>
+	          <a href="#space">11. 同一个向量空间</a>
+	          <a href="#toy">12. 小例子</a>
+	          <a href="#checkpoint">13. 当前检查点</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天怎么学</h2>
+            <p class="lead">
+              Day9 的完整目标是理解 CLIP 图文对齐：image encoder、text encoder、相似度矩阵和 contrastive loss。当前已经收口到真实 <code>CLIPModel.forward()</code> 主线。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>CLIP 全称：</strong>Contrastive Language-Image Pre-training，可以直译为“对比式语言-图像预训练”。这个名字里最重要的三个词是：图像、文本、对比。
+              </p>
+              <p>
+	                <strong>学习边界：</strong>Day9 已完成 CLIP 图文对齐主线。真实模型下载推理是可选扩展，需要显式运行 <code>--allow-download</code>；本页不强制下载远程权重。
+              </p>
+            </div>
+          </section>
+
+          <section id="plan">
+            <h2>1. 分阶段计划</h2>
+            <p>
+              CLIP 的学习顺序不能从 loss 开始，否则会很抽象。先建立结构直觉，再进入相似度和训练目标。
+            </p>
+            <div class="step-list">
+              <div class="step-item">
+                <div class="step-tag">Step 01</div>
+                <div>
+                  <h3>CLIP 解决什么问题 <span class="status">已展开</span></h3>
+                  <p>理解“图片”和“文字”为什么需要被映射到同一个向量空间。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 02</div>
+                <div>
+                  <h3>Image Encoder 与 Text Encoder <span class="status">已展开</span></h3>
+                  <p>拆解双塔结构：图片塔产生 image embedding，文本塔产生 text embedding。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 03</div>
+                <div>
+                  <h3>相似度矩阵 <span class="status">已展开</span></h3>
+                  <p>理解一批图片和一批文本如何两两比较，得到 <code>[B, B]</code> 的 logits。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 04</div>
+                <div>
+                  <h3>Contrastive Loss <span class="status">已展开</span></h3>
+                  <p>解释为什么对角线是正确匹配，以及 loss 如何推近正样本、推远负样本。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 05</div>
+                <div>
+                  <h3>最小 shape demo <span class="status">已展开</span></h3>
+                  <p>写一个不加载真实模型的 CLIP 相似度矩阵 demo，只打印 shape 和数值。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 06</div>
+                <div>
+                  <h3>真实 CLIP 推理 <span class="status">已展开</span></h3>
+                  <p>用 Hugging Face Transformers 加载真实 CLIP，输入图片和候选文本，输出图文匹配排名。</p>
+                </div>
+              </div>
+	              <div class="step-item">
+	                <div class="step-tag">Step 07</div>
+	                <div>
+	                  <h3>AutoProcessor 拆解 <span class="status">已展开</span></h3>
+	                  <p>解释 processor 如何分别处理图片和文本，并输出 <code>pixel_values</code>、<code>input_ids</code>、<code>attention_mask</code>。</p>
+	                </div>
+	              </div>
+	              <div class="step-item">
+	                <div class="step-tag">Step 08</div>
+	                <div>
+	                  <h3>CLIPModel.forward 拆解 <span class="status">已展开</span></h3>
+	                  <p>解释 <code>model(**encoded)</code> 内部如何得到 <code>image_embeds</code>、<code>text_embeds</code> 和 <code>logits_per_image</code>。</p>
+	                </div>
+	              </div>
+	            </div>
+	          </section>
+
+          <section id="problem">
+            <h2>2. CLIP 解决什么问题</h2>
+            <p>
+              先从一个很具体的问题开始：给你一张图片和三句话，机器怎么判断哪句话最像这张图片？
+            </p>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>图片</h3>
+                <p>一只黑色小狗站在草地上。</p>
+              </div>
+              <div class="panel">
+                <h3>候选文本</h3>
+                <ol>
+                  <li>一只小狗在草地上。</li>
+                  <li>一辆红色汽车在路边。</li>
+                  <li>一碗面条放在桌上。</li>
+                </ol>
+              </div>
+            </div>
+            <p>
+              人类可以直接看语义。但模型不能直接把“像素”和“中文句子”拿来比较，因为它们的数据形态完全不同：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>原始形态</th>
+                    <th>为什么不能直接比较</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>图片</td>
+                    <td><code>[C, H, W]</code> 像素张量</td>
+                    <td>数值表示颜色和空间位置。</td>
+                  </tr>
+                  <tr>
+                    <td>文本</td>
+                    <td>token id 序列</td>
+                    <td>数值表示词表里的离散编号。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>CLIP 的核心想法：</strong>不要直接比较原始图片和原始文字。先分别编码成同维度向量，再比较这两个向量是否接近。
+              </p>
+              <p>
+                这里的“对齐”不是把文字贴到图片上，而是让“图片向量”和“文本向量”在同一个坐标系里能互相比较。
+              </p>
+            </div>
+          </section>
+
+          <section id="dual-encoder">
+            <h2>3. 双塔结构</h2>
+            <p>
+              CLIP 的结构通常被称为 <strong>dual encoder</strong>，也就是双编码器或双塔结构。
+            </p>
+            <div class="formula">image -> image_encoder -> image_embedding</div>
+            <div class="formula">text -> text_encoder -> text_embedding</div>
+            <p>
+              这里的 <code>image_embedding</code> 和 <code>text_embedding</code> 必须有相同维度。比如都变成 <code>D = 512</code> 维，模型才能做点积或余弦相似度。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>模块</th>
+                    <th>输入</th>
+                    <th>输出</th>
+                    <th>你可以如何类比</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Image Encoder</td>
+                    <td>图片像素或 patch token</td>
+                    <td><code>image_embedding [D]</code></td>
+                    <td>Day8 的 ViT image encoder。</td>
+                  </tr>
+                  <tr>
+                    <td>Text Encoder</td>
+                    <td>文本 token id</td>
+                    <td><code>text_embedding [D]</code></td>
+                    <td>Day6 的 Transformer 文本编码流程。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>注意：</strong>CLIP 不是让图片直接进入 LLM。CLIP 的重点是训练两个编码器，让图像向量和文本向量在同一个空间里可以比较。
+              </p>
+            </div>
+          </section>
+
+          <section id="encoder-shapes">
+            <h2>4. 编码器 shape：从一批输入到一批向量</h2>
+            <p class="lead">
+              Step 02 的关键不是背结构名，而是看懂两条路径的 shape 怎么从“原始输入”一步步变成“同维度向量”。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先定义符号：</strong><code>B</code> 表示 batch size，也就是一次送进模型的样本数量；<code>C</code> 表示图片通道数，RGB 图片通常是 3；<code>H</code> 和 <code>W</code> 表示图片高度和宽度；<code>N</code> 表示 patch 数量；<code>L</code> 表示文本 token 数量；<code>D</code> 表示 CLIP 最后用来比较图文的共享向量维度。
+              </p>
+            </div>
+
+            <h3>4.1 图片塔：image encoder 的完整形状流</h3>
+            <p>
+              图片进入 CLIP 时，通常不是直接变成一个向量。它会先经过 Day8 学过的 patch embedding，把一张图片变成一串 patch token，然后用 ViT 或其他视觉编码器处理。
+            </p>
+            <pre><code>images.shape = [B, C, H, W]
+
+patch_embeddings.shape = [B, N, d_image_hidden]
+加上 class token 后：
+image_tokens.shape = [B, 1 + N, d_image_hidden]
+
+image_encoder(image_tokens)
+-> image_hidden_states.shape = [B, 1 + N, d_image_hidden]
+
+取 class token 或做 pooling：
+image_pooled.shape = [B, d_image_hidden]
+
+再过 image projection：
+image_embeddings.shape = [B, D]</code></pre>
+
+            <div class="callout amber">
+              <p>
+                <strong>这里要分清楚两个层级：</strong><code>patch_embeddings</code> 或 <code>image_hidden_states</code> 里的一行 token 可以表示某个 patch；但 <code>image_embeddings</code> 已经是经过 class token / pooling 汇总、再经过 projection 后得到的整张图片向量。也就是说，<code>image_embeddings[b]</code> 表示第 <code>b</code> 张图片的全局语义向量，不是第 <code>b</code> 个 patch 的向量。
+              </p>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>步骤</th>
+                    <th>shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>原始图片</td>
+                    <td><code>[B, C, H, W]</code></td>
+                    <td>一批图片，每张图片还是像素张量。</td>
+                  </tr>
+                  <tr>
+                    <td>Patch Embedding</td>
+                    <td><code>[B, N, d_image_hidden]</code></td>
+                    <td>每张图片被切成 <code>N</code> 个 patch，每个 patch 变成一个向量。</td>
+                  </tr>
+                  <tr>
+                    <td>视觉编码器输出</td>
+                    <td><code>[B, 1 + N, d_image_hidden]</code></td>
+                    <td>每个 patch token 都被 Transformer 更新过，class token 也汇总了图片信息。</td>
+                  </tr>
+                  <tr>
+                    <td>图片汇总向量</td>
+                    <td><code>[B, d_image_hidden]</code></td>
+                    <td>每张图片最终先取出一个代表整张图的向量。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP 图片向量</td>
+                    <td><code>[B, D]</code></td>
+                    <td>投影到共享维度 <code>D</code>，准备用来和文本向量比较。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>类比 Day8：</strong>Day8 的 <code>cls_output.shape = [B, embed_dim]</code> 就是“一张图片一个汇总向量”的雏形。CLIP 里还会再接一个 projection，把它变成用于图文对齐的 <code>[B, D]</code>。
+              </p>
+            </div>
+
+            <h3>4.2 Class Token 和 Mean Pooling 都能得到整图向量</h3>
+            <p>
+              你的理解是对的：ViT 里图片先被切成 patch，再变成 patch token。加入 class token 后，序列通常是：
+            </p>
+            <pre><code>patch_tokens.shape = [B, N, D]
+cls_token.shape    = [B, 1, D]
+
+vit_input.shape    = [B, 1 + N, D]
+encoder_output.shape = [B, 1 + N, D]</code></pre>
+            <p>
+              送入 Transformer Encoder 后，所有 token 会通过 self-attention 多层混合信息。此时 class token 不再只是一个随机的占位向量；它经过多层注意力后，可以吸收 patch token 的信息。更准确地说：如果训练目标把 loss 接在 class token 后面，模型就会被迫学会让 class token 承担“整张图代表”的职责。
+            </p>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>方式 A：取 class token</h3>
+                <pre><code>encoder_output.shape = [B, 1 + N, D]
+
+cls_output = encoder_output[:, 0, :]
+cls_output.shape = [B, D]</code></pre>
+                <p>
+                  第 0 个 token 是 class token。训练后它会倾向于聚合整张图的信息，所以可以作为整图向量。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>方式 B：对 patch token 做平均</h3>
+                <pre><code>patch_outputs = encoder_output[:, 1:, :]
+patch_outputs.shape = [B, N, D]
+
+mean_output = patch_outputs.mean(dim=1)
+mean_output.shape = [B, D]</code></pre>
+                <p>
+                  <code>dim=1</code> 表示沿着 patch/token 维度求平均。它不是把所有数字加成一个数，而是每个特征维度单独对所有 patch 求平均。
+                </p>
+              </div>
+            </div>
+
+            <p>
+              用公式写 mean pooling：
+            </p>
+            <div class="formula">mean_output[b, k] = (patch_output[b, 0, k] + ... + patch_output[b, N - 1, k]) / N</div>
+            <p>
+              这里 <code>b</code> 表示第几张图片，<code>k</code> 表示第几个特征维度，<code>N</code> 表示 patch 数量。也就是说，平均的是“所有 patch 在同一个特征维度上的值”，最后仍然保留 <code>D</code> 个维度，得到一个整图向量。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>汇总方式</th>
+                    <th>怎么得到 <code>[B, D]</code></th>
+                    <th>直观理解</th>
+                    <th>注意点</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Class Token</td>
+                    <td><code>encoder_output[:, 0, :]</code></td>
+                    <td>让一个专门的可学习 token 通过注意力收集全图信息。</td>
+                    <td>它能不能代表整图，依赖训练目标是否持续要求它这么做。</td>
+                  </tr>
+                  <tr>
+                    <td>Mean Pooling</td>
+                    <td><code>encoder_output[:, 1:, :].mean(dim=1)</code></td>
+                    <td>把所有 patch token 的输出按维度平均，得到全图平均表示。</td>
+                    <td>每个 patch 权重相同；但 patch token 已经经过 self-attention，所以里面也可能含有全局上下文。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>关键结论：</strong>class token 和 mean pooling 都是在把 <code>[B, 1 + N, D]</code> 或 <code>[B, N, D]</code> 压成 <code>[B, D]</code>。压出来的这个 <code>[B, D]</code> 才是后面 CLIP 相似度矩阵里的 <code>image_embeddings</code> 来源。
+              </p>
+            </div>
+
+            <h3>4.3 文本塔：text encoder 的完整形状流</h3>
+            <p>
+              文本进入 CLIP 时，先经过 tokenizer 变成 token id。注意：token id 本身不是语义向量，它只是词表里的编号；真正的向量要通过 token embedding 查表得到。
+            </p>
+            <pre><code>texts = ["一只小狗在草地上", "一辆红色汽车在路边"]
+
+input_ids.shape = [B, L]
+attention_mask.shape = [B, L]
+
+token_vectors.shape = [B, L, d_text_hidden]
+
+text_encoder(token_vectors)
+-> text_hidden_states.shape = [B, L, d_text_hidden]
+
+取 EOS token / CLS token / pooling：
+text_pooled.shape = [B, d_text_hidden]
+
+再过 text projection：
+text_embeddings.shape = [B, D]</code></pre>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>步骤</th>
+                    <th>shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Token IDs</td>
+                    <td><code>[B, L]</code></td>
+                    <td>一批文本，每句话被 tokenizer 切成 <code>L</code> 个 token id。</td>
+                  </tr>
+                  <tr>
+                    <td>Token Embedding</td>
+                    <td><code>[B, L, d_text_hidden]</code></td>
+                    <td>每个 token id 查表得到一个向量。</td>
+                  </tr>
+                  <tr>
+                    <td>文本编码器输出</td>
+                    <td><code>[B, L, d_text_hidden]</code></td>
+                    <td>每个 token 的向量都融合了这句话里的上下文信息。</td>
+                  </tr>
+                  <tr>
+                    <td>文本汇总向量</td>
+                    <td><code>[B, d_text_hidden]</code></td>
+                    <td>每句话最终先取出一个代表整句文本的向量。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP 文本向量</td>
+                    <td><code>[B, D]</code></td>
+                    <td>投影到共享维度 <code>D</code>，准备用来和图片向量比较。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>4.4 为什么最后都必须是 <code>[B, D]</code></h3>
+            <p>
+              因为 CLIP 最后要比较图片向量和文本向量。如果图片向量是 <code>[B, 512]</code>，文本向量是 <code>[B, 768]</code>，这两个向量就没法直接做点积。它们的坐标数量不同，相当于一个点在 512 维坐标系，一个点在 768 维坐标系。
+            </p>
+            <p>
+              所以 CLIP 会给两边各加一个投影层：
+            </p>
+            <div class="formula">image_embeddings = image_pooled @ W_image</div>
+            <div class="formula">text_embeddings = text_pooled @ W_text</div>
+            <p>
+              这里的 <code>W_image</code> 和 <code>W_text</code> 都是可学习参数矩阵。它们的作用不是“随便改形状”，而是把两种模态都翻译到同一个比较标准里。
+            </p>
+
+            <div class="diagram" aria-label="CLIP encoder shape flow">
+              <svg viewBox="0 0 940 420" role="img">
+                <defs>
+                  <marker id="shapeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="940" height="420" fill="#101720" />
+                <text x="42" y="48" fill="#eef6ff" font-size="24" font-weight="850">Step 02: 两条路径最后都变成 [B, D]</text>
+                <text x="42" y="78" fill="#9fb0c1" font-size="15">中间维度可以不同，但最终比较前必须进入同一个共享维度。</text>
+
+                <g transform="translate(42,126)">
+                  <rect x="0" y="0" width="150" height="70" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="26" y="30" fill="#eef6ff" font-size="16" font-weight="850">images</text>
+                  <text x="24" y="54" fill="#9fb0c1" font-size="13">[B, C, H, W]</text>
+                  <path d="M150 35 H204" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="224" y="0" width="170" height="70" fill="#143521" stroke="#86efac" />
+                  <text x="248" y="30" fill="#eef6ff" font-size="16" font-weight="850">image encoder</text>
+                  <text x="246" y="54" fill="#9fb0c1" font-size="13">patch + ViT</text>
+                  <path d="M394 35 H448" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="468" y="0" width="162" height="70" fill="#17212b" stroke="#293744" />
+                  <text x="492" y="30" fill="#eef6ff" font-size="16" font-weight="850">pooled</text>
+                  <text x="494" y="54" fill="#9fb0c1" font-size="13">[B, d_image]</text>
+                  <path d="M630 35 H684" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="704" y="0" width="170" height="70" fill="#382812" stroke="#fbbf24" />
+                  <text x="728" y="30" fill="#eef6ff" font-size="16" font-weight="850">image vector</text>
+                  <text x="750" y="54" fill="#9fb0c1" font-size="13">[B, D]</text>
+                </g>
+
+                <g transform="translate(42,260)">
+                  <rect x="0" y="0" width="150" height="70" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="28" y="30" fill="#eef6ff" font-size="16" font-weight="850">input ids</text>
+                  <text x="48" y="54" fill="#9fb0c1" font-size="13">[B, L]</text>
+                  <path d="M150 35 H204" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="224" y="0" width="170" height="70" fill="#143521" stroke="#86efac" />
+                  <text x="252" y="30" fill="#eef6ff" font-size="16" font-weight="850">text encoder</text>
+                  <text x="248" y="54" fill="#9fb0c1" font-size="13">embedding + Transformer</text>
+                  <path d="M394 35 H448" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="468" y="0" width="162" height="70" fill="#17212b" stroke="#293744" />
+                  <text x="492" y="30" fill="#eef6ff" font-size="16" font-weight="850">pooled</text>
+                  <text x="498" y="54" fill="#9fb0c1" font-size="13">[B, d_text]</text>
+                  <path d="M630 35 H684" stroke="#67e8f9" stroke-width="3" marker-end="url(#shapeArrow)" />
+
+                  <rect x="704" y="0" width="170" height="70" fill="#382812" stroke="#fbbf24" />
+                  <text x="734" y="30" fill="#eef6ff" font-size="16" font-weight="850">text vector</text>
+                  <text x="750" y="54" fill="#9fb0c1" font-size="13">[B, D]</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>CLIP 的两个 encoder 可以用不同内部结构、不同 hidden size，但最终必须输出同一个共享维度 <code>D</code> 的向量，因为后面要把图片向量和文本向量放在同一张相似度表里比较。
+              </p>
+            </div>
+          </section>
+
+          <section id="similarity-matrix">
+            <h2>5. 相似度矩阵：每张图和每句话两两打分</h2>
+            <p class="lead">
+              Step 03 的核心是看懂这行代码背后的含义：<code>logits = image_embeddings @ text_embeddings.T</code>。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先定义符号：</strong><code>I</code> 表示图片向量矩阵，shape 是 <code>[B, D]</code>；<code>T</code> 表示文本向量矩阵，shape 也是 <code>[B, D]</code>。这里的 <code>B</code> 是一批图文对的数量，<code>D</code> 是每个向量的维度。
+              </p>
+            </div>
+
+            <h3>5.1 为什么是 <code>[B, D] @ [D, B] -> [B, B]</code></h3>
+            <p>
+              <code>image_embeddings</code> 里每一行是一张图片的<strong>整图向量</strong>，不是 patch 向量。<code>text_embeddings</code> 里每一行是一条文本的<strong>整句向量</strong>，不是某个 token 的向量。为了让每张图都和每条文本比较，我们需要把文本矩阵转置。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>张量</th>
+                    <th>shape</th>
+                    <th>每一行 / 每个位置表示什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>patch_embeddings</code></td>
+                    <td><code>[B, N, d_image_hidden]</code></td>
+                    <td>第 <code>b</code> 张图里的第 <code>n</code> 个 patch 向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>image_hidden_states</code></td>
+                    <td><code>[B, 1 + N, d_image_hidden]</code></td>
+                    <td>经过视觉 encoder 更新后的 class token 和 patch token 向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>image_pooled</code></td>
+                    <td><code>[B, d_image_hidden]</code></td>
+                    <td>每张图汇总后的全局图片向量，通常来自 class token 或 pooling。</td>
+                  </tr>
+                  <tr>
+                    <td><code>image_embeddings</code></td>
+                    <td><code>[B, D]</code></td>
+                    <td>每张图投影到 CLIP 共享空间后的整图向量，用来和文本向量做相似度。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code>image_embeddings.shape = [B, D]
+text_embeddings.shape  = [B, D]
+
+text_embeddings.T.shape = [D, B]
+
+logits = image_embeddings @ text_embeddings.T
+logits.shape = [B, B]</code></pre>
+            <p>
+              这个 <code>[B, B]</code> 矩阵不是新的一批向量，而是一张分数表。第 <code>i</code> 行表示“第 <code>i</code> 张图片分别和所有文本的匹配分数”；第 <code>j</code> 列表示“所有图片分别和第 <code>j</code> 条文本的匹配分数”。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>text 0</th>
+                    <th>text 1</th>
+                    <th>text 2</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>image 0</th>
+                    <td><code>logits[0,0]</code></td>
+                    <td><code>logits[0,1]</code></td>
+                    <td><code>logits[0,2]</code></td>
+                  </tr>
+                  <tr>
+                    <th>image 1</th>
+                    <td><code>logits[1,0]</code></td>
+                    <td><code>logits[1,1]</code></td>
+                    <td><code>logits[1,2]</code></td>
+                  </tr>
+                  <tr>
+                    <th>image 2</th>
+                    <td><code>logits[2,0]</code></td>
+                    <td><code>logits[2,1]</code></td>
+                    <td><code>logits[2,2]</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>5.2 每一个格子具体怎么算</h3>
+            <p>
+              相似度矩阵里的一个格子，可以写成：
+            </p>
+            <div class="formula">score<sub>i,j</sub> = ∑<sub>k=0</sub><sup>D-1</sup> I<sub>i,k</sub> · T<sub>j,k</sub></div>
+            <p>
+              这句话拆开看：
+            </p>
+            <ul>
+              <li><code>score<sub>i,j</sub></code>：第 <code>i</code> 张图片和第 <code>j</code> 条文本的相似度分数。</li>
+              <li><code>I<sub>i,k</sub></code>：第 <code>i</code> 张图片向量的第 <code>k</code> 个坐标值。</li>
+              <li><code>T<sub>j,k</sub></code>：第 <code>j</code> 条文本向量的第 <code>k</code> 个坐标值。</li>
+              <li><code>k</code>：向量维度下标，从 <code>0</code> 到 <code>D - 1</code>。</li>
+              <li><code>∑<sub>k=0</sub><sup>D-1</sup></code>：让 <code>k</code> 从 <code>0</code> 一直取到 <code>D - 1</code>，把所有维度上的乘积加起来，这就是点积。</li>
+            </ul>
+
+            <p>
+              用一个非常小的例子看。假设 <code>D = 2</code>，也就是每张图片和每条文本都只用 2 个数字表示：
+            </p>
+            <pre><code>image 0 = [0.8, 0.6]
+text 0  = [0.7, 0.7]
+text 1  = [0.1, 0.9]
+
+score[0, 0] = 0.8 * 0.7 + 0.6 * 0.7 = 0.98
+score[0, 1] = 0.8 * 0.1 + 0.6 * 0.9 = 0.62</code></pre>
+            <p>
+              在这个例子里，<code>image 0</code> 和 <code>text 0</code> 的分数更高，所以模型会认为 <code>text 0</code> 更匹配这张图片。
+            </p>
+
+            <h3>5.3 为什么对角线通常是正确答案</h3>
+            <p>
+              训练 CLIP 时，一个 batch 通常会放 <code>B</code> 对图文。第 <code>0</code> 张图配第 <code>0</code> 条文本，第 <code>1</code> 张图配第 <code>1</code> 条文本，以此类推。
+            </p>
+            <pre><code>image 0 <-> text 0
+image 1 <-> text 1
+image 2 <-> text 2</code></pre>
+            <p>
+              所以在 <code>[B, B]</code> 的相似度矩阵里，对角线位置 <code>logits[0,0]</code>、<code>logits[1,1]</code>、<code>logits[2,2]</code> 是正确图文对。非对角线位置，例如 <code>logits[0,2]</code>，表示“第 0 张图”和“第 2 条文本”的错误组合。
+            </p>
+
+            <div class="diagram" aria-label="CLIP similarity matrix">
+              <svg viewBox="0 0 940 520" role="img">
+                <defs>
+                  <marker id="matrixArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="940" height="520" fill="#101720" />
+                <text x="42" y="48" fill="#eef6ff" font-size="24" font-weight="850">Step 03: [B, D] 与 [B, D] 两两比较得到 [B, B]</text>
+                <text x="42" y="78" fill="#9fb0c1" font-size="15">横向是被比较的文本，纵向是正在拿来比较的图片。</text>
+
+                <rect x="60" y="126" width="180" height="170" fill="#0e3440" stroke="#67e8f9" />
+                <text x="92" y="156" fill="#eef6ff" font-size="17" font-weight="850">image_embeddings</text>
+                <text x="124" y="184" fill="#9fb0c1" font-size="14">shape [B, D]</text>
+                <text x="94" y="226" fill="#eef6ff" font-size="15">image 0: [D]</text>
+                <text x="94" y="256" fill="#eef6ff" font-size="15">image 1: [D]</text>
+                <text x="94" y="286" fill="#eef6ff" font-size="15">image 2: [D]</text>
+
+                <path d="M240 211 H328" stroke="#67e8f9" stroke-width="3" marker-end="url(#matrixArrow)" />
+
+                <rect x="350" y="126" width="196" height="170" fill="#143521" stroke="#86efac" />
+                <text x="386" y="156" fill="#eef6ff" font-size="17" font-weight="850">text_embeddings.T</text>
+                <text x="412" y="184" fill="#9fb0c1" font-size="14">shape [D, B]</text>
+                <text x="398" y="226" fill="#eef6ff" font-size="15">text 0 / text 1 / text 2</text>
+                <text x="405" y="256" fill="#9fb0c1" font-size="14">转置后方便矩阵乘法</text>
+
+                <path d="M546 211 H632" stroke="#67e8f9" stroke-width="3" marker-end="url(#matrixArrow)" />
+
+                <g transform="translate(650,112)">
+                  <text x="0" y="0" fill="#eef6ff" font-size="17" font-weight="850">logits [B, B]</text>
+                  <text x="78" y="34" fill="#9fb0c1" font-size="13">text 0</text>
+                  <text x="150" y="34" fill="#9fb0c1" font-size="13">text 1</text>
+                  <text x="222" y="34" fill="#9fb0c1" font-size="13">text 2</text>
+
+                  <text x="-58" y="78" fill="#9fb0c1" font-size="13">image 0</text>
+                  <text x="-58" y="150" fill="#9fb0c1" font-size="13">image 1</text>
+                  <text x="-58" y="222" fill="#9fb0c1" font-size="13">image 2</text>
+
+                  <rect x="60" y="52" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+                  <rect x="132" y="52" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="204" y="52" width="64" height="64" fill="#17212b" stroke="#293744" />
+
+                  <rect x="60" y="124" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="132" y="124" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+                  <rect x="204" y="124" width="64" height="64" fill="#17212b" stroke="#293744" />
+
+                  <rect x="60" y="196" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="132" y="196" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="204" y="196" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+
+                  <text x="81" y="91" fill="#eef6ff" font-size="14" font-weight="850">0,0</text>
+                  <text x="153" y="91" fill="#9fb0c1" font-size="14">0,1</text>
+                  <text x="225" y="91" fill="#9fb0c1" font-size="14">0,2</text>
+                  <text x="81" y="163" fill="#9fb0c1" font-size="14">1,0</text>
+                  <text x="153" y="163" fill="#eef6ff" font-size="14" font-weight="850">1,1</text>
+                  <text x="225" y="163" fill="#9fb0c1" font-size="14">1,2</text>
+                  <text x="81" y="235" fill="#9fb0c1" font-size="14">2,0</text>
+                  <text x="153" y="235" fill="#9fb0c1" font-size="14">2,1</text>
+                  <text x="225" y="235" fill="#eef6ff" font-size="14" font-weight="850">2,2</text>
+                </g>
+
+                <rect x="246" y="388" width="448" height="58" fill="#17212b" stroke="#293744" />
+                <text x="274" y="412" fill="#eef6ff" font-size="16" font-weight="850">黄色对角线 = batch 中原本配对的正确图文</text>
+                <text x="298" y="436" fill="#9fb0c1" font-size="13">下一步的 contrastive loss 会让对角线分数变高，让非对角线分数变低。</text>
+              </svg>
+            </div>
+
+            <h3>5.4 为什么这里也叫 logits</h3>
+            <p>
+              在 Day3 里，<code>logits</code> 是“还没有 softmax 的原始类别分数”。在 CLIP 里也类似：相似度矩阵里的每个值也是原始分数，还不是概率。
+            </p>
+            <p>
+              真实 CLIP 里常见写法会多乘一个可学习的缩放系数：
+            </p>
+            <div class="formula">logits = exp(logit_scale) * image_embeddings @ text_embeddings.T</div>
+            <ul>
+              <li><code>logit_scale</code>：一个可学习标量，也就是一个数字参数。</li>
+              <li><code>exp(logit_scale)</code>：保证缩放系数是正数。<code>exp(x)</code> 表示 <code>e^x</code>。</li>
+              <li>它的作用是调整分数的“尖锐程度”：分数差距更明显时，softmax 后概率也会更集中。</li>
+            </ul>
+
+            <div class="callout amber">
+              <p>
+                <strong>本阶段先别急着推 loss：</strong>现在只需要知道 <code>[B, B]</code> 的每个格子都是一个图文匹配分数；对角线是正确配对；下一阶段的 contrastive loss 会围绕这张分数表做 CrossEntropyLoss。
+              </p>
+            </div>
+          </section>
+
+          <section id="contrastive-loss">
+            <h2>6. Contrastive Loss：把对角线推高，非对角线压低</h2>
+            <p class="lead">
+              Step 04 的关键是把 CLIP loss 看成两个方向的分类问题：图片找正确文本，文本找正确图片。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先定义符号：</strong><code>S</code> 表示相似度矩阵，也就是上一节的 <code>logits</code>，shape 是 <code>[B, B]</code>。<code>S<sub>i,j</sub></code> 表示第 <code>i</code> 张图片和第 <code>j</code> 条文本的匹配分数。<code>B</code> 是一个 batch 中图文对数量。
+              </p>
+            </div>
+
+            <h3>6.1 什么叫 contrastive</h3>
+            <p>
+              <strong>Contrastive</strong> 的意思是“对比式”。CLIP 不只是告诉模型“这张图对应这句话”，还会在同一个 batch 里拿其他图片和其他文本当反例。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>概念</th>
+                    <th>在 CLIP batch 里的含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>正样本 positive pair</td>
+                    <td>原本配对的图文，例如 <code>image 1</code> 和 <code>text 1</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>负样本 negative pair</td>
+                    <td>同一个 batch 里的错误组合，例如 <code>image 1</code> 和 <code>text 0</code>、<code>text 2</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>对比学习</td>
+                    <td>让正样本分数更高，让负样本分数更低。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>6.2 图片找文本：把每一行当作一次分类</h3>
+            <p>
+              先看第一种方向：<strong>image-to-text</strong>，也就是“给定一张图片，从 <code>B</code> 条文本里选出正确文本”。
+            </p>
+            <pre><code>S.shape = [B, B]
+
+row 0 = image 0 对所有 texts 的分数
+row 1 = image 1 对所有 texts 的分数
+row 2 = image 2 对所有 texts 的分数</code></pre>
+            <p>
+              如果 batch 是按图文对排列的，那么第 <code>i</code> 张图片的正确文本就是第 <code>i</code> 条文本。因此标签是：
+            </p>
+            <div class="formula">labels = [0, 1, 2, ..., B - 1]</div>
+            <p>
+              这和 Day3 的 MNIST 分类很像。MNIST 是“图片 -> 10 个数字类别”；这里是“图片 -> B 条候选文本类别”。
+            </p>
+            <pre><code># PyTorch 视角：
+loss_i2t = CrossEntropyLoss(S, labels)</code></pre>
+            <p>
+              <code>CrossEntropyLoss(S, labels)</code> 的意思是：把 <code>S</code> 的每一行当成一组 logits。每一行里，正确类别的位置就是对角线位置。
+            </p>
+
+            <h3>6.3 文本找图片：再把每一列当作一次分类</h3>
+            <p>
+              CLIP 不只训练“图片找文本”，还训练“文本找图片”。也就是给定一条文本，从 <code>B</code> 张图片里选出正确图片。
+            </p>
+            <p>
+              原矩阵 <code>S</code> 的列表示“所有图片对某条文本的分数”。为了继续使用 <code>CrossEntropyLoss</code> 的“每一行是一个样本”习惯，我们把矩阵转置：
+            </p>
+            <pre><code>S.T.shape = [B, B]
+
+row 0 = text 0 对所有 images 的分数
+row 1 = text 1 对所有 images 的分数
+row 2 = text 2 对所有 images 的分数
+
+loss_t2i = CrossEntropyLoss(S.T, labels)</code></pre>
+            <p>
+              最终 CLIP loss 通常取两个方向的平均：
+            </p>
+            <div class="formula">loss = (loss_i2t + loss_t2i) / 2</div>
+
+            <h3>6.4 单行 CrossEntropyLoss 到底怎么算</h3>
+            <p>
+              假设只看 <code>image 0</code> 这一行。它对 3 条文本的分数是：
+            </p>
+            <pre><code>S[0] = [4.0, 1.0, 0.5]
+正确文本是 text 0，所以 label = 0</code></pre>
+            <p>
+              对这一行做 softmax：
+            </p>
+            <div class="formula">p<sub>j</sub> = exp(S<sub>0,j</sub>) / ∑<sub>m=0</sub><sup>B-1</sup> exp(S<sub>0,m</sub>)</div>
+            <ul>
+              <li><code>p<sub>j</sub></code>：模型认为第 <code>j</code> 条文本匹配 <code>image 0</code> 的概率。</li>
+              <li><code>exp(x)</code>：表示 <code>e^x</code>，保证每个分数变成正数。</li>
+              <li><code>∑<sub>m=0</sub><sup>B-1</sup></code>：让 <code>m</code> 遍历这一行所有候选文本，把所有 <code>exp</code> 值加起来，作为归一化分母。</li>
+            </ul>
+            <p>
+              因为正确文本是 <code>text 0</code>，所以这一行的 loss 是：
+            </p>
+            <div class="formula">loss_row0 = -log(p[0])</div>
+	            <p>
+	              如果 <code>p[0]</code> 很接近 1，说明正确文本概率高，<code>-log(p[0])</code> 很小；如果 <code>p[0]</code> 很小，说明模型把错误文本看得更像，loss 就会很大。
+	            </p>
+
+	            <div class="callout amber">
+	              <p>
+	                <strong>关键澄清：</strong>单行 loss 最后确实写成 <code>-log(p[正确类别])</code>，但这不表示错误类别没有参与。因为 <code>p[正确类别]</code> 是 softmax 之后的概率，而 softmax 的分母包含这一行所有类别的分数。
+	              </p>
+	            </div>
+	            <p>
+	              还是以正确类别是 <code>text 0</code> 为例。令这一行 logits 是：
+	            </p>
+	            <div class="formula">z = [z<sub>0</sub>, z<sub>1</sub>, z<sub>2</sub>]</div>
+	            <p>
+	              那么正确类别概率不是只看 <code>z<sub>0</sub></code>，而是：
+	            </p>
+	            <div class="formula">p<sub>0</sub> = exp(z<sub>0</sub>) / (exp(z<sub>0</sub>) + exp(z<sub>1</sub>) + exp(z<sub>2</sub>))</div>
+	            <p>
+	              所以这一行 loss 可以写成：
+	            </p>
+	            <div class="formula">L = -log(p<sub>0</sub>) = -z<sub>0</sub> + log(exp(z<sub>0</sub>) + exp(z<sub>1</sub>) + exp(z<sub>2</sub>))</div>
+	            <p>
+	              你看，<code>z<sub>1</sub></code> 和 <code>z<sub>2</sub></code> 明确出现在第二项里。如果错误类别分数变大，分母会变大，<code>p<sub>0</sub></code> 会变小，<code>-log(p<sub>0</sub>)</code> 就会变大。
+	            </p>
+
+            <h3>6.4.1 <code>L = -∑ y<sub>j</sub> log(p<sub>j</sub>)</code> 是怎么来的</h3>
+            <p>
+              这个公式不是从 softmax 里“自动长出来”的，而是我们为分类问题选择的训练目标：<strong>让模型给真实类别尽可能高的概率</strong>。更正式一点，它来自最大似然估计，也就是 maximize likelihood。
+            </p>
+            <p>
+              先不用 one-hot，先看最朴素的一句话：如果正确答案是 <code>text 0</code>，模型给正确答案的概率是 <code>p[0]</code>。我们希望 <code>p[0]</code> 越大越好。
+            </p>
+            <div class="formula">目标：让 p[正确类别] 尽量接近 1</div>
+            <p>
+              训练时通常不直接最大化 <code>p[正确类别]</code>，而是最小化它的负对数：
+            </p>
+            <div class="formula">Loss = -log(p[正确类别])</div>
+            <p>
+              为什么要加 <code>log</code>？有三个现实原因：
+            </p>
+            <ul>
+              <li><code>log</code> 是单调递增函数，所以让 <code>p</code> 变大，等价于让 <code>log(p)</code> 变大。</li>
+              <li>加负号以后，最大化 <code>log(p)</code> 就变成最小化 <code>-log(p)</code>，正好符合训练里“最小化 loss”的习惯。</li>
+              <li><code>-log(p)</code> 对“自信但错”的惩罚很大：如果正确概率 <code>p=0.9</code>，loss 很小；如果 <code>p=0.01</code>，loss 会很大。</li>
+            </ul>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>正确类别概率 <code>p</code></th>
+                    <th><code>-log(p)</code></th>
+                    <th>直观含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>0.9</code></td>
+                    <td>约 <code>0.105</code></td>
+                    <td>模型很相信正确答案，惩罚很小。</td>
+                  </tr>
+                  <tr>
+                    <td><code>0.5</code></td>
+                    <td>约 <code>0.693</code></td>
+                    <td>模型有点犹豫，惩罚中等。</td>
+                  </tr>
+                  <tr>
+                    <td><code>0.01</code></td>
+                    <td>约 <code>4.605</code></td>
+                    <td>模型几乎不相信正确答案，惩罚很大。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>
+              现在引入 one-hot。假设有 3 个候选文本，正确答案是 <code>text 0</code>：
+            </p>
+            <div class="formula">y = [1, 0, 0]</div>
+            <p>
+              其中 <code>y<sub>j</sub></code> 表示第 <code>j</code> 个位置是不是正确答案：正确位置是 <code>1</code>，错误位置是 <code>0</code>。
+            </p>
+            <p>
+              如果模型输出概率：
+            </p>
+            <div class="formula">p = [p<sub>0</sub>, p<sub>1</sub>, p<sub>2</sub>]</div>
+            <p>
+              那么这个式子：
+            </p>
+            <div class="formula">∑<sub>j=0</sub><sup>2</sup> y<sub>j</sub> log(p<sub>j</sub>)</div>
+            <p>
+              实际上只会留下正确类别那一项。因为错误位置的 <code>y<sub>j</sub></code> 都是 <code>0</code>：
+            </p>
+            <div class="formula">y<sub>0</sub>log(p<sub>0</sub>) + y<sub>1</sub>log(p<sub>1</sub>) + y<sub>2</sub>log(p<sub>2</sub>)</div>
+            <div class="formula">= 1 · log(p<sub>0</sub>) + 0 · log(p<sub>1</sub>) + 0 · log(p<sub>2</sub>)</div>
+            <div class="formula">= log(p<sub>0</sub>)</div>
+            <p>
+              加上负号，就回到了刚才的负对数似然：
+            </p>
+            <div class="formula">L = -∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub> log(p<sub>j</sub>)</div>
+            <div class="formula">Loss = -log(p[正确类别])</div>
+
+            <div class="callout green">
+              <p>
+                <strong>一句话：</strong><code>-∑ y<sub>j</sub>log(p<sub>j</sub>)</code> 只是 <code>-log(p[正确类别])</code> 的 one-hot 写法。one-hot 像一个选择器，只把正确类别那一项选出来。
+              </p>
+            </div>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>情况 A：正确分数最高</h3>
+                <pre><code>S[0] = [4.0, 1.0, 0.5]
+softmax 后：
+p ≈ [0.925, 0.046, 0.028]
+loss = -log(0.925) ≈ 0.078</code></pre>
+                <p>loss 很小，说明当前判断比较好。</p>
+              </div>
+              <div class="panel">
+                <h3>情况 B：错误分数最高</h3>
+                <pre><code>S[0] = [1.0, 4.0, 0.5]
+softmax 后：
+p ≈ [0.046, 0.925, 0.028]
+loss = -log(0.046) ≈ 3.08</code></pre>
+                <p>loss 很大，说明模型把错误文本排到前面了。</p>
+              </div>
+            </div>
+
+            <h3>6.5 它如何真正推高对角线、压低非对角线</h3>
+            <p>
+              你在 Day3 已经问过 CrossEntropyLoss 的梯度。这里同样可以用那条关键公式：
+            </p>
+            <div class="formula">∂L / ∂S<sub>i,j</sub> = p<sub>i,j</sub> - y<sub>i,j</sub></div>
+            <p>
+              每个符号的含义是：
+            </p>
+            <ul>
+              <li><code>S<sub>i,j</sub></code>：相似度矩阵里的一个 logit，表示第 <code>i</code> 张图和第 <code>j</code> 条文本的分数。</li>
+              <li><code>p<sub>i,j</sub></code>：对第 <code>i</code> 行 softmax 后，第 <code>j</code> 条文本的概率。</li>
+              <li><code>y<sub>i,j</sub></code>：真实标签的 one-hot 值。正确位置是 <code>1</code>，错误位置是 <code>0</code>。</li>
+              <li><code>∂L / ∂S<sub>i,j</sub></code>：loss 传到这个中间分数上的梯度信号。它不是说 optimizer 会直接更新 <code>S<sub>i,j</sub></code>，而是告诉反向传播：产生这个分数的上游变量和参数应该收到什么方向的影响。</li>
+            </ul>
+            <p>
+              对角线位置是正确答案，所以 <code>y<sub>i,i</sub> = 1</code>。如果当前模型还没完全判断对，通常 <code>p<sub>i,i</sub> &lt; 1</code>，于是：
+            </p>
+            <div class="formula">∂L / ∂S<sub>i,i</sub> = p<sub>i,i</sub> - 1</div>
+            <p>
+              这个值是负数。严格说，<code>S<sub>i,i</sub></code> 本身不是参数，不会被 optimizer 直接更新；这个负梯度会继续传回 <code>image_embeddings</code>、<code>text_embeddings</code> 以及更上游的模型参数。参数更新之后，下一次 forward 重新算出来的 <code>S<sub>i,i</sub></code> 会倾向于变大。
+            </p>
+            <p>
+              非对角线位置是错误答案，所以 <code>y<sub>i,j</sub> = 0</code>。于是：
+            </p>
+            <div class="formula">∂L / ∂S<sub>i,j</sub> = p<sub>i,j</sub></div>
+            <p>
+              这个值是正数。同样，<code>S<sub>i,j</sub></code> 不是被直接修改；这个正梯度会通过链式法则影响产生它的上游参数。参数更新之后，下一次 forward 重新算出来的非对角线分数 <code>S<sub>i,j</sub></code> 会倾向于变小。
+            </p>
+
+            <h3>6.5.1 重新推导：为什么梯度等于 <code>p - y</code></h3>
+            <p>
+              先只看一行，也就是“某一张图片在所有文本里选正确文本”。假设当前看第 <code>i</code> 张图片，这一行有 <code>B</code> 个候选文本。为了让推导更干净，先把这一行单独记成一组 logits：
+            </p>
+            <div class="formula">z<sub>j</sub> = S<sub>i,j</sub>, &nbsp; j = 0, 1, ..., B - 1</div>
+            <p>
+              这里 <code>z<sub>j</sub></code> 表示第 <code>j</code> 条文本的原始分数。它只是 <code>S</code> 第 <code>i</code> 行里的一个元素。
+            </p>
+
+            <p>
+              softmax 把这组 logits 变成概率：
+            </p>
+            <div class="formula">A = ∑<sub>r=0</sub><sup>B-1</sup> exp(z<sub>r</sub>)</div>
+            <div class="formula">p<sub>j</sub> = exp(z<sub>j</sub>) / A</div>
+            <ul>
+              <li><code>A</code>：softmax 的分母，也就是这一行所有 <code>exp(z<sub>r</sub>)</code> 的总和。</li>
+              <li><code>r</code>：求和下标，从 <code>0</code> 到 <code>B - 1</code> 遍历所有候选文本。</li>
+              <li><code>p<sub>j</sub></code>：模型认为第 <code>j</code> 条文本匹配当前图片的概率。</li>
+              <li><code>B</code>：候选文本数量，也就是当前 batch 里的图文对数量。</li>
+            </ul>
+
+            <p>
+              CrossEntropyLoss 对 one-hot 标签的标准写法是：
+            </p>
+            <div class="formula">L = -∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub> log(p<sub>j</sub>)</div>
+            <p>
+              <code>L</code> 是当前这一行的 loss。<code>y<sub>j</sub></code> 是 one-hot 标签：正确位置是 <code>1</code>，错误位置是 <code>0</code>。比如正确文本是第 <code>2</code> 条，且 <code>B = 3</code>，那么 <code>y = [0, 0, 1]</code>。
+            </p>
+
+            <p>
+              现在把 <code>p<sub>j</sub></code> 代入 <code>log(p<sub>j</sub>)</code>：
+            </p>
+            <div class="formula">log(p<sub>j</sub>) = log(exp(z<sub>j</sub>) / A)</div>
+            <div class="formula">log(p<sub>j</sub>) = log(exp(z<sub>j</sub>)) - log(A)</div>
+            <div class="formula">log(p<sub>j</sub>) = z<sub>j</sub> - log(A)</div>
+            <p>
+              这里用到了两个基础性质：<code>log(a / b) = log(a) - log(b)</code>；并且 <code>log</code> 是自然对数，所以 <code>log(exp(z<sub>j</sub>)) = z<sub>j</sub></code>。
+            </p>
+
+            <p>
+              代回 loss：
+            </p>
+            <div class="formula">L = -∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>(z<sub>j</sub> - log(A))</div>
+            <div class="formula">L = -∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>z<sub>j</sub> + ∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>log(A)</div>
+            <p>
+              注意 <code>A</code> 是这一整行 logits 的 softmax 分母。对固定的一行来说，<code>log(A)</code> 不带下标 <code>j</code>，所以它在第二个求和里是同一个值。
+            </p>
+            <p>
+              one-hot 标签里只有一个位置是 <code>1</code>，其他位置是 <code>0</code>，因此：
+            </p>
+            <div class="formula">∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub> = 1</div>
+            <div class="formula">∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>log(A) = log(A)</div>
+            <p>
+              所以 loss 可以简化成：
+            </p>
+            <div class="formula">L = -∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>z<sub>j</sub> + log(A)</div>
+
+            <p>
+              现在对某个分数 <code>z<sub>k</sub></code> 求偏导。<code>k</code> 表示我们正在观察的那个候选文本位置。
+            </p>
+            <p>
+              第一项的偏导：
+            </p>
+            <div class="formula">∂ / ∂z<sub>k</sub> (-∑<sub>j=0</sub><sup>B-1</sup> y<sub>j</sub>z<sub>j</sub>) = -y<sub>k</sub></div>
+            <p>
+              原因是：这个求和里只有 <code>j = k</code> 的那一项包含 <code>z<sub>k</sub></code>，也就是 <code>-y<sub>k</sub>z<sub>k</sub></code>；其他项和 <code>z<sub>k</sub></code> 无关，偏导是 <code>0</code>。
+            </p>
+
+            <p>
+              第二项的偏导：
+            </p>
+            <div class="formula">∂ / ∂z<sub>k</sub> log(A) = (1 / A) · ∂A / ∂z<sub>k</sub></div>
+            <p>
+              这是链式求导。可以把 <code>log(A)</code> 看成两层函数：
+            </p>
+            <div class="formula">外层：f(A) = log(A)</div>
+            <div class="formula">内层：A = A(z<sub>0</sub>, z<sub>1</sub>, ..., z<sub>B-1</sub>)</div>
+            <p>
+              我们要求的是 <code>log(A)</code> 对 <code>z<sub>k</sub></code> 的偏导，所以要先问：<code>A</code> 变一点时 <code>log(A)</code> 怎么变？再问：<code>z<sub>k</sub></code> 变一点时 <code>A</code> 怎么变？
+            </p>
+            <div class="formula">∂log(A) / ∂z<sub>k</sub> = (∂log(A) / ∂A) · (∂A / ∂z<sub>k</sub>)</div>
+            <p>
+              第一部分是自然对数的基本导数：
+            </p>
+            <div class="formula">∂log(A) / ∂A = 1 / A</div>
+            <p>
+              所以剩下只需要算 <code>∂A / ∂z<sub>k</sub></code>。而 <code>A</code> 的定义是：
+            </p>
+            <div class="formula">A = ∑<sub>r=0</sub><sup>B-1</sup> exp(z<sub>r</sub>)</div>
+            <p>
+              为了不让求和符号太飘，假设 <code>B = 3</code>，那么：
+            </p>
+            <div class="formula">A = exp(z<sub>0</sub>) + exp(z<sub>1</sub>) + exp(z<sub>2</sub>)</div>
+            <p>
+              如果现在对 <code>z<sub>1</sub></code> 求偏导，意思是：只让 <code>z<sub>1</sub></code> 变化，暂时把 <code>z<sub>0</sub></code> 和 <code>z<sub>2</sub></code> 当成常量。
+            </p>
+            <div class="formula">∂A / ∂z<sub>1</sub> = ∂exp(z<sub>0</sub>)/∂z<sub>1</sub> + ∂exp(z<sub>1</sub>)/∂z<sub>1</sub> + ∂exp(z<sub>2</sub>)/∂z<sub>1</sub></div>
+            <p>
+              第一项里没有 <code>z<sub>1</sub></code>，所以导数是 <code>0</code>；第三项也没有 <code>z<sub>1</sub></code>，导数也是 <code>0</code>。只有中间这一项真的含有 <code>z<sub>1</sub></code>：
+            </p>
+            <div class="formula">∂A / ∂z<sub>1</sub> = 0 + exp(z<sub>1</sub>) + 0 = exp(z<sub>1</sub>)</div>
+            <p>
+              换成任意位置 <code>k</code>，同理只有 <code>exp(z<sub>k</sub>)</code> 这一项会随着 <code>z<sub>k</sub></code> 变化：
+            </p>
+            <div class="formula">∂A / ∂z<sub>k</sub> = exp(z<sub>k</sub>)</div>
+            <p>
+              把两层乘起来：
+            </p>
+            <div class="formula">∂ / ∂z<sub>k</sub> log(A) = exp(z<sub>k</sub>) / A</div>
+            <p>
+              而 softmax 定义里：
+            </p>
+            <div class="formula">p<sub>k</sub> = exp(z<sub>k</sub>) / A</div>
+            <p>
+              因此：
+            </p>
+            <div class="formula">∂ / ∂z<sub>k</sub> log(A) = p<sub>k</sub></div>
+
+            <p>
+              两项合起来：
+            </p>
+            <div class="formula">∂L / ∂z<sub>k</sub> = -y<sub>k</sub> + p<sub>k</sub></div>
+            <div class="formula">∂L / ∂z<sub>k</sub> = p<sub>k</sub> - y<sub>k</sub></div>
+            <p>
+              最后把 <code>z<sub>k</sub></code> 换回 CLIP 的矩阵元素：<code>z<sub>k</sub> = S<sub>i,k</sub></code>。
+            </p>
+            <div class="formula">∂L / ∂S<sub>i,k</sub> = p<sub>i,k</sub> - y<sub>i,k</sub></div>
+            <p>
+              把下标 <code>k</code> 换成通用位置 <code>j</code>，就得到：
+            </p>
+            <div class="formula">∂L / ∂S<sub>i,j</sub> = p<sub>i,j</sub> - y<sub>i,j</sub></div>
+
+            <div class="callout green">
+              <p>
+                <strong>直觉版：</strong>如果某个位置是正确答案，<code>y=1</code>，梯度是 <code>p-1</code>，通常是负数；如果某个位置是错误答案，<code>y=0</code>，梯度是 <code>p</code>，是正数。这不是直接改 logits，而是把“希望下次这个 logit 更高或更低”的信号传给上游参数。
+              </p>
+            </div>
+
+            <h3>6.5.2 重要修正：<code>S<sub>i,j</sub></code> 不是参数，谁才会被更新？</h3>
+            <p>
+              你指出的问题非常关键：<code>S<sub>i,j</sub></code> 是一次 forward 过程中临时算出来的中间结果，不是可学习参数。它就像 Day3 里的 logits 一样，本身不会被 optimizer 保存，也不会在 <code>optimizer.step()</code> 时被直接改掉。
+            </p>
+            <p>
+              在 CLIP 里，单个分数来自点积：
+            </p>
+            <div class="formula">S<sub>i,j</sub> = scale · image_embedding<sub>i</sub> · text_embedding<sub>j</sub></div>
+            <p>
+              其中：
+            </p>
+            <ul>
+              <li><code>scale</code>：通常来自 <code>exp(logit_scale)</code>，是可学习缩放系数。</li>
+              <li><code>image_embedding[i]</code>：第 <code>i</code> 张图片经过 image encoder 和 image projection 算出来的整图向量。</li>
+              <li><code>text_embedding[j]</code>：第 <code>j</code> 条文本经过 text encoder 和 text projection 算出来的整句向量。</li>
+            </ul>
+            <p>
+              所以 <code>∂L / ∂S<sub>i,j</sub></code> 的作用，是继续通过链式法则传给这些上游量：
+            </p>
+            <div class="formula">∂L / ∂image_embedding<sub>i</sub> 包含 (∂L / ∂S<sub>i,j</sub>) · text_embedding<sub>j</sub></div>
+            <div class="formula">∂L / ∂text_embedding<sub>j</sub> 包含 (∂L / ∂S<sub>i,j</sub>) · image_embedding<sub>i</sub></div>
+            <p>
+              如果把上游继续展开：
+            </p>
+            <div class="formula">image_embedding[i] = image_projection(image_encoder(image_i))</div>
+            <div class="formula">text_embedding[j] = text_projection(text_encoder(text_j))</div>
+            <p>
+              那么梯度会继续传到：
+            </p>
+            <ol>
+              <li>image projection 的权重参数。</li>
+              <li>text projection 的权重参数。</li>
+              <li>image encoder 里的 ViT/CNN 参数。</li>
+              <li>text encoder 里的 Transformer/token embedding 参数。</li>
+              <li>如果启用可学习缩放，<code>logit_scale</code> 也会收到梯度。</li>
+            </ol>
+            <p>
+              因此更严谨的说法是：<code>∂L / ∂S<sub>i,j</sub></code> 不是“直接调整这个分数”，而是“告诉产生这个分数的上游参数，怎样更新后能让下一次 forward 的这个分数朝目标方向变化”。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>严谨版结论：</strong><code>S</code> 是中间计算结果；<code>dLoss/dS</code> 是反向传播经过这个中间节点时的梯度；真正被 <code>optimizer.step()</code> 更新的是模型参数，不是 <code>S</code> 这张临时分数表。
+              </p>
+            </div>
+
+            <div class="diagram" aria-label="CLIP contrastive loss">
+              <svg viewBox="0 0 940 560" role="img">
+                <defs>
+                  <marker id="lossArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="940" height="560" fill="#101720" />
+                <text x="42" y="48" fill="#eef6ff" font-size="24" font-weight="850">Step 04: 同一张 logits 表做两个方向的 CrossEntropyLoss</text>
+                <text x="42" y="78" fill="#9fb0c1" font-size="15">行方向：图片找文本。列方向：文本找图片。两个方向平均后得到 CLIP loss。</text>
+
+                <g transform="translate(86,132)">
+                  <text x="58" y="-22" fill="#eef6ff" font-size="17" font-weight="850">S = logits [B, B]</text>
+                  <text x="82" y="28" fill="#9fb0c1" font-size="13">text 0</text>
+                  <text x="154" y="28" fill="#9fb0c1" font-size="13">text 1</text>
+                  <text x="226" y="28" fill="#9fb0c1" font-size="13">text 2</text>
+
+                  <text x="-58" y="72" fill="#9fb0c1" font-size="13">image 0</text>
+                  <text x="-58" y="144" fill="#9fb0c1" font-size="13">image 1</text>
+                  <text x="-58" y="216" fill="#9fb0c1" font-size="13">image 2</text>
+
+                  <rect x="60" y="46" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+                  <rect x="132" y="46" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="204" y="46" width="64" height="64" fill="#17212b" stroke="#293744" />
+
+                  <rect x="60" y="118" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="132" y="118" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+                  <rect x="204" y="118" width="64" height="64" fill="#17212b" stroke="#293744" />
+
+                  <rect x="60" y="190" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="132" y="190" width="64" height="64" fill="#17212b" stroke="#293744" />
+                  <rect x="204" y="190" width="64" height="64" fill="#382812" stroke="#fbbf24" stroke-width="2" />
+
+                  <path d="M50 78 H286" stroke="#67e8f9" stroke-width="3" marker-end="url(#lossArrow)" />
+                  <path d="M92 36 V274" stroke="#86efac" stroke-width="3" marker-end="url(#lossArrow)" />
+                </g>
+
+                <g transform="translate(468,140)">
+                  <rect x="0" y="0" width="342" height="86" fill="#0e3440" stroke="#67e8f9" />
+                  <text x="24" y="32" fill="#eef6ff" font-size="17" font-weight="850">loss_i2t = CrossEntropyLoss(S, labels)</text>
+                  <text x="24" y="60" fill="#9fb0c1" font-size="14">每一行：一张图片在所有文本里找正确文本。</text>
+
+                  <rect x="0" y="128" width="342" height="86" fill="#143521" stroke="#86efac" />
+                  <text x="24" y="160" fill="#eef6ff" font-size="17" font-weight="850">loss_t2i = CrossEntropyLoss(S.T, labels)</text>
+                  <text x="24" y="188" fill="#9fb0c1" font-size="14">每一行：一条文本在所有图片里找正确图片。</text>
+
+                  <rect x="0" y="256" width="342" height="86" fill="#382812" stroke="#fbbf24" />
+                  <text x="54" y="288" fill="#eef6ff" font-size="18" font-weight="850">loss = (loss_i2t + loss_t2i) / 2</text>
+                  <text x="72" y="316" fill="#9fb0c1" font-size="14">两个方向都训练，图文对齐更稳定。</text>
+                </g>
+
+                <rect x="160" y="462" width="620" height="56" fill="#17212b" stroke="#293744" />
+                <text x="190" y="486" fill="#eef6ff" font-size="16" font-weight="850">黄色对角线是 y=1 的位置，其他格子是 y=0 的位置</text>
+                <text x="212" y="510" fill="#9fb0c1" font-size="13">CrossEntropyLoss 的梯度会自然推动正确格子变大、错误格子变小。</text>
+              </svg>
+            </div>
+
+            <h3>6.6 梯度最终影响哪些参数</h3>
+            <p>
+              <code>S<sub>i,j</sub></code> 不是凭空来的，它来自图片向量和文本向量的点积：
+            </p>
+            <div class="formula">S<sub>i,j</sub> = image_embeddings<sub>i</sub> · text_embeddings<sub>j</sub></div>
+            <p>
+              所以 loss 对 <code>S</code> 的梯度，会继续通过链式法则传回：
+            </p>
+            <ol>
+              <li><code>image_embeddings</code> 和 <code>text_embeddings</code>。</li>
+              <li><code>W_image</code> 和 <code>W_text</code> 两个投影矩阵。</li>
+              <li>Image Encoder 里的 ViT/CNN 参数。</li>
+              <li>Text Encoder 里的 Transformer/token embedding 参数。</li>
+            </ol>
+            <p>
+              这就是“图文向量被训练到同一个空间”的底层原因：不是人为手动摆放向量，而是 loss 通过梯度不断修改两个 encoder 和 projection 的参数。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>CLIP 的 contrastive loss 本质上是对同一张 <code>[B, B]</code> 相似度矩阵做两次 CrossEntropyLoss：一次让图片找对文本，一次让文本找对图片。
+              </p>
+            </div>
+          </section>
+
+          <section id="shape-demo">
+            <h2>7. 最小 shape demo：把 CLIP loss 跑一遍</h2>
+            <p class="lead">
+              Step 05 开始写代码，但仍然保持最小化：不加载真实 CLIP，不训练模型，只构造 3 对小向量，把图文相似度和 contrastive loss 的每一步打印出来。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>脚本位置：</strong><code>experiments/day-09-clip-alignment/clip_similarity_demo.py</code>。它的目的不是追求效果，而是让你亲眼看到 <code>[B, D]</code> 如何变成 <code>[B, B]</code>，再如何进入两个方向的 <code>CrossEntropyLoss</code>。
+              </p>
+            </div>
+
+            <h3>7.1 运行命令</h3>
+            <pre><code>.venv/bin/python experiments/day-09-clip-alignment/clip_similarity_demo.py</code></pre>
+
+            <h3>7.2 代码主线</h3>
+            <pre><code>image_embeddings.shape = [B, D]
+text_embeddings.shape  = [B, D]
+
+cosine_similarities = image_embeddings @ text_embeddings.T
+cosine_similarities.shape = [B, B]
+
+logits = logit_scale * cosine_similarities
+labels = torch.arange(B)
+
+loss_i2t = CrossEntropyLoss(logits, labels)
+loss_t2i = CrossEntropyLoss(logits.T, labels)
+loss = (loss_i2t + loss_t2i) / 2
+
+loss.backward()</code></pre>
+
+            <h3>7.2.1 <code>F.normalize(..., dim=1)</code> 不是“减均值除标准差”</h3>
+            <p>
+              demo 里有两行代码：
+            </p>
+            <pre><code>image_embeddings = F.normalize(image_raw, dim=1)
+text_embeddings = F.normalize(text_raw, dim=1)</code></pre>
+            <p>
+              这里的 <code>normalize</code> 是 <strong>L2 归一化</strong>，不是统计学里常说的标准化。它不会计算这一行的均值，也不会计算这一行的标准差。
+            </p>
+            <p>
+              对 <code>image_raw.shape = [B, D]</code> 来说，<code>dim=1</code> 表示沿着每一行的 <code>D</code> 个维度计算向量长度。也就是：每一张图片的整图向量单独归一化，每一条文本的整句向量也单独归一化。
+            </p>
+            <div class="formula">norm<sub>b</sub> = sqrt(x<sub>b,0</sub><sup>2</sup> + x<sub>b,1</sub><sup>2</sup> + ... + x<sub>b,D-1</sub><sup>2</sup>)</div>
+            <div class="formula">normalized_x<sub>b,k</sub> = x<sub>b,k</sub> / norm<sub>b</sub></div>
+            <ul>
+              <li><code>b</code>：第几行，也就是第几张图片或第几条文本。</li>
+              <li><code>k</code>：这一行向量里的第几个维度。</li>
+              <li><code>norm<sub>b</sub></code>：第 <code>b</code> 行向量的 L2 长度。</li>
+            </ul>
+            <p>
+              一个具体例子：
+            </p>
+            <pre><code>x = [3, 4]
+L2 norm = sqrt(3^2 + 4^2) = 5
+F.normalize(x) = [3/5, 4/5] = [0.6, 0.8]</code></pre>
+            <p>
+              归一化后的向量长度变成 <code>1</code>：
+            </p>
+            <div class="formula">sqrt(0.6<sup>2</sup> + 0.8<sup>2</sup>) = 1</div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>操作</th>
+                    <th>公式</th>
+                    <th>目的</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>L2 归一化</td>
+                    <td><code>x / ||x||₂</code></td>
+                    <td>只改变向量长度，让每个向量长度变成 1，方向基本保持不变。</td>
+                  </tr>
+                  <tr>
+                    <td>均值/标准差标准化</td>
+                    <td><code>(x - mean) / std</code></td>
+                    <td>把一组数平移并缩放，让它均值约为 0、标准差约为 1。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout amber">
+              <p>
+                <strong>为什么 CLIP 这里常做 L2 归一化：</strong>后面要用点积比较图文向量。如果两个向量都被归一化到长度为 1，那么点积主要反映方向是否接近，也就是 cosine similarity。这样模型比较的是“语义方向接近不接近”，而不是谁的向量长度更大。
+              </p>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>变量</th>
+                    <th>本 demo 里的 shape</th>
+                    <th>含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>image_embeddings</code></td>
+                    <td><code>[3, 4]</code></td>
+                    <td>3 张图片的整图向量，每张图片 4 个维度。</td>
+                  </tr>
+                  <tr>
+                    <td><code>text_embeddings</code></td>
+                    <td><code>[3, 4]</code></td>
+                    <td>3 条文本的整句向量，每条文本 4 个维度。</td>
+                  </tr>
+                  <tr>
+                    <td><code>logits</code></td>
+                    <td><code>[3, 3]</code></td>
+                    <td>每张图片和每条文本两两比较后的原始分数表。</td>
+                  </tr>
+                  <tr>
+                    <td><code>labels</code></td>
+                    <td><code>[3]</code></td>
+                    <td><code>[0, 1, 2]</code>，表示对角线是正确匹配。</td>
+                  </tr>
+                  <tr>
+                    <td><code>loss</code></td>
+                    <td>标量</td>
+                    <td>图片找文本 loss 和文本找图片 loss 的平均值。</td>
+                  </tr>
+	                </tbody>
+	              </table>
+	            </div>
+
+	            <h3>7.2.2 脚本里的 Step 05 和 Step 06 到底在算什么</h3>
+	            <p>
+	              这两个步骤最容易混，因为它们用的是同一张 <code>logits</code> 表，只是读表方向不同。先固定一个事实：
+	            </p>
+	            <pre><code>logits.shape = [B, B]
+
+行：image 0, image 1, image 2
+列：text 0,  text 1,  text 2</code></pre>
+	            <p>
+	              所以 <code>logits[i, j]</code> 表示：第 <code>i</code> 张图片和第 <code>j</code> 条文本的匹配分数。
+	            </p>
+
+	            <div class="table-wrap">
+	              <table>
+	                <thead>
+	                  <tr>
+	                    <th>步骤</th>
+	                    <th>喂给 CrossEntropyLoss 的矩阵</th>
+	                    <th>一行代表什么</th>
+	                    <th>一列代表什么</th>
+	                    <th><code>labels</code> 的含义</th>
+	                  </tr>
+	                </thead>
+	                <tbody>
+	                  <tr>
+	                    <td>Step 05 图片找文本</td>
+	                    <td><code>logits</code></td>
+	                    <td>一张图片</td>
+	                    <td>候选文本类别</td>
+	                    <td><code>labels[i] = i</code>，表示 image i 应该选 text i。</td>
+	                  </tr>
+	                  <tr>
+	                    <td>Step 06 文本找图片</td>
+	                    <td><code>logits.T</code></td>
+	                    <td>一条文本</td>
+	                    <td>候选图片类别</td>
+	                    <td><code>labels[j] = j</code>，表示 text j 应该选 image j。</td>
+	                  </tr>
+	                </tbody>
+	              </table>
+	            </div>
+
+	            <p>
+	              Step 05 的核心代码是：
+	            </p>
+	            <pre><code>image_to_text_probs = logits.softmax(dim=1)
+per_image_loss = F.cross_entropy(logits, labels, reduction="none")
+loss_i2t = per_image_loss.mean()</code></pre>
+	            <p>
+	              <code>softmax(dim=1)</code> 表示沿着每一行的列方向做 softmax。也就是：固定一张图片，让它在所有候选文本里分配概率。比如第 0 行就是：
+	            </p>
+	            <pre><code>image 0 对所有 text 的 logits:
+[9.9728, 3.5665, 1.6062]
+
+softmax 后:
+[0.9981, 0.0016, 0.0002]</code></pre>
+	            <p>
+	              因为 <code>labels[0] = 0</code>，正确答案是 <code>text 0</code>，所以这一行的 loss 是：
+	            </p>
+	            <div class="formula">loss<sub>image0</sub> = -log(P(text 0 | image 0)) = -log(0.9981)</div>
+	            <p>
+	              这里看起来只取了正确类别的概率，但 <code>0.9981</code> 是从整行 <code>[9.9728, 3.5665, 1.6062]</code> 做 softmax 得到的。也就是说，<code>text 1</code> 和 <code>text 2</code> 的分数已经通过 softmax 分母影响了 <code>P(text 0 | image 0)</code>。
+	            </p>
+	            <p>
+	              <code>reduction="none"</code> 是为了教学：它不急着把 3 行 loss 平均，而是先把每一张图片各自的 loss 打印出来。最后 <code>mean()</code> 才得到 <code>loss_i2t</code>。
+	            </p>
+
+	            <p>
+	              Step 06 没有重新计算相似度，它只是把同一张表换一个方向读：
+	            </p>
+	            <pre><code>text_to_image_probs = logits.T.softmax(dim=1)
+per_text_loss = F.cross_entropy(logits.T, labels, reduction="none")
+loss_t2i = per_text_loss.mean()</code></pre>
+	            <p>
+	              为什么要 <code>logits.T</code>？因为 PyTorch 的 <code>CrossEntropyLoss</code> 习惯把“每一行”当成一个样本，把“每一列”当成类别。文本找图片时，样本应该变成文本，类别应该变成图片，所以需要转置：
+	            </p>
+	            <pre><code>logits.T 的第 0 行:
+text 0 对所有 image 的 logits
+
+labels[0] = 0:
+text 0 应该选 image 0</code></pre>
+
+	            <div class="callout amber">
+	              <p>
+	                <strong>抓主线：</strong>Step 05 是“每张图片从所有文本里选正确文本”；Step 06 是“每条文本从所有图片里选正确图片”。两步共用同一张相似度矩阵，只是一个横着读，一个转置后再横着读。
+	              </p>
+	            </div>
+
+	            <h3>7.3 本次运行的关键输出</h3>
+            <p>
+              demo 里我们故意把匹配图文向量设置得更接近，所以相似度矩阵的对角线明显更高：
+            </p>
+            <pre><code>cosine_similarities.shape = (3, 3)
+cosine_similarities =
+tensor([[0.9973, 0.3566, 0.1606],
+        [0.3722, 0.9968, 0.3197],
+        [0.1269, 0.3580, 0.9955]])
+
+logits = 10.0 * cosine_similarities
+logits =
+tensor([[9.9728, 3.5665, 1.6062],
+        [3.7221, 9.9681, 3.1973],
+        [1.2687, 3.5800, 9.9553]])
+
+labels = tensor([0, 1, 2])</code></pre>
+            <p>
+              看第一行：<code>image 0</code> 和 <code>text 0</code> 的分数是 <code>9.9728</code>，比 <code>text 1</code>、<code>text 2</code> 高很多，所以 softmax 后正确文本概率非常接近 1：
+            </p>
+            <pre><code>image_to_text_probs =
+tensor([[0.9981, 0.0016, 0.0002],
+        [0.0019, 0.9969, 0.0011],
+        [0.0002, 0.0017, 0.9981]])
+
+loss_i2t = 0.002277
+loss_t2i = 0.002275
+loss = 0.002276</code></pre>
+            <p>
+              这个 loss 很小，不是因为代码偷懒，而是因为我们手工构造的 3 对图文向量本来就很匹配。这个 demo 的重点是看流程，不是训练出好模型。
+            </p>
+
+            <h3>7.4 为什么还要调用 <code>backward()</code></h3>
+            <p>
+              前面只是算出了 loss。为了证明这条路真的能训练，我们还调用了一次：
+            </p>
+            <pre><code>loss.backward()</code></pre>
+            <p>
+              运行后可以看到梯度回到了图片侧和文本侧：
+            </p>
+            <pre><code>image_embeddings.grad.shape = (3, 4)
+text_embeddings.grad.shape = (3, 4)
+image_raw.grad.shape = (3, 4)
+text_raw.grad.shape = (3, 4)</code></pre>
+            <p>
+              在真实 CLIP 里，<code>image_raw</code> 和 <code>text_raw</code> 不是手写小向量，而是 image encoder、text encoder、projection head 算出来的结果。梯度会继续通过链式法则传回这些模块的参数。
+            </p>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>代码里的 CLIP loss 和前面讲的概念完全对上了：整图向量 <code>[B, D]</code> 与整句向量 <code>[B, D]</code> 相乘得到 <code>[B, B]</code>，labels 指向对角线，两个方向的 CrossEntropyLoss 共同训练图文对齐。
+              </p>
+            </div>
+          </section>
+
+          <section id="real-clip">
+            <h2>8. 真实 CLIP 推理：图片和候选文本做匹配</h2>
+            <p class="lead">
+              Step 06 开始接触真实模型。这里不训练，只做推理：给一张图片和几条候选文本，让 CLIP 判断哪条文本最匹配这张图片。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>脚本位置：</strong><code>experiments/day-09-clip-alignment/clip_real_inference_demo.py</code>。它使用 <code>transformers.CLIPModel</code> 和 <code>AutoProcessor</code>，默认模型是 <code>openai/clip-vit-base-patch32</code>。
+              </p>
+            </div>
+
+            <h3>8.1 运行命令</h3>
+            <p>
+              默认运行是本地离线模式。如果模型已经缓存，直接运行：
+            </p>
+            <pre><code>.venv/bin/python experiments/day-09-clip-alignment/clip_real_inference_demo.py</code></pre>
+            <p>
+              如果本地没有缓存，并且你准备下载模型文件，再显式加：
+            </p>
+            <pre><code>.venv/bin/python experiments/day-09-clip-alignment/clip_real_inference_demo.py --allow-download</code></pre>
+            <div class="callout amber">
+              <p>
+                <strong>当前本机状态：</strong>我已经用默认离线模式跑过一次，确认本地还没有 <code>openai/clip-vit-base-patch32</code> 缓存。脚本按预期停止，并提示使用 <code>--allow-download</code>。这不是学习失败，而是我们故意保留的下载确认边界。
+              </p>
+            </div>
+
+            <h3>8.2 这次真实推理和前面的 toy demo 有什么不同</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>部分</th>
+                    <th>最小 shape demo</th>
+                    <th>真实 CLIP 推理 demo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>图片向量</td>
+                    <td>手工写出来的小矩阵。</td>
+                    <td>真实 image encoder 从图片像素算出来。</td>
+                  </tr>
+                  <tr>
+                    <td>文本向量</td>
+                    <td>手工写出来的小矩阵。</td>
+                    <td>真实 tokenizer + text encoder 从文本算出来。</td>
+                  </tr>
+                  <tr>
+                    <td>模型参数</td>
+                    <td>没有真实模型参数。</td>
+                    <td>来自预训练 CLIP 权重。</td>
+                  </tr>
+                  <tr>
+                    <td>目标</td>
+                    <td>看懂数学链路。</td>
+                    <td>看懂真实库如何把图片和文本送进 CLIP。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+	            <h3>8.3 真实代码主线</h3>
+	            <pre><code>processor = AutoProcessor.from_pretrained(model_name)
+model = CLIPModel.from_pretrained(model_name)
+
+encoded = processor(
+    text=candidate_texts,
+    images=image,
+    return_tensors="pt",
+    padding=True,
+)
+
+outputs = model(**encoded)
+
+image_embeds = outputs.image_embeds
+text_embeds = outputs.text_embeds
+logits_per_image = outputs.logits_per_image
+probabilities = logits_per_image.softmax(dim=1)</code></pre>
+
+	            <h3>8.3.1 配置里的 <code>projection_dim</code>、<code>vision hidden_size</code>、<code>text hidden_size</code></h3>
+	            <p>
+	              真实脚本加载成功后，会打印类似：
+	            </p>
+	            <pre><code>processor class = CLIPProcessor
+model class = CLIPModel
+projection_dim = 512
+vision hidden_size = 768
+text hidden_size = 512</code></pre>
+	            <p>
+	              这几个值属于不同层级，不能简单理解成“CLIP 每层都是 512 维”。
+	            </p>
+
+	            <div class="table-wrap">
+	              <table>
+	                <thead>
+	                  <tr>
+	                    <th>配置项</th>
+	                    <th>含义</th>
+	                    <th>它影响哪里的 shape</th>
+	                  </tr>
+	                </thead>
+	                <tbody>
+	                  <tr>
+	                    <td><code>processor class = CLIPProcessor</code></td>
+	                    <td>说明 <code>AutoProcessor</code> 自动解析成了 CLIP 专用 processor。</td>
+	                    <td>负责图片预处理和文本 tokenizer，输出 <code>pixel_values</code>、<code>input_ids</code>、<code>attention_mask</code>。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>model class = CLIPModel</code></td>
+	                    <td>说明加载的是 Hugging Face 的 CLIP 双塔模型。</td>
+	                    <td>内部包含 vision tower、text tower、两个 projection 层和 <code>logit_scale</code>。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>projection_dim = 512</code></td>
+	                    <td>图文最终进入共享向量空间后的维度。</td>
+	                    <td><code>outputs.image_embeds.shape[-1]</code> 和 <code>outputs.text_embeds.shape[-1]</code> 都是 <code>512</code>。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>vision hidden_size = 768</code></td>
+	                    <td>视觉 Transformer 内部每个 image token 的向量宽度。</td>
+	                    <td>视觉塔中 patch token、class token、每层 hidden state 的最后一维是 <code>768</code>。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>text hidden_size = 512</code></td>
+	                    <td>文本 Transformer 内部每个 text token 的向量宽度。</td>
+	                    <td>文本塔中 token embedding、每层 hidden state 的最后一维是 <code>512</code>。</td>
+	                  </tr>
+	                </tbody>
+	              </table>
+	            </div>
+
+	            <p>
+	              对 <code>openai/clip-vit-base-patch32</code> 来说，图片侧大致是这条路径：
+	            </p>
+	            <pre><code>pixel_values.shape = [num_images, 3, 224, 224]
+
+patch embedding:
+  [num_images, 49, 768]
+
+加 class token:
+  [num_images, 50, 768]
+
+vision Transformer 每层 hidden state:
+  [num_images, 50, 768]
+
+取整图 pooled 向量:
+  [num_images, 768]
+
+visual_projection:
+  [num_images, 768] -> [num_images, 512]
+
+outputs.image_embeds:
+  [num_images, 512]</code></pre>
+	            <p>
+	              这里的 <code>49</code> 来自 <code>224 / 32 = 7</code>，也就是 <code>7 * 7 = 49</code> 个 patch。再加 1 个 class token，所以视觉 Transformer 看到的是 50 个 image token。每个 token 的宽度是 <code>768</code>。
+	            </p>
+
+	            <p>
+	              文本侧大致是这条路径：
+	            </p>
+	            <pre><code>input_ids.shape = [num_texts, L]
+
+token embedding:
+  [num_texts, L, 512]
+
+text Transformer 每层 hidden state:
+  [num_texts, L, 512]
+
+取 EOS / pooled 文本向量:
+  [num_texts, 512]
+
+text_projection:
+  [num_texts, 512] -> [num_texts, 512]
+
+outputs.text_embeds:
+  [num_texts, 512]</code></pre>
+	            <div class="callout amber">
+	              <p>
+	                <strong>关键结论：</strong><code>projection_dim = 512</code> 只说明最终用于图文相似度计算的共享空间是 512 维；它不表示视觉塔内部每一层都是 512 维。这个模型里，视觉塔内部是 768 维，文本塔内部是 512 维，最后两边都通过 projection 层对齐到 512 维。
+	              </p>
+	            </div>
+
+	            <p>
+	              这段代码和前面最小 demo 的对应关系非常直接：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>真实输出</th>
+                    <th>shape</th>
+                    <th>对应前面的概念</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>pixel_values</code></td>
+                    <td><code>[num_images, C, H, W]</code></td>
+                    <td>图片经过 processor 后变成模型需要的归一化像素张量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>input_ids</code></td>
+                    <td><code>[num_texts, L]</code></td>
+                    <td>候选文本经过 tokenizer 后变成 token id。</td>
+                  </tr>
+                  <tr>
+                    <td><code>outputs.image_embeds</code></td>
+                    <td><code>[num_images, projection_dim]</code></td>
+                    <td>真实 CLIP image encoder + projection 得到的整图向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>outputs.text_embeds</code></td>
+                    <td><code>[num_texts, projection_dim]</code></td>
+                    <td>真实 CLIP text encoder + projection 得到的整句向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>outputs.logits_per_image</code></td>
+                    <td><code>[num_images, num_texts]</code></td>
+                    <td>每张图片和每条候选文本的匹配分数。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>8.4 本 demo 的输入是什么</h3>
+            <p>
+              为了不依赖外部图片文件，脚本默认在内存里生成一张简单图片：白底红色方块。候选文本默认是英文，因为 <code>openai/clip-vit-base-patch32</code> 的文本侧主要按英文语料训练。
+            </p>
+            <pre><code>candidate texts:
+0: "a red square on a white background"
+1: "a blue circle on a white background"
+2: "a photo of a dog on grass"
+3: "a bowl of noodles on a table"</code></pre>
+            <p>
+              如果真实模型加载成功，最后会打印类似这样的排名表：
+            </p>
+            <pre><code>rank | text_index | probability | text
+   1 |          ? |     ?.?????? | "..."
+   2 |          ? |     ?.?????? | "..."
+   3 |          ? |     ?.?????? | "..."
+   4 |          ? |     ?.?????? | "..."</code></pre>
+            <p>
+              这里我没有提前写死概率，因为真实概率要由下载后的模型权重实际算出来。学习时要特别警惕“看起来像日志、其实是编出来的日志”。
+            </p>
+
+            <h3>8.5 当前默认离线运行提示</h3>
+            <p>
+              当前本机没有缓存这个模型，所以默认命令会出现下面这类提示：
+            </p>
+            <pre><code>Model/processor loading failed.
+Reason: couldn't find files in the local cache.
+
+Common fix:
+  .venv/bin/python experiments/day-09-clip-alignment/clip_real_inference_demo.py \
+    --model openai/clip-vit-base-patch32 \
+    --allow-download</code></pre>
+            <p>
+              这条提示的意思不是参数写错，而是脚本正在保护你：默认不下载远程模型。下一步如果要看真实概率，就运行带 <code>--allow-download</code> 的命令。
+            </p>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>真实 CLIP 推理和 toy demo 的数学结构一样，只是 <code>image_embeddings</code>、<code>text_embeddings</code> 不再由我们手写，而是由真实预训练 image encoder 和 text encoder 计算出来。
+              </p>
+            </div>
+          </section>
+
+          <section id="processor">
+            <h2>9. AutoProcessor：把原始图片和文本整理成模型输入</h2>
+            <p class="lead">
+              Step 07 要拆的是 <code>processor(...)</code>。它不是模型，不负责理解语义；它像入口安检，把图片和文本整理成 CLIPModel 能吃的张量。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>先立边界：</strong><code>AutoProcessor</code> 不会输出 <code>image_embeds</code> 或 <code>text_embeds</code>。它只输出 <code>pixel_values</code>、<code>input_ids</code>、<code>attention_mask</code> 这类输入张量。真正的向量表示由 <code>CLIPModel</code> 的 image encoder 和 text encoder 算出来。
+              </p>
+            </div>
+
+            <h3>9.1 真实推理脚本里的这一行</h3>
+            <pre><code>encoded = processor(
+    text=texts,
+    images=image,
+    return_tensors="pt",
+    padding=True,
+)</code></pre>
+            <p>
+              这行代码同时处理两种模态：<code>images=image</code> 进入图片预处理流程，<code>text=texts</code> 进入文本分词流程。最后返回一个字典，里面的 value 是 PyTorch Tensor。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>输入字段</th>
+                    <th>原始形态</th>
+                    <th>processor 输出</th>
+                    <th>送给谁</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>images</code></td>
+                    <td>PIL 图片 / 图片路径读取后的 RGB 图片</td>
+                    <td><code>pixel_values</code></td>
+                    <td>CLIP image encoder</td>
+                  </tr>
+                  <tr>
+                    <td><code>text</code></td>
+                    <td>候选文本字符串列表</td>
+                    <td><code>input_ids</code>、<code>attention_mask</code></td>
+                    <td>CLIP text encoder</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>9.2 图片侧：从图片到 <code>pixel_values</code></h3>
+            <p>
+              真实 CLIP 的图片侧通常会做这些事。不同模型配置可能细节略有差异，但主线一致：
+            </p>
+            <ol>
+              <li>把图片转成 RGB。</li>
+              <li>按模型配置 resize 到指定尺寸。</li>
+              <li>必要时 center crop 到固定输入大小，例如 <code>224 × 224</code>。</li>
+              <li>把像素从图片格式转成浮点张量。</li>
+              <li>调整维度顺序，从 <code>[H, W, C]</code> 变成 <code>[C, H, W]</code>。</li>
+              <li>按 CLIP 的 mean/std 做 normalize。</li>
+              <li>加上 batch 维度，得到 <code>[num_images, C, H, W]</code>。</li>
+            </ol>
+            <pre><code>image
+-> RGB image
+-> resize / center crop
+-> float tensor
+-> [H, W, C] to [C, H, W]
+-> normalize
+-> pixel_values.shape = [num_images, 3, 224, 224]</code></pre>
+            <p>
+              注意，<code>pixel_values</code> 仍然不是 image embedding。它只是“整理干净的像素张量”。之后还要进入 image encoder，才会得到 <code>outputs.image_embeds</code>。
+            </p>
+
+            <h3>9.3 文本侧：从字符串到 <code>input_ids</code></h3>
+            <p>
+              文本侧做的是你在 Day6 学过的 tokenizer 工作。候选文本先被分成 token，再映射成词表里的整数 ID。
+            </p>
+            <pre><code>texts = [
+    "a red square on a white background",
+    "a blue circle on a white background",
+    "a photo of a dog on grass",
+]
+
+tokenizer(texts)
+-> input_ids.shape = [num_texts, L]
+-> attention_mask.shape = [num_texts, L]</code></pre>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>张量</th>
+                    <th>含义</th>
+                    <th>关键点</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>input_ids</code></td>
+                    <td>每条文本被 tokenizer 切分后，对应到词表里的整数编号。</td>
+                    <td>整数 ID 本身不是语义向量，只是查 embedding 表的索引。</td>
+                  </tr>
+                  <tr>
+                    <td><code>attention_mask</code></td>
+                    <td>标记哪些位置是真实 token，哪些位置是 padding。</td>
+                    <td><code>1</code> 表示真实 token，<code>0</code> 表示补齐位置。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>9.4 为什么需要 <code>padding=True</code></h3>
+            <p>
+              候选文本长短不一样，但一个 batch 里的 <code>input_ids</code> 必须能堆成整齐矩阵。如果第一句话有 8 个 token，第二句话有 6 个 token，就需要把短句补到同样长度。
+            </p>
+            <pre><code>text 0 tokens: [id, id, id, id, id, id, id, id]
+text 1 tokens: [id, id, id, id, id, id, pad, pad]
+
+input_ids.shape      = [2, 8]
+attention_mask.shape = [2, 8]</code></pre>
+            <p>
+              <code>attention_mask</code> 的作用就是告诉 text encoder：补齐的 <code>pad</code> 位置不是有效内容，不要把它当成真实文字理解。
+            </p>
+
+            <h3>9.5 <code>return_tensors="pt"</code> 是什么意思</h3>
+            <p>
+              <code>pt</code> 是 PyTorch 的缩写。设置 <code>return_tensors="pt"</code> 后，processor 会直接返回 PyTorch Tensor，而不是 Python list 或 NumPy array。
+            </p>
+            <pre><code>encoded = {
+    "pixel_values": tensor([...]),   # torch.Tensor
+    "input_ids": tensor([...]),      # torch.Tensor
+    "attention_mask": tensor([...]), # torch.Tensor
+}</code></pre>
+            <p>
+              这也是为什么真实脚本后面可以直接写：
+            </p>
+            <pre><code>outputs = model(**encoded)</code></pre>
+            <p>
+              这里的 <code>**encoded</code> 是 Python 的字典展开语法，等价于：
+            </p>
+            <pre><code>outputs = model(
+    pixel_values=encoded["pixel_values"],
+    input_ids=encoded["input_ids"],
+    attention_mask=encoded["attention_mask"],
+)</code></pre>
+
+            <h3>9.6 processor 和 model 的边界</h3>
+            <div class="diagram" aria-label="AutoProcessor and CLIPModel boundary">
+              <svg viewBox="0 0 940 460" role="img">
+                <defs>
+                  <marker id="processorArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+                  </marker>
+                </defs>
+                <rect width="940" height="460" fill="#101720" />
+                <text x="42" y="48" fill="#eef6ff" font-size="24" font-weight="850">AutoProcessor 只准备输入，CLIPModel 才计算 embedding</text>
+                <text x="42" y="78" fill="#9fb0c1" font-size="15">不要把 processor 输出的 input_ids / pixel_values 误认为 image_embeds / text_embeds。</text>
+
+                <rect x="56" y="130" width="170" height="76" fill="#0e3440" stroke="#67e8f9" />
+                <text x="92" y="162" fill="#eef6ff" font-size="16" font-weight="850">Raw Image</text>
+                <text x="84" y="186" fill="#9fb0c1" font-size="13">PIL / RGB pixels</text>
+
+                <rect x="56" y="260" width="170" height="76" fill="#0e3440" stroke="#67e8f9" />
+                <text x="98" y="292" fill="#eef6ff" font-size="16" font-weight="850">Raw Texts</text>
+                <text x="92" y="316" fill="#9fb0c1" font-size="13">strings</text>
+
+                <path d="M226 168 H294" stroke="#67e8f9" stroke-width="3" marker-end="url(#processorArrow)" />
+                <path d="M226 298 H294" stroke="#67e8f9" stroke-width="3" marker-end="url(#processorArrow)" />
+
+                <rect x="316" y="118" width="220" height="230" fill="#143521" stroke="#86efac" />
+                <text x="374" y="154" fill="#eef6ff" font-size="18" font-weight="850">AutoProcessor</text>
+                <text x="348" y="194" fill="#9fb0c1" font-size="14">image -> pixel_values</text>
+                <text x="348" y="224" fill="#9fb0c1" font-size="14">text -> input_ids</text>
+                <text x="348" y="254" fill="#9fb0c1" font-size="14">text -> attention_mask</text>
+                <text x="348" y="296" fill="#fbbf24" font-size="14" font-weight="850">No semantic embedding yet</text>
+
+                <path d="M536 233 H604" stroke="#67e8f9" stroke-width="3" marker-end="url(#processorArrow)" />
+
+                <rect x="626" y="118" width="230" height="230" fill="#382812" stroke="#fbbf24" />
+                <text x="686" y="154" fill="#eef6ff" font-size="18" font-weight="850">CLIPModel</text>
+                <text x="662" y="194" fill="#9fb0c1" font-size="14">image encoder</text>
+                <text x="662" y="224" fill="#9fb0c1" font-size="14">text encoder</text>
+                <text x="662" y="254" fill="#9fb0c1" font-size="14">projection heads</text>
+                <text x="662" y="296" fill="#eef6ff" font-size="14" font-weight="850">image_embeds / text_embeds</text>
+                <text x="662" y="322" fill="#eef6ff" font-size="14" font-weight="850">logits_per_image</text>
+              </svg>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong><code>AutoProcessor</code> 是输入整理器，<code>CLIPModel</code> 才是语义编码器。processor 输出的是“可喂给模型的张量”，model 输出的才是“可比较的图文向量和相似度分数”。
+              </p>
+	            </div>
+	          </section>
+
+	          <section id="clip-forward">
+	            <h2>10. <code>CLIPModel.forward()</code>：真实模型内部主线</h2>
+	            <p class="lead">
+	              前面你已经看懂了真实推理脚本。现在把焦点收窄到这一行：<code>outputs = model(**encoded)</code>。它不是魔法，本质上就是图片走 vision tower，文本走 text tower，然后两边投影到同一个空间，最后算相似度矩阵。
+	            </p>
+
+	            <div class="callout">
+	              <p>
+	                <strong>源码依据：</strong>本节按当前环境里的 <code>transformers.models.clip.modeling_clip.CLIPModel.forward</code> 主线整理。为了学习清晰，下面使用等价伪代码，不逐行复制源码。
+	              </p>
+	            </div>
+
+	            <h3>10.1 顶层 forward 做了哪几件事</h3>
+	            <pre><code>vision_outputs = get_image_features(pixel_values)
+text_outputs   = get_text_features(input_ids, attention_mask)
+
+image_embeds = vision_outputs.pooler_output
+text_embeds  = text_outputs.pooler_output
+
+image_embeds = L2_normalize(image_embeds)
+text_embeds  = L2_normalize(text_embeds)
+
+logits_per_text  = text_embeds @ image_embeds.T
+logits_per_text  = logits_per_text * exp(logit_scale)
+logits_per_image = logits_per_text.T</code></pre>
+	            <p>
+	              这段伪代码就是整个 CLIP 推理的骨架。注意顺序：先分别编码图片和文本，再把整图向量、整句向量取出来，然后做 L2 归一化，最后用矩阵乘法得到相似度分数。
+	            </p>
+
+	            <h3>10.2 图片路径：<code>get_image_features(pixel_values)</code></h3>
+	            <p>
+	              图片侧先进入 <code>vision_model</code>。对于 <code>openai/clip-vit-base-patch32</code>，视觉塔内部宽度是 <code>768</code>，所以进入 projection 之前都是视觉塔自己的维度。
+	            </p>
+	            <pre><code>pixel_values
+  [num_images, 3, 224, 224]
+
+CLIPVisionEmbeddings:
+  Conv2d patch embedding
+  -> [num_images, 49, 768]
+
+  + class token
+  -> [num_images, 50, 768]
+
+  + position embedding
+  -> [num_images, 50, 768]
+
+vision Transformer encoder:
+  -> last_hidden_state [num_images, 50, 768]
+
+取 class token:
+  pooled_output = last_hidden_state[:, 0, :]
+  -> [num_images, 768]
+
+visual_projection:
+  [num_images, 768] -> [num_images, 512]</code></pre>
+	            <div class="callout amber">
+	              <p>
+	                <strong>不要把 50 理解成 50 个 patch：</strong><code>openai/clip-vit-base-patch32</code> 的输入是 <code>224 × 224</code>，patch size 是 <code>32</code>，所以高方向切出 <code>224 / 32 = 7</code> 个 patch，宽方向也是 <code>7</code> 个 patch，总 patch 数是 <code>7 × 7 = 49</code>。再额外拼上 1 个 class token，序列长度才变成 <code>49 + 1 = 50</code>。
+	              </p>
+	            </div>
+	            <p>
+	              更底层一点，视觉侧的 patch embedding 可以理解成：
+	            </p>
+	            <pre><code>Conv2d(
+    in_channels=3,
+    out_channels=768,
+    kernel_size=32,
+    stride=32,
+)
+
+pixel_values:       [num_images, 3, 224, 224]
+Conv2d output:      [num_images, 768, 7, 7]
+flatten + transpose:[num_images, 49, 768]
+add class token:    [num_images, 50, 768]</code></pre>
+	            <p>
+	              这里的 <code>768</code> 是视觉塔的 <code>hidden_size</code>，也就是模型架构配置里的“内部向量宽度”。它是训练前选定的超参数，不是训练过程中被 optimizer 学出来的那个数字。真正被训练出来的是围绕这个宽度的一堆权重值，例如 patch embedding 的卷积核权重、attention 里的 Q/K/V 矩阵、MLP 矩阵、class token、position embedding 等。
+	            </p>
+	            <div class="table-wrap">
+	              <table>
+	                <thead>
+	                  <tr>
+	                    <th>图片路径变量</th>
+	                    <th>典型 shape</th>
+	                    <th>含义</th>
+	                  </tr>
+	                </thead>
+	                <tbody>
+	                  <tr>
+	                    <td><code>pixel_values</code></td>
+	                    <td><code>[num_images, 3, 224, 224]</code></td>
+	                    <td>processor 整理好的图片张量。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>last_hidden_state</code></td>
+	                    <td><code>[num_images, 50, 768]</code></td>
+	                    <td>视觉 Transformer 输出的每个 image token 表示。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>pooled_output</code></td>
+	                    <td><code>[num_images, 768]</code></td>
+	                    <td>取第 0 个 class token，作为整张图的汇总向量。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>visual_projection(pooled_output)</code></td>
+	                    <td><code>[num_images, 512]</code></td>
+	                    <td>把视觉塔内部向量投影到 CLIP 共享空间。</td>
+	                  </tr>
+	                </tbody>
+	              </table>
+	            </div>
+
+	            <h3>10.3 文本路径：<code>get_text_features(input_ids, attention_mask)</code></h3>
+	            <p>
+	              文本侧进入 <code>text_model</code>。这个模型的文本塔 hidden size 正好是 <code>512</code>，但这仍然分两层含义：Transformer 内部 hidden state 是 512，最后共享空间的 projection 结果也是 512。
+	            </p>
+	            <pre><code>input_ids
+  [num_texts, L]
+
+CLIPTextEmbeddings:
+  token embedding + position embedding
+  -> [num_texts, L, 512]
+
+text Transformer encoder:
+  -> last_hidden_state [num_texts, L, 512]
+
+取 EOS / EOT token 对应位置:
+  pooled_output -> [num_texts, 512]
+
+text_projection:
+  [num_texts, 512] -> [num_texts, 512]</code></pre>
+	            <p>
+	              这里 <code>text_projection</code> 输入输出都是 <code>512</code>，但它仍然是一个可学习线性层。不要因为维度没变，就误以为它什么都没做；它会旋转、缩放、重新组织这个向量，让文本侧更适合和图片侧比较。
+	            </p>
+
+	            <h3>10.4 为什么 forward 里还要再 L2 normalize</h3>
+	            <p>
+	              projection 后得到的是共享空间里的图文向量，但它们的长度未必相同。CLIP 会把每个整图向量、整句向量都除以自己的 L2 长度：
+	            </p>
+	            <div class="formula">image_embeds = image_embeds / ||image_embeds||<sub>2</sub></div>
+	            <div class="formula">text_embeds = text_embeds / ||text_embeds||<sub>2</sub></div>
+	            <p>
+	              做完这一步，每一行向量长度约等于 <code>1</code>。后面的点积就主要表示方向相似度，也就是 cosine similarity。
+	            </p>
+
+	            <h3>10.5 <code>logits_per_text</code> 和 <code>logits_per_image</code></h3>
+	            <p>
+	              源码里先算文本到图片方向：
+	            </p>
+	            <pre><code>logits_per_text = text_embeds @ image_embeds.T
+logits_per_text = logits_per_text * exp(logit_scale)</code></pre>
+	            <p>
+	              如果有 <code>num_texts = 4</code>，<code>num_images = 1</code>：
+	            </p>
+	            <pre><code>text_embeds.shape       = [4, 512]
+image_embeds.T.shape    = [512, 1]
+logits_per_text.shape   = [4, 1]
+logits_per_image.shape  = [1, 4]</code></pre>
+	            <p>
+	              然后源码用转置得到图片到文本方向：
+	            </p>
+	            <pre><code>logits_per_image = logits_per_text.T</code></pre>
+	            <p>
+	              这就是为什么真实推理脚本里用：
+	            </p>
+	            <pre><code>probabilities = outputs.logits_per_image.softmax(dim=1)</code></pre>
+	            <p>
+	              因为当前任务是“一张图片从多条候选文本里选最匹配的一条”，所以要在 <code>logits_per_image</code> 的文本候选维度上做 softmax。
+	            </p>
+
+	            <h3>10.6 这和前面的 toy demo 如何对齐</h3>
+	            <div class="table-wrap">
+	              <table>
+	                <thead>
+	                  <tr>
+	                    <th>toy demo</th>
+	                    <th>真实 CLIP forward</th>
+	                    <th>关系</th>
+	                  </tr>
+	                </thead>
+	                <tbody>
+	                  <tr>
+	                    <td><code>image_raw</code></td>
+	                    <td><code>vision_model + visual_projection</code></td>
+	                    <td>toy demo 直接手写图片向量；真实模型从像素算出来。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>text_raw</code></td>
+	                    <td><code>text_model + text_projection</code></td>
+	                    <td>toy demo 直接手写文本向量；真实模型从 token id 算出来。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>F.normalize(..., dim=1)</code></td>
+	                    <td>forward 里的 L2 normalize</td>
+	                    <td>两边都是把每一行向量变成单位长度。</td>
+	                  </tr>
+	                  <tr>
+	                    <td><code>image_embeddings @ text_embeddings.T</code></td>
+	                    <td><code>logits_per_image</code></td>
+	                    <td>两边都是图片对文本的匹配分数表。</td>
+	                  </tr>
+	                </tbody>
+	              </table>
+	            </div>
+
+	            <div class="callout green">
+	              <p>
+	                <strong>本阶段最重要的一句话：</strong><code>CLIPModel.forward()</code> 不是“直接把图片和文字混在一起理解”，而是先分别编码成整图向量和整句向量，再投影到同一个 512 维空间，归一化后用矩阵乘法计算图文匹配分数。
+	              </p>
+	            </div>
+	          </section>
+
+	          <section id="space">
+	            <h2>11. 同一个向量空间</h2>
+            <p>
+              “同一个向量空间”这句话很抽象，可以先理解成：图片和文字最终都被翻译成同一种坐标系里的点。
+            </p>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>训练前</h3>
+                <p>图片向量和文本向量是随机或不对齐的。即使语义匹配，也不一定靠近。</p>
+              </div>
+              <div class="panel">
+                <h3>训练目标</h3>
+                <p>匹配的图文向量拉近，不匹配的图文向量推远。</p>
+              </div>
+              <div class="panel">
+                <h3>训练后</h3>
+                <p>“狗的图片”和“狗的文本”在向量空间中更接近。</p>
+              </div>
+            </div>
+            <p>
+              如果图文向量都已经归一化，常见相似度可以写成点积：
+            </p>
+            <div class="formula">similarity(image, text) = image_embedding · text_embedding</div>
+            <p>
+              这里的点积暂时不用展开公式。先记住：两个向量方向越接近，分数越高。
+            </p>
+          </section>
+
+	          <section id="toy">
+	            <h2>12. 小例子</h2>
+            <p>
+              假设我们已经有一个训练好的 CLIP。现在给它 1 张图片和 3 条文本，它会做下面的事：
+            </p>
+            <pre><code>image_embedding.shape = [D]
+text_embeddings.shape = [3, D]
+
+scores = image_embedding @ text_embeddings.T
+scores.shape = [3]</code></pre>
+            <p>
+              假设输出分数是：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>文本</th>
+                    <th>相似度分数</th>
+                    <th>解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>一只小狗在草地上。</td>
+                    <td><code>0.82</code></td>
+                    <td>最高，最匹配。</td>
+                  </tr>
+                  <tr>
+                    <td>一辆红色汽车在路边。</td>
+                    <td><code>0.13</code></td>
+                    <td>不太匹配。</td>
+                  </tr>
+                  <tr>
+                    <td>一碗面条放在桌上。</td>
+                    <td><code>0.05</code></td>
+                    <td>更不匹配。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <p>
+                <strong>当前阶段只需掌握：</strong>CLIP 不是直接输出一句话，也不是生成图片。它最核心的能力是判断图片和文本在语义上有多接近。
+              </p>
+            </div>
+          </section>
+
+	          <section id="checkpoint">
+		            <h2>13. Day9 收口检查点</h2>
+	            <p>
+	              Day9 主任务已经完成。收口时只需要确认下面这些主线都能讲通。
+            </p>
+            <ol>
+              <li>CLIP 的目标是把图片和文本映射到同一个向量空间。</li>
+              <li>Image Encoder 负责把图片变成 <code>image_embedding</code>。</li>
+              <li>Text Encoder 负责把文本变成 <code>text_embedding</code>。</li>
+              <li>图文是否匹配，可以先通过两个向量的相似度来判断。</li>
+              <li>匹配图文应该更近，不匹配图文应该更远。</li>
+              <li>图片塔和文本塔内部 shape 可以不同，但最终都要输出 <code>[B, D]</code>。</li>
+              <li><code>D</code> 是共享向量空间的维度，后面计算相似度矩阵时会用到。</li>
+              <li><code>image_embeddings[b]</code> 是第 <code>b</code> 张图片的整图向量，不是某个 patch 的向量。</li>
+              <li><code>image_embeddings @ text_embeddings.T</code> 会得到 <code>[B, B]</code> 的图文相似度矩阵。</li>
+              <li>矩阵第 <code>i</code> 行第 <code>j</code> 列表示第 <code>i</code> 张图和第 <code>j</code> 条文本的匹配分数。</li>
+              <li>如果 batch 按图文对排列，那么对角线就是正确匹配，非对角线就是错误匹配。</li>
+              <li>图片找文本：<code>CrossEntropyLoss(S, labels)</code>。</li>
+              <li>文本找图片：<code>CrossEntropyLoss(S.T, labels)</code>。</li>
+              <li>CLIP loss 通常是两个方向 loss 的平均。</li>
+              <li>梯度会让对角线分数上升，让非对角线分数下降，并继续影响两个 encoder 的参数。</li>
+              <li>最小 demo 已经把 <code>[B, D] -> [B, B] -> labels -> loss -> backward()</code> 跑通。</li>
+              <li>真实 CLIP 推理中，<code>outputs.image_embeds</code> 和 <code>outputs.text_embeds</code> 是真实模型算出来的共享空间向量。</li>
+              <li><code>outputs.logits_per_image</code> 就是真实模型给出的图片对文本候选的匹配分数。</li>
+	              <li><code>AutoProcessor</code> 只负责把图片和文本整理成 <code>pixel_values</code>、<code>input_ids</code>、<code>attention_mask</code>。</li>
+	              <li><code>pixel_values</code> 和 <code>input_ids</code> 不是 embedding，真正的 embedding 来自 <code>CLIPModel</code>。</li>
+	              <li><code>CLIPModel.forward()</code> 顶层会分别调用图片路径和文本路径，再取出 <code>image_embeds</code>、<code>text_embeds</code>。</li>
+	              <li>视觉塔内部 hidden size 可以是 <code>768</code>，但 <code>visual_projection</code> 会把整图向量投影到 <code>projection_dim = 512</code>。</li>
+	              <li>文本塔内部 hidden size 是 <code>512</code>，<code>text_projection</code> 会把整句向量整理到同一个 512 维共享空间。</li>
+	              <li>真实 forward 中会对图文向量做 L2 normalize，再计算 <code>logits_per_text</code> 和 <code>logits_per_image</code>。</li>
+	            </ol>
+		            <div class="callout">
+		              <p>
+		                <strong>Day9 结论：</strong>核心任务已完成。下一步进入 Day10 CLIP 图文检索 demo；真实 CLIP 权重下载和实际概率输出保留为可选扩展。
+		              </p>
+		            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
