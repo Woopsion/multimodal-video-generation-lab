@@ -142,19 +142,25 @@ logs/
 
 ### Day 9：CLIP 图文对齐
 
-- [ ] 学习：CLIP 的 image encoder、text encoder、contrastive loss。
-- [ ] 实践：跑通 CLIP 图文相似度计算。
-- [ ] 实践：准备 5 张图片和 10 条文本，输出相似度矩阵。
-- [ ] 产出：`experiments/clip-retrieval/clip_similarity.py`。
-- [ ] 验收：能解释为什么 CLIP 可以做零样本分类和图文检索。
+- [x] 学习：CLIP 的 image encoder、text encoder、contrastive loss。
+- [x] 实践：跑通 CLIP 图文相似度计算，并解释 `[B, D] -> [B, B] -> loss` 主线。
+- [x] 实践：用 toy demo 输出图文相似度矩阵，并补充真实 CLIP 推理脚本。
+- [x] 产出：`docs/day-09-clip-alignment/index.html`。
+- [x] 产出：`experiments/day-09-clip-alignment/clip_similarity_demo.py`。
+- [x] 产出：`experiments/day-09-clip-alignment/clip_real_inference_demo.py`。
+- [x] 验收：能解释为什么 CLIP 可以做零样本分类和图文检索。
 
 ### Day 10：CLIP 图文检索 Demo
 
-- [ ] 学习：向量归一化、余弦相似度、top-k 检索。
-- [ ] 实践：构建一个小型图片库，输入文本返回 top-3 图片。
-- [ ] 实践：记录成功案例和失败案例各 3 个。
-- [ ] 产出：`demos/clip-image-search/`。
-- [ ] 验收：能运行一个最小图文检索 demo。
+- [x] 学习：向量归一化、余弦相似度、top-k 检索。
+- [x] 实践：用 toy demo 跑通 `scores -> topk -> ranking -> Recall@K`。
+- [x] 产出：`docs/day-10-clip-retrieval/index.html`。
+- [x] 产出：`experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py`。
+- [x] 实践：构建一个小型图片库，输入文本返回 top-3 图片。
+- [x] 产出：`experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py`。
+- [x] 实践：记录成功案例和失败案例各 3 个。
+- [x] 产出：`demos/clip-image-search/`。
+- [x] 验收：能运行一个最小图文检索 demo。
 
 ### Day 11：阅读 CLIP 论文
 
@@ -332,7 +338,7 @@ logs/
 如果时间有限，至少完成以下 10 项：
 
 - [ ] 一个 PyTorch 训练脚本。
-- [ ] 一个 CLIP 图文检索 demo。
+- [x] 一个 CLIP 图文检索 demo。
 - [ ] 一个 VLM 图片问答 demo。
 - [ ] 一个视频抽帧 + VLM 总结 demo。
 - [ ] 一个 Stable Diffusion 或 SDXL 推理脚本。

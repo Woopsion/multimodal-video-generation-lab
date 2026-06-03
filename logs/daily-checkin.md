@@ -362,3 +362,60 @@
   - `.venv/bin/python experiments/day-08-vit-patch-embedding/mini_vit_shape_demo.py`
 - 下一步计划：
   - Day9 进入 CLIP 图文对齐。
+
+## Day 9 - CLIP 图文对齐收口
+
+- 日期：2026-05-24
+- 今日目标：理解 CLIP 如何把图片和文本映射到同一个向量空间，并用相似度矩阵完成图文对齐。
+- 完成内容：
+  - 新增 Day9 HTML 主笔记：`docs/day-09-clip-alignment/index.html`
+  - 新增 toy 相似度 demo：`experiments/day-09-clip-alignment/clip_similarity_demo.py`
+  - 新增真实 CLIP forward demo：`experiments/day-09-clip-alignment/clip_real_inference_demo.py`
+  - 更新 Week2 状态笔记：`notes/week-02-vlm.md`
+  - 更新 30 天执行清单中的 Day9 完成状态。
+- 当前学习重点：
+  - Image Encoder 输出 `image_embedding`，Text Encoder 输出 `text_embedding`。
+  - 两边内部 hidden size 可以不同，但最终 projection 后必须进入同一个 `projection_dim`。
+  - `image_embeddings @ text_embeddings.T` 得到 `[B, B]` 相似度矩阵。
+  - 对角线是 batch 内正确图文对，非对角线是负样本。
+  - CLIP contrastive loss 是 image-to-text 和 text-to-image 两个方向的 CrossEntropyLoss 平均。
+  - `dLoss / dS = p - y` 不是直接更新分数表，而是通过链式法则回传到 encoder 和 projection 参数。
+- 验证命令：
+  - `.venv/bin/python experiments/day-09-clip-alignment/clip_similarity_demo.py`
+  - `.venv/bin/python experiments/day-09-clip-alignment/clip_real_inference_demo.py`
+- 下一步计划：
+  - Day10 进入 CLIP 图文检索，把相似度矩阵变成 top-k ranking。
+
+## Day 10 - CLIP 图文检索收口
+
+- 日期：2026-05-24
+- 今日目标：把 Day9 的 CLIP 相似度矩阵变成可运行的 retrieval workflow。
+- 完成内容：
+  - 新增 Day10 HTML 主笔记：`docs/day-10-clip-retrieval/index.html`
+  - 新增 toy retrieval demo：`experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py`
+  - 新增真实 CLIP retrieval demo：`experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py`
+  - 新增本地图片搜索 Web demo：`demos/clip-image-search/`
+  - 更新 Week2 总览页：`docs/week-02-multimodal-understanding/index.html`
+  - 更新 Week2 状态笔记：`notes/week-02-vlm.md`
+  - 更新 30 天执行清单中的 Day10 完成状态和最低完成标准。
+- 当前学习重点：
+  - Retrieval 的核心对象是 query、gallery、score、top-k、ranking。
+  - 文本搜图时，`logits_per_text.shape = [num_texts, num_images]`。
+  - 图片搜文本时，`logits_per_image.shape = [num_images, num_texts]`。
+  - Recall@K 衡量正确答案是否进入 top-k。
+  - 生产环境不会天然知道候选库是否有正确答案，只能用阈值、top1/top2 margin、reranker、metadata filter、用户反馈和人工复核降低误检。
+  - 阈值拒答不是证明“没有答案”，而是表达“当前候选库里没有足够可信的答案”。
+- 真实 demo 观察：
+  - `outputs.image_embeds.shape = (4, 512)`
+  - `outputs.text_embeds.shape = (7, 512)`
+  - `outputs.logits_per_image.shape = (4, 7)`
+  - `outputs.logits_per_text.shape = (7, 4)`
+  - 阈值示例：`threshold = 28.0`
+  - 匹配案例：red square、blue circle、green triangle、noodles。
+  - 拒答案例：dog on grass、city street at night、person riding a horse。
+- 验证命令：
+  - `.venv/bin/python experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py`
+  - `.venv/bin/python experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py`
+  - `.venv/bin/python demos/clip-image-search/app.py`
+- 下一步计划：
+  - Day11 阅读 CLIP 论文，把 encoder、projection、similarity matrix、contrastive loss 和论文方法逐项对齐。

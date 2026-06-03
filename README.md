@@ -28,8 +28,10 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Active note: `docs/week-02-multimodal-understanding/index.html`
 - Day 8 final note: `docs/day-08-vit-patch-embedding/index.html`
 - Day 9 final note: `docs/day-09-clip-alignment/index.html`
+- Day 10 final note: `docs/day-10-clip-retrieval/index.html`
+- Day 10 demos: `experiments/day-10-clip-retrieval/`, `demos/clip-image-search/`
 - Status note: `notes/week-02-vlm.md`
-- Current task: Day 10 CLIP retrieval demo.
+- Current task: Day 11 CLIP paper reading after completing the Day 10 retrieval demo.
 
 ## Repository Hygiene
 

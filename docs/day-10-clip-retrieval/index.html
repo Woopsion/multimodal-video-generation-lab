@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 10 - CLIP 图文检索</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --surface: #121922;
+        --surface-2: #17212b;
+        --ink: #eef6ff;
+        --muted: #9fb0c1;
+        --line: #293744;
+        --cyan: #67e8f9;
+        --cyan-soft: #0e3440;
+        --green: #86efac;
+        --green-soft: #123521;
+        --amber: #fbbf24;
+        --amber-soft: #382812;
+        --code: #070a0e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.74;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 66svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 54px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(11, 15, 20, 1) 0%, rgba(11, 15, 20, 0.92) 48%, rgba(11, 15, 20, 0.72) 100%),
+          linear-gradient(135deg, rgba(103, 232, 249, 0.1), rgba(134, 239, 172, 0.08));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(430px, 1.08fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--cyan);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 720px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual,
+      .diagram {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #101720;
+      }
+
+      .hero-visual svg,
+      .diagram svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 52px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        padding: 8px 0 8px 18px;
+        border-left: 2px solid var(--line);
+      }
+
+      nav a {
+        display: block;
+        padding: 7px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--cyan);
+      }
+
+      .nav-label {
+        margin: 16px 0 6px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 30px 0 12px;
+        font-size: 24px;
+        line-height: 1.24;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: #202a34;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        margin: 22px 0;
+        padding: 20px;
+        overflow: auto;
+        border-radius: 0;
+        background: var(--code);
+        color: #e6f6ff;
+        font-size: 14px;
+        line-height: 1.68;
+      }
+
+      .callout {
+        margin: 26px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--cyan);
+        background: var(--cyan-soft);
+      }
+
+      .callout.green {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .callout.amber {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .callout p {
+        margin: 0;
+      }
+
+      .step-list {
+        display: grid;
+        gap: 16px;
+        margin-top: 22px;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 18px;
+        padding: 18px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+
+      .step-tag {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .status {
+        color: var(--amber);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 18px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        padding: 18px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        margin: 22px 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--cyan);
+        background: var(--surface-2);
+      }
+
+      ol,
+      ul {
+        max-width: 900px;
+        padding-left: 24px;
+      }
+
+      li {
+        margin: 8px 0;
+      }
+
+      .formula {
+        margin: 18px 0;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        background: #101720;
+        color: #e8fbff;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 16px;
+      }
+
+      @media (max-width: 880px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        nav {
+          position: static;
+        }
+
+        h1 {
+          font-size: 42px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 10 - CLIP Retrieval</p>
+          <h1>从图文对齐走向图文检索</h1>
+          <p class="hero-copy">
+            Day9 已经看懂 CLIP 如何给图文配对打分。Day10 开始把这张分数表变成一个可用任务：给一张图找最相关文本，或给一句话找最相关图片。
+          </p>
+        </div>
+        <div class="hero-visual" aria-label="CLIP retrieval top-k diagram">
+          <svg viewBox="0 0 900 520" role="img">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#67e8f9" />
+              </marker>
+            </defs>
+            <rect width="900" height="520" fill="#101720" />
+            <text x="44" y="56" fill="#eef6ff" font-size="25" font-weight="850">CLIP retrieval = similarity matrix + ranking</text>
+            <text x="44" y="86" fill="#9fb0c1" font-size="15">不是生成文本，也不是训练新模型；先把候选集合排出顺序。</text>
+
+            <rect x="54" y="138" width="190" height="92" fill="#0e3440" stroke="#67e8f9" />
+            <text x="92" y="176" fill="#eef6ff" font-size="17" font-weight="850">image query</text>
+            <text x="82" y="202" fill="#9fb0c1" font-size="13">one image embedding</text>
+
+            <rect x="54" y="292" width="190" height="92" fill="#143521" stroke="#86efac" />
+            <text x="92" y="330" fill="#eef6ff" font-size="17" font-weight="850">text query</text>
+            <text x="82" y="356" fill="#9fb0c1" font-size="13">one text embedding</text>
+
+            <rect x="338" y="130" width="224" height="270" fill="#17212b" stroke="#293744" />
+            <text x="374" y="166" fill="#eef6ff" font-size="18" font-weight="850">similarity matrix</text>
+            <text x="384" y="194" fill="#9fb0c1" font-size="13">images × texts</text>
+            <rect x="376" y="226" width="42" height="42" fill="#0e3440" stroke="#67e8f9" />
+            <rect x="418" y="226" width="42" height="42" fill="#382812" stroke="#fbbf24" />
+            <rect x="460" y="226" width="42" height="42" fill="#143521" stroke="#86efac" />
+            <rect x="376" y="268" width="42" height="42" fill="#382812" stroke="#fbbf24" />
+            <rect x="418" y="268" width="42" height="42" fill="#0e3440" stroke="#67e8f9" />
+            <rect x="460" y="268" width="42" height="42" fill="#382812" stroke="#fbbf24" />
+            <rect x="376" y="310" width="42" height="42" fill="#143521" stroke="#86efac" />
+            <rect x="418" y="310" width="42" height="42" fill="#382812" stroke="#fbbf24" />
+            <rect x="460" y="310" width="42" height="42" fill="#0e3440" stroke="#67e8f9" />
+            <text x="386" y="253" fill="#eef6ff" font-size="13">0.9</text>
+            <text x="428" y="253" fill="#eef6ff" font-size="13">0.4</text>
+            <text x="470" y="253" fill="#eef6ff" font-size="13">0.2</text>
+            <text x="386" y="295" fill="#eef6ff" font-size="13">0.3</text>
+            <text x="428" y="295" fill="#eef6ff" font-size="13">0.8</text>
+            <text x="470" y="295" fill="#eef6ff" font-size="13">0.2</text>
+            <text x="386" y="337" fill="#eef6ff" font-size="13">0.1</text>
+            <text x="428" y="337" fill="#eef6ff" font-size="13">0.3</text>
+            <text x="470" y="337" fill="#eef6ff" font-size="13">0.7</text>
+
+            <path d="M244 184 H320" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)" />
+            <path d="M244 338 H320" stroke="#86efac" stroke-width="3" marker-end="url(#arrow)" />
+
+            <rect x="650" y="158" width="188" height="80" fill="#382812" stroke="#fbbf24" />
+            <text x="690" y="190" fill="#eef6ff" font-size="17" font-weight="850">top-k texts</text>
+            <text x="678" y="216" fill="#9fb0c1" font-size="13">image -> ranked text list</text>
+
+            <rect x="650" y="294" width="188" height="80" fill="#382812" stroke="#fbbf24" />
+            <text x="688" y="326" fill="#eef6ff" font-size="17" font-weight="850">top-k images</text>
+            <text x="678" y="352" fill="#9fb0c1" font-size="13">text -> ranked image list</text>
+
+            <path d="M562 212 H634" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrow)" />
+            <path d="M562 334 H634" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrow)" />
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day10 学习导航">
+          <div class="nav-label">Day10</div>
+          <a href="#goal">0. 今天怎么学</a>
+          <a href="#plan">1. 分阶段计划</a>
+          <a href="#bridge">2. 从 Day9 到 Day10</a>
+          <a href="#retrieval-task">3. 检索任务是什么</a>
+          <a href="#matrix">4. 相似度矩阵如何变成检索</a>
+          <a href="#toy-demo">5. Toy retrieval demo</a>
+          <a href="#real-demo">6. 真实 CLIP retrieval</a>
+          <a href="#evaluation">7. 检索评估与无答案判断</a>
+          <a href="#search-demo">8. 最小图片搜索 Demo</a>
+          <a href="#checkpoint">9. Day10 收口</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天怎么学</h2>
+            <p class="lead">
+              Day10 的目标不是再发明一个新模型，而是把 Day9 的 CLIP 相似度矩阵变成一个真正可用的检索流程：输入一个 query，在候选库里找最相似的 items。
+            </p>
+            <div class="callout">
+              <p>
+                <strong>学习边界：</strong>Day10 已收口：已经把真实 CLIP 检索逻辑封装成本地 Web 工具，输入文本，返回 top-3 图片和 accept/reject 判断。仍然不训练模型。
+              </p>
+            </div>
+          </section>
+
+          <section id="plan">
+            <h2>1. 分阶段计划</h2>
+            <p>
+              Day10 会按“先任务，再 shape，再代码”的顺序推进。检索看起来像工程任务，但底层仍然是你刚学过的向量相似度。
+            </p>
+            <div class="step-list">
+              <div class="step-item">
+                <div class="step-tag">Step 01</div>
+                <div>
+                  <h3>检索任务直觉 <span class="status">已展开</span></h3>
+                  <p>理解 query、gallery、top-k，以及图搜文和文搜图的区别。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 02</div>
+                <div>
+                  <h3>相似度矩阵到排名 <span class="status">已展开</span></h3>
+                  <p>把 <code>[num_images, num_texts]</code> 的分数表按行或按列排序，得到检索结果。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 03</div>
+                <div>
+                  <h3>最小 toy retrieval demo <span class="status">已展开</span></h3>
+                  <p>不加载真实模型，手写小向量，跑通 <code>similarity -> topk -> ranking</code>。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 04</div>
+                <div>
+                  <h3>真实 CLIP retrieval demo <span class="status">已展开</span></h3>
+                  <p>复用 Day9 的真实 CLIP 推理脚本，扩展成多图片、多文本的检索脚本。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 05</div>
+                <div>
+                  <h3>检索评估 <span class="status">已展开</span></h3>
+                  <p>理解 <code>Recall@K</code>、正确匹配是否进入前 K 名，以及候选库没有正确答案时为什么需要阈值或拒答逻辑。</p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-tag">Step 06</div>
+                <div>
+                  <h3>最小图片搜索 Demo <span class="status">已完成</span></h3>
+                  <p>把脚本封装成本地 Web 工具：浏览器输入 query，后端调用 CLIP，前端展示 top-3 和阈值判断。</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="bridge">
+            <h2>2. 从 Day9 到 Day10</h2>
+            <p>
+              Day9 你已经掌握了这条链路：
+            </p>
+            <pre><code>images -> image_encoder -> image_embeddings
+texts  -> text_encoder  -> text_embeddings
+
+similarity = image_embeddings @ text_embeddings.T</code></pre>
+            <p>
+              Day10 不改变这条链路。Day10 只是多做一步：把 similarity 里的分数排序。
+            </p>
+            <pre><code>similarity matrix
+-> sort / topk
+-> ranked results
+-> return top 1 / top 5 / top k</code></pre>
+            <div class="callout green">
+              <p>
+                <strong>关键变化：</strong>Day9 关心“这对图文是不是匹配”；Day10 关心“在一堆候选里，谁最匹配”。这就是从 alignment 到 retrieval 的跨越。
+              </p>
+            </div>
+          </section>
+
+          <section id="retrieval-task">
+            <h2>3. 检索任务是什么</h2>
+            <p>
+              检索任务里有两个常用词：<code>query</code> 和 <code>gallery</code>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>概念</th>
+                    <th>直观含义</th>
+                    <th>CLIP 图文检索里的例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>query</code></td>
+                    <td>你拿来发起搜索的东西。</td>
+                    <td>一张图片，或者一句文本。</td>
+                  </tr>
+                  <tr>
+                    <td><code>gallery</code></td>
+                    <td>被搜索的候选库。</td>
+                    <td>一批候选文本，或者一批候选图片。</td>
+                  </tr>
+                  <tr>
+                    <td><code>top-k</code></td>
+                    <td>按相似度从高到低取前 K 个结果。</td>
+                    <td>返回最像 query 的前 3 条文本，或前 5 张图片。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>3.1 图搜文：image-to-text retrieval</h3>
+            <p>
+              给一张图片，从一批候选文本里找最匹配的描述。
+            </p>
+            <pre><code>query image:
+  一张红色方块图片
+
+text gallery:
+  0. "a red square on a white background"
+  1. "a blue circle on a white background"
+  2. "a dog running on grass"
+  3. "a bowl of noodles"</code></pre>
+            <p>
+              CLIP 会给这张图片和每条文本打分，然后按分数排序。最高分文本就是 top-1，前 K 个文本就是 top-k。
+            </p>
+
+            <h3>3.2 文搜图：text-to-image retrieval</h3>
+            <p>
+              给一句文本，从一批候选图片里找最匹配的图片。
+            </p>
+            <pre><code>query text:
+  "a red square on a white background"
+
+image gallery:
+  image 0: red square
+  image 1: blue circle
+  image 2: dog
+  image 3: noodles</code></pre>
+            <p>
+              这和图搜文是同一张相似度矩阵的另一个方向。图搜文通常按行排序，文搜图通常按列排序或使用转置后的行排序。
+            </p>
+          </section>
+
+          <section id="matrix">
+            <h2>4. 相似度矩阵如何变成检索</h2>
+            <p>
+              假设我们有 3 张图片和 4 条文本：
+            </p>
+            <pre><code>image_embeddings.shape = [3, D]
+text_embeddings.shape  = [4, D]
+
+scores = image_embeddings @ text_embeddings.T
+scores.shape = [3, 4]</code></pre>
+            <p>
+              这张 <code>[3, 4]</code> 表里的每一行都可以做一次“图搜文”：
+            </p>
+            <pre><code>scores[0] = image 0 对所有 texts 的分数
+scores[1] = image 1 对所有 texts 的分数
+scores[2] = image 2 对所有 texts 的分数</code></pre>
+            <p>
+              每一列也可以做一次“文搜图”：
+            </p>
+            <pre><code>scores[:, 0] = text 0 对所有 images 的分数
+scores[:, 1] = text 1 对所有 images 的分数
+scores[:, 2] = text 2 对所有 images 的分数
+scores[:, 3] = text 3 对所有 images 的分数</code></pre>
+
+            <h3>4.1 top-k 是什么</h3>
+            <p>
+              如果某一行分数是：
+            </p>
+            <pre><code>image 0 scores over texts = [0.82, 0.13, 0.05, 0.41]</code></pre>
+            <p>
+              从高到低排序：
+            </p>
+            <pre><code>rank 1: text 0, score 0.82
+rank 2: text 3, score 0.41
+rank 3: text 1, score 0.13
+rank 4: text 2, score 0.05</code></pre>
+            <p>
+              如果 <code>k = 2</code>，那么 top-2 结果就是 <code>text 0</code> 和 <code>text 3</code>。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>不要把 top-k 想复杂：</strong>它不是新模型，也不是新 loss。它只是对相似度分数排序，然后取前 K 个。
+              </p>
+            </div>
+          </section>
+
+          <section id="toy-demo">
+            <h2>5. 最小 toy retrieval demo：把排名跑出来</h2>
+            <p class="lead">
+              现在进入 Day10 的代码阶段。这个 demo 仍然不加载真实 CLIP，不下载模型，不训练参数。它只用手写向量模拟 <code>image_embeddings</code> 和 <code>text_embeddings</code>，把检索最核心的工程动作跑清楚。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>脚本位置：</strong><code>experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py</code>。运行命令如下：
+              </p>
+            </div>
+            <pre><code>.venv/bin/python experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py</code></pre>
+
+            <h3>5.1 这个脚本在模拟什么</h3>
+            <p>
+              真实 CLIP 里，图片向量和文本向量来自 image encoder、text encoder 和 projection head。toy demo 里我们暂时手写这些向量，目的是把 retrieval 的骨架看清楚。
+            </p>
+            <pre><code>image_embeddings [num_images, D]
+text_embeddings  [num_texts, D]
+
+scores = image_embeddings @ text_embeddings.T
+scores.shape = [num_images, num_texts]</code></pre>
+            <p>
+              这次脚本设置了 4 张图片、6 条文本，所以：
+            </p>
+            <pre><code>image_embeddings.shape = [4, 5]
+text_embeddings.shape  = [6, 5]
+scores.shape           = [4, 6]</code></pre>
+            <p>
+              这里的 <code>D = 5</code> 是人为设计的小语义空间，用来表示几个粗略特征：red、blue、dog、food、roundness。真实 CLIP 的 <code>D</code> 通常是 512 或其他配置维度，而且不是我们手写，而是模型算出来。
+            </p>
+
+            <h3>5.2 检索库：query 和 gallery 如何对应</h3>
+            <p>
+              脚本里有 4 个 image items：
+            </p>
+            <pre><code>0: image 0: red square
+1: image 1: blue circle
+2: image 2: dog on grass
+3: image 3: bowl of noodles</code></pre>
+            <p>
+              还有 6 个 text items：
+            </p>
+            <pre><code>0: "a red square on a white background"
+1: "a blue circle on a white background"
+2: "a dog standing on grass"
+3: "a bowl of noodles on a table"
+4: "a red circle on a poster"
+5: "a dog near a blue ball"</code></pre>
+            <p>
+              对图搜文来说，4 张图片逐个作为 query，6 条文本是 gallery。对文搜图来说，6 条文本逐个作为 query，4 张图片是 gallery。
+            </p>
+
+            <h3>5.3 相似度矩阵输出怎么读</h3>
+            <p>
+              运行脚本后，核心矩阵是：
+            </p>
+            <pre><code>scores.shape = (4, 6)
+scores =
+tensor([[0.9999, 0.1423, 0.0104, 0.0797, 0.7360, 0.0673],
+        [0.1317, 1.0000, 0.1117, 0.2088, 0.5681, 0.6619],
+        [0.0160, 0.1747, 0.9980, 0.0296, 0.0796, 0.8530],
+        [0.0746, 0.2286, 0.0172, 0.9995, 0.2777, 0.1388]])</code></pre>
+            <p>
+              第 0 行表示 <code>image 0: red square</code> 对所有文本的分数。你会看到 <code>text 0</code> 分数最高，<code>text 4</code> 也不低，因为它也包含 red 和 circle 这类相近因素。
+            </p>
+
+            <h3>5.4 <code>torch.topk(scores, k, dim=1)</code> 到底做什么</h3>
+            <p>
+              图搜文时，我们对 <code>scores</code> 的每一行做 top-k：
+            </p>
+            <pre><code>values, indices = torch.topk(scores, k=3, dim=1)</code></pre>
+            <ul>
+              <li><code>dim=1</code>：沿着列方向排序，也就是每张图片在所有文本里找 top-k。</li>
+              <li><code>values</code>：top-k 的相似度分数。</li>
+              <li><code>indices</code>：top-k 对应的 gallery 下标，也就是文本编号。</li>
+            </ul>
+            <p>
+              对 <code>image 0</code>，输出是：
+            </p>
+            <pre><code>Query 0: image 0: red square
+  rank 1: column 0 | score = 0.9999 | text 0: "a red square on a white background"
+  rank 2: column 4 | score = 0.7360 | text 4: "a red circle on a poster"
+  rank 3: column 1 | score = 0.1423 | text 1: "a blue circle on a white background"</code></pre>
+            <p>
+              这就是一个最小检索结果。不是概率解释，也不是生成答案，而是“按相似度排队”。
+            </p>
+
+            <h3>5.5 文搜图为什么用 <code>scores.T</code></h3>
+            <p>
+              文搜图时，query 变成文本，gallery 变成图片。为了继续使用“每一行是一个 query”的读法，脚本直接对 <code>scores.T</code> 做 top-k：
+            </p>
+            <pre><code>values, indices = torch.topk(scores.T, k=3, dim=1)</code></pre>
+            <p>
+              例如：
+            </p>
+            <pre><code>Query 0: text 0: "a red square on a white background"
+  rank 1: column 0 | score = 0.9999 | image 0: red square
+  rank 2: column 1 | score = 0.1317 | image 1: blue circle
+  rank 3: column 3 | score = 0.0746 | image 3: bowl of noodles</code></pre>
+
+            <h3>5.6 Recall@K 先有一个直觉</h3>
+            <p>
+              脚本最后还打印了一个非常小的检索评估：
+            </p>
+            <pre><code>image-to-text Recall@1 = 1.000
+image-to-text Recall@3 = 1.000
+text-to-image Recall@1 = 1.000
+text-to-image Recall@3 = 1.000</code></pre>
+            <p>
+              <code>Recall@K</code> 问的是：正确答案有没有出现在前 K 个结果里。这个 toy demo 是我们手写出来的干净例子，所以结果是满分。真实检索里，Recall@1 和 Recall@5 经常会不同，因为正确项可能不是第一名，但可能在前 5 名里。
+            </p>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>检索不是新模型，它是对 CLIP 相似度矩阵做排序。图搜文排 <code>scores</code> 的行，文搜图排 <code>scores.T</code> 的行，<code>topk_indices</code> 给出最终命中的 gallery 下标。
+              </p>
+            </div>
+          </section>
+
+          <section id="real-demo">
+            <h2>6. 真实 CLIP retrieval demo：多图片、多文本双向检索</h2>
+            <p class="lead">
+              Toy demo 让我们看懂了排序机制。现在换成真实 CLIP：图片和文本向量不再手写，而是由 <code>CLIPModel</code> 真实算出来。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>脚本位置：</strong><code>experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py</code>。默认离线加载本地缓存；如果没有缓存，才需要你显式加 <code>--allow-download</code>。
+              </p>
+            </div>
+            <pre><code>.venv/bin/python experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py</code></pre>
+            <pre><code># 只有当本地没有模型，并且你准备下载时才运行：
+.venv/bin/python experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py --allow-download</code></pre>
+
+            <h3>6.1 真实 demo 和 toy demo 的区别</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>部分</th>
+                    <th>Toy retrieval demo</th>
+                    <th>真实 CLIP retrieval demo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>图片向量</td>
+                    <td>手写小向量，例如 <code>[red, blue, dog, food, roundness]</code>。</td>
+                    <td>真实 <code>CLIPModel</code> 从图片像素算出 <code>outputs.image_embeds</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>文本向量</td>
+                    <td>手写小向量。</td>
+                    <td>真实 <code>CLIPModel</code> 从 token ids 算出 <code>outputs.text_embeds</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>分数矩阵</td>
+                    <td><code>image_embeddings @ text_embeddings.T</code></td>
+                    <td><code>outputs.logits_per_image</code></td>
+                  </tr>
+                  <tr>
+                    <td>检索动作</td>
+                    <td><code>torch.topk</code></td>
+                    <td>仍然是 <code>torch.topk</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>6.2 默认图片库和文本库</h3>
+            <p>
+              为了让脚本不依赖外部图片文件，默认会生成 4 张简单图片：
+            </p>
+            <pre><code>Image gallery:
+  0: image 0: generated red square
+  1: image 1: generated blue circle
+  2: image 2: generated green triangle
+  3: image 3: generated noodle bowl drawing</code></pre>
+            <p>
+              候选文本是 7 条，其中前 4 条有对应图片，后 3 条是干扰项：
+            </p>
+            <pre><code>Text gallery:
+  0: "a red square on a white background"
+  1: "a blue circle on a white background"
+  2: "a green triangle on a white background"
+  3: "a bowl of noodles on a table"
+  4: "a photo of a dog on grass"
+  5: "a city street at night"
+  6: "a person riding a horse"</code></pre>
+
+            <h3>6.3 真实模型输出 shape</h3>
+            <p>
+              本机已经有 <code>openai/clip-vit-base-patch32</code> 缓存，所以默认离线模式直接跑通。关键 shape 是：
+            </p>
+            <pre><code>pixel_values.shape = (4, 3, 224, 224)
+		input_ids.shape = (7, 9)
+		attention_mask.shape = (7, 9)
+
+		outputs.image_embeds.shape = (4, 512)
+	outputs.text_embeds.shape = (7, 512)
+	outputs.logits_per_image.shape = (4, 7)
+	outputs.logits_per_text.shape = (7, 4)</code></pre>
+            <p>
+              这正好对应 Day10 的检索结构：4 张图片对 7 条文本得到 <code>[4, 7]</code> 分数表，7 条文本对 4 张图片得到 <code>[7, 4]</code> 分数表。
+            </p>
+
+            <h3>6.4 图搜文结果怎么读</h3>
+            <p>
+              对每张图片，脚本从 7 条文本里取 top-3。几个关键结果如下：
+            </p>
+            <pre><code>Query 0: image 0: generated red square
+  rank 1: text 0 | score = 32.4416 | "a red square on a white background"
+  rank 2: text 2 | score = 26.0646 | "a green triangle on a white background"
+  rank 3: text 1 | score = 25.6983 | "a blue circle on a white background"
+
+Query 1: image 1: generated blue circle
+  rank 1: text 1 | score = 35.1748 | "a blue circle on a white background"
+
+Query 2: image 2: generated green triangle
+  rank 1: text 2 | score = 36.4383 | "a green triangle on a white background"
+
+Query 3: image 3: generated noodle bowl drawing
+  rank 1: text 3 | score = 30.7429 | "a bowl of noodles on a table"</code></pre>
+            <p>
+              前 4 个有明确对应关系的样例都排到了 top-1。这说明真实 CLIP 已经能把这些简单图形和英文描述放到接近的位置。
+            </p>
+
+            <h3>6.5 文搜图结果里的边界</h3>
+            <p>
+              文搜图时，前 4 条文本也能找回对应图片：
+            </p>
+            <pre><code>text 0: red square    -> rank 1 image 0: red square
+text 1: blue circle   -> rank 1 image 1: blue circle
+text 2: green triangle -> rank 1 image 2: green triangle
+text 3: noodles       -> rank 1 image 3: noodle bowl drawing</code></pre>
+            <p>
+              但注意后 3 条文本没有对应图片：
+            </p>
+            <pre><code>Query 4: "a photo of a dog on grass"
+  rank 1: image 2: generated green triangle
+
+Query 5: "a city street at night"
+  rank 1: image 3: generated noodle bowl drawing
+
+Query 6: "a person riding a horse"
+  rank 1: image 2: generated green triangle</code></pre>
+            <p>
+              这不是模型“真的认为三角形是狗”。检索系统必须在给定 gallery 里返回最相似的候选，即使候选库里根本没有正确答案。真实业务里通常要配合阈值、重排、人工审核或更大的候选库，避免把“候选库里最像的错误答案”当成可靠答案。
+            </p>
+
+            <div class="callout amber">
+              <p>
+                <strong>重要边界：</strong>top-k 检索只保证“从候选库里排出最像的 K 个”，不保证候选库里一定存在正确答案。没有正确答案时，它也会返回一个 rank 1。
+              </p>
+            </div>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>真实 CLIP retrieval 和 toy retrieval 的工程动作完全一致，区别只在于 embedding 的来源：toy demo 手写向量，真实 demo 用 <code>CLIPModel</code> 计算向量。
+              </p>
+            </div>
+          </section>
+
+          <section id="evaluation">
+            <h2>7. 检索评估与无答案判断</h2>
+            <p class="lead">
+              只会返回 top-k 还不够。一个检索系统还要回答两个更工程化的问题：正确答案有没有被找回来？如果候选库里根本没有正确答案，系统要不要拒绝返回？
+            </p>
+
+            <h3>7.1 <code>Recall@K</code> 到底在评估什么</h3>
+            <p>
+              <code>Recall@K</code> 的问题很具体：对有标准答案的 query，正确候选是否出现在前 K 个结果里。
+            </p>
+            <pre><code>Recall@1 = 正确答案在 rank 1 的 query 数 / 有标准答案的 query 总数
+Recall@3 = 正确答案在 rank 1 到 rank 3 的 query 数 / 有标准答案的 query 总数</code></pre>
+            <p>
+              注意这里的分母不是所有 query。默认 demo 里只有前 4 条文本有对应图片，后 3 条文本在图片库里没有答案，所以 <code>Recall@K</code> 只统计前 4 条有标准答案的 query。无答案 query 要用另一套逻辑评估。
+            </p>
+            <pre><code>image-to-text Recall@1 = 1.000
+text-to-image Recall@1 = 1.000
+image-to-text Recall@3 = 1.000
+text-to-image Recall@3 = 1.000</code></pre>
+
+            <h3>7.2 为什么需要阈值</h3>
+            <p>
+              <code>top-k</code> 的职责是排序，不是判断“有没有答案”。如果 gallery 里没有狗、没有城市街道、没有骑马的人，CLIP 仍然会从现有 4 张图里选出分数最高的一张。这个最高分只是“候选库里相对最高”，不等价于“真的匹配”。
+            </p>
+            <pre><code>top1_score &gt;= accept_threshold -&gt; 接受这个检索结果
+top1_score &lt;  accept_threshold -&gt; 拒绝返回，认为候选库里没有足够可信的答案</code></pre>
+            <div class="callout amber">
+              <p>
+                <strong>阈值不是通用常数：</strong>这里的 <code>accept_threshold = 28.0</code> 只是为了教学，在当前模型、当前 prompts、当前合成图片上刚好能区分有答案和无答案。真实系统必须用验证集重新校准阈值，不能直接照搬。
+              </p>
+            </div>
+
+            <h3>7.3 本次真实 demo 的成功案例</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>query text</th>
+                    <th>top-1 image</th>
+                    <th>score</th>
+                    <th>判断</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>red square</code></td>
+                    <td>generated red square</td>
+                    <td><code>32.4415</code></td>
+                    <td>success</td>
+                  </tr>
+                  <tr>
+                    <td><code>blue circle</code></td>
+                    <td>generated blue circle</td>
+                    <td><code>35.1748</code></td>
+                    <td>success</td>
+                  </tr>
+                  <tr>
+                    <td><code>green triangle</code></td>
+                    <td>generated green triangle</td>
+                    <td><code>36.4383</code></td>
+                    <td>success</td>
+                  </tr>
+                  <tr>
+                    <td><code>bowl of noodles</code></td>
+                    <td>generated noodle bowl drawing</td>
+                    <td><code>30.7429</code></td>
+                    <td>success</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>7.4 三个失败边界：没有阈值就会误返回</h3>
+            <p>
+              下面 3 条 query 在图片库里没有正确答案。如果系统只做 top-1，它们都会被迫返回一个错误候选；加入阈值后，因为 top-1 分数都低于 <code>28.0</code>，脚本把它们判为 <code>correct reject</code>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>query text</th>
+                    <th>如果只看 top-1 会返回</th>
+                    <th>top-1 score</th>
+                    <th>阈值判断</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>a photo of a dog on grass</code></td>
+                    <td>generated green triangle</td>
+                    <td><code>21.5943</code></td>
+                    <td>reject</td>
+                  </tr>
+                  <tr>
+                    <td><code>a city street at night</code></td>
+                    <td>generated noodle bowl drawing</td>
+                    <td><code>17.3680</code></td>
+                    <td>reject</td>
+                  </tr>
+                  <tr>
+                    <td><code>a person riding a horse</code></td>
+                    <td>generated green triangle</td>
+                    <td><code>23.1467</code></td>
+                    <td>reject</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>7.5 真实输出里的决策表</h3>
+            <pre><code>accept_threshold = 28.0000
+case | query | top1 score | top1 result | expected | decision
+0 | red square             | 32.4415 | red square      | column 0  | success
+1 | blue circle            | 35.1748 | blue circle     | column 1  | success
+2 | green triangle         | 36.4383 | green triangle  | column 2  | success
+3 | bowl of noodles        | 30.7429 | noodle bowl     | column 3  | success
+4 | dog on grass           | 21.5943 | green triangle  | NO_ANSWER | correct reject
+5 | city street at night   | 17.3680 | noodle bowl     | NO_ANSWER | correct reject
+6 | person riding a horse  | 23.1467 | green triangle  | NO_ANSWER | correct reject</code></pre>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong><code>Recall@K</code> 评估“有标准答案时是否找回来”，阈值/拒答逻辑处理“候选库里没有正确答案时不要硬返回”。这两个问题不一样，真实检索系统两个都要管。
+              </p>
+            </div>
+          </section>
+
+          <section id="search-demo">
+            <h2>8. 最小图片搜索 Demo：从脚本到可用工具</h2>
+            <p class="lead">
+              前面的脚本已经证明 CLIP 可以做文搜图。最后一步是把它封装成一个真正能点开的本地小工具：输入文本 query，后端跑 CLIP，前端展示 top-3 和阈值判断。
+            </p>
+
+            <div class="callout">
+              <p>
+                <strong>Demo 位置：</strong><code>demos/clip-image-search/</code>。运行命令如下：
+              </p>
+            </div>
+            <pre><code>.venv/bin/python demos/clip-image-search/app.py</code></pre>
+            <p>
+              启动后访问：
+            </p>
+            <pre><code>http://127.0.0.1:8010</code></pre>
+
+            <h3>8.1 这个 demo 的真实调用链</h3>
+            <pre><code>browser input query
+-&gt; GET /api/search?q=...
+-&gt; processor(text=[query], images=gallery)
+-&gt; CLIPModel.forward()
+-&gt; outputs.logits_per_text.shape = [1, 4]
+-&gt; torch.topk(scores, k=3)
+-&gt; threshold accept/reject
+-&gt; JSON response
+-&gt; browser renders ranked images</code></pre>
+            <p>
+              这里的 <code>[1, 4]</code> 很重要：当前只有 1 条文本 query，gallery 里有 4 张图片，所以输出是一行 4 列。每一列就是这条文本对某张图片的 CLIP 分数。
+            </p>
+
+            <h3>8.2 文件结构</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>文件</th>
+                    <th>职责</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>demos/clip-image-search/app.py</code></td>
+                    <td>启动本地 HTTP 服务，加载 CLIP，生成默认图片库，提供 <code>/api/gallery</code> 和 <code>/api/search</code>。</td>
+                  </tr>
+                  <tr>
+                    <td><code>demos/clip-image-search/index.html</code></td>
+                    <td>搜索输入、阈值输入、preset query、top-3 展示和 accept/reject 状态。</td>
+                  </tr>
+                  <tr>
+                    <td><code>demos/clip-image-search/README.md</code></td>
+                    <td>记录运行方式和核心数据流。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>8.3 两个 API 验证结果</h3>
+            <p>
+              有答案 query：红色方块。
+            </p>
+            <pre><code>GET /api/search?q=a red square on a white background
+
+decision = accept
+top1_score = 32.4415
+rank 1 = generated red square
+logits_per_text.shape = [1, 4]</code></pre>
+            <p>
+              无答案 query：狗在草地上。gallery 里没有狗，所以 top-1 虽然会返回三角形，但阈值判断会拒绝它。
+            </p>
+            <pre><code>GET /api/search?q=a photo of a dog on grass
+
+decision = reject
+top1_score = 21.5943
+rank 1 = generated green triangle
+logits_per_text.shape = [1, 4]</code></pre>
+
+            <h3>8.4 这还不是工业级检索系统</h3>
+            <p>
+              当前 demo 每次 query 都直接对 4 张图片做一次 CLIP forward。真实系统不会这么做：图片库通常会提前离线编码成 image embeddings，再放进向量数据库或 ANN 索引；线上 query 只需要编码文本，再用向量检索找最近图片。
+            </p>
+            <div class="callout amber">
+              <p>
+                <strong>工程边界：</strong>这个 demo 是教学用最小闭环，不是高性能检索服务。它保留了最关键的真实结构：query、gallery、CLIP score、top-k、threshold。
+              </p>
+            </div>
+
+            <h3>8.5 工业界如何处理“候选库没有正确答案”</h3>
+            <p>
+              生产环境里，系统通常并不知道“正确答案是否存在”。训练和离线评估时有标签，所以我们知道某个 query 的正确图片或文字是谁；线上真实用户发起 query 时，没有一个 oracle 直接告诉系统“库里有没有答案”。系统只能根据检索分数、业务规则和历史反馈，判断“当前 top-k 是否足够可信”。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>处理策略</th>
+                    <th>解决的问题</th>
+                    <th>例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>分数阈值</td>
+                    <td>top-1 分数太低时拒绝返回。</td>
+                    <td><code>top1_score &lt; threshold</code> 时显示“没有找到足够相关的结果”。</td>
+                  </tr>
+                  <tr>
+                    <td>margin 阈值</td>
+                    <td>top-1 和 top-2 太接近时说明模型不确定。</td>
+                    <td><code>top1_score - top2_score</code> 太小，则返回多个候选或要求用户补充 query。</td>
+                  </tr>
+                  <tr>
+                    <td>重排器 reranker</td>
+                    <td>第一阶段召回粗糙，第二阶段用更强模型重新判断。</td>
+                    <td>先用向量库召回 top-50，再用 cross-encoder 或更强 VLM 检查 top-10。</td>
+                  </tr>
+                  <tr>
+                    <td>元数据和过滤</td>
+                    <td>减少明显错误候选。</td>
+                    <td>按时间、地点、类目、权限、商品状态过滤后再检索。</td>
+                  </tr>
+                  <tr>
+                    <td>人工或用户反馈</td>
+                    <td>线上没有标签，需要逐步收集监督信号。</td>
+                    <td>点击、停留、收藏、举报、人工标注、A/B 实验。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以更准确的表述是：生产系统不是“知道没有正确答案”，而是“判断当前结果不够可信，于是选择拒答、降级、让用户改写 query，或返回多个候选并标注不确定”。
+            </p>
+            <pre><code>线上 query 没有标准答案
+-&gt; 模型只给 score 和 ranking
+-&gt; 系统用 threshold / margin / reranker / metadata 判断可信度
+-&gt; 可信：返回结果
+-&gt; 不可信：拒答、降级、请求澄清或进入人工流程</code></pre>
+
+            <div class="callout green">
+              <p>
+                <strong>本阶段最重要的一句话：</strong>Day10 的最终 demo 已经从“矩阵排序”变成了“可交互检索工具”。它仍然没有训练模型，只是把 CLIP 推理结果组织成一个完整的 retrieval workflow。
+              </p>
+            </div>
+          </section>
+
+          <section id="checkpoint">
+            <h2>9. Day10 收口</h2>
+            <p>
+              Day10 已经从“相似度矩阵”推进到“本地图片搜索 demo”，本日学习任务可以收口。
+            </p>
+            <ol>
+              <li>Day10 的任务是把 Day9 的相似度矩阵变成可用的检索排名。</li>
+              <li><code>query</code> 是发起搜索的东西，<code>gallery</code> 是被搜索的候选库。</li>
+              <li>图搜文是给图片找文本，文搜图是给文本找图片。</li>
+              <li><code>scores = image_embeddings @ text_embeddings.T</code> 仍然是核心。</li>
+              <li>按行排序可以做 image-to-text retrieval。</li>
+              <li>按列排序，或对 <code>scores.T</code> 按行排序，可以做 text-to-image retrieval。</li>
+              <li><code>top-k</code> 就是按相似度从高到低取前 K 个结果。</li>
+              <li><code>torch.topk(scores, k, dim=1)</code> 会对每一行单独取前 K 个分数和下标。</li>
+              <li><code>topk_values</code> 是分数，<code>topk_indices</code> 是 gallery 里的候选编号。</li>
+              <li><code>Recall@K</code> 检查正确答案是否出现在前 K 个结果里。</li>
+              <li>真实 CLIP retrieval 仍然是对 <code>outputs.logits_per_image</code> 和 <code>outputs.logits_per_text</code> 做 top-k。</li>
+              <li>如果 gallery 里没有正确答案，top-k 仍然会返回“相对最像”的候选，因此检索结果需要边界判断。</li>
+              <li><code>Recall@K</code> 只适合评估有标准答案的 query；无答案 query 要用阈值、拒答或人工审核等逻辑处理。</li>
+              <li>默认真实 demo 记录了 4 个成功案例和 3 个无答案失败边界；阈值 <code>28.0</code> 在这组教学样例上能把它们分开。</li>
+              <li><code>demos/clip-image-search/</code> 把检索脚本封装成了本地 Web 工具。</li>
+              <li>这个 Web demo 的核心输出是 <code>logits_per_text.shape = [1, 4]</code>：1 条文本 query 对 4 张候选图片打分。</li>
+              <li>工业级检索通常会提前离线编码图片库，而不是每次 query 都重新编码所有图片。</li>
+              <li>生产环境没有 oracle 直接告诉系统“正确答案是否存在”；系统只能根据阈值、margin、重排器、元数据和反馈闭环判断结果是否可信。</li>
+            </ol>
+            <div class="callout green">
+              <p>
+                <strong>下一步：</strong>Day10 可以收口。继续学习时进入 Day11：阅读 CLIP 论文，把这几天写出来的代码和论文方法一一对齐。
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -3,10 +3,11 @@
 ## 当前阶段
 
 - 日期：2026-05-28
-- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，下一步进入 Day10 CLIP 检索 demo。
+- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
+- Day10 笔记：`docs/day-10-clip-retrieval/index.html`
 
 ## Week2 主线
 
@@ -103,3 +104,35 @@ Day9 采用和 Day8 一样的节奏：先用 HTML 解释概念和数据流，再
 - `text_projection` 把整句向量整理到 `[num_texts, 512]`，即使输入输出维度都为 512，它仍然是可学习线性变换。
 
 Day9 任务已收口。真实 CLIP demo 默认离线，不会自动下载模型；后续如果需要实际概率，可以显式运行带 `--allow-download` 的命令。下一步进入 Day10 CLIP 图文检索 demo。
+
+## Day10 收口
+
+Day10 的目标是把 Day9 的 CLIP 相似度矩阵变成可用的检索流程。
+
+当前完成到 Step 06：
+
+- Day10 不重新训练模型，先学习 retrieval 任务的工程视角。
+- `query` 是发起搜索的对象，`gallery` 是被搜索的候选库。
+- image-to-text retrieval 是给图片找文本。
+- text-to-image retrieval 是给文本找图片。
+- 核心分数仍然来自 `scores = image_embeddings @ text_embeddings.T`。
+- `scores.shape = [num_images, num_texts]` 时，按行排序就是图搜文，按列排序或对 `scores.T` 按行排序就是文搜图。
+- `top-k` 只是按相似度从高到低取前 K 个结果，不是新模型也不是新 loss。
+- Toy retrieval demo 已添加：`experiments/day-10-clip-retrieval/clip_retrieval_toy_demo.py`
+- Toy demo 使用手写图文向量，跑通 `scores -> torch.topk -> ranking -> Recall@K`。
+- `topk_values` 是 top-k 分数，`topk_indices` 是 gallery 下标。
+- `Recall@K` 检查正确答案是否出现在前 K 个结果里。
+- 真实 CLIP retrieval demo 已添加：`experiments/day-10-clip-retrieval/clip_real_retrieval_demo.py`
+- 本机可以默认离线加载 `openai/clip-vit-base-patch32`，真实 demo 已跑通 `[4, 512] x [7, 512] -> logits_per_image [4, 7]`。
+- 真实 demo 的图搜文前 4 个明确配对样例均能 top-1 命中。
+- 当 query 文本没有对应图片时，检索仍会返回 gallery 里相对最像的候选，因此需要阈值或“无答案”判断。
+- 默认真实 demo 现在包含 4 个有答案文本和 3 个无答案文本。
+- `accept_threshold = 28.0` 在当前教学样例上能接受前 4 个正确匹配，并拒绝 3 个无答案 query。
+- `Recall@K` 只统计有标准答案的 query；无答案 query 要单独看 correct reject / false accept。
+- Day10 HTML 已记录成功案例与失败边界：`docs/day-10-clip-retrieval/index.html#evaluation`
+- 最小图片搜索 Web demo 已添加：`demos/clip-image-search/`
+- Web demo 的核心调用链是 `browser query -> /api/search -> CLIPModel.forward() -> logits_per_text [1, 4] -> top-k -> threshold`。
+- API 验证：`red square` 返回 `accept`，top-1 是红色方块；`dog on grass` 返回 `reject`，因为候选库里没有狗。
+- 生产环境没有 oracle 直接知道候选库里是否有正确答案，只能用分数阈值、top1/top2 margin、reranker、metadata filter 和线上反馈来判断结果是否足够可信。
+
+Day10 的 checklist 已完成。下一步进入 Day11：阅读 CLIP 论文，把代码中的 encoder、projection、similarity matrix、contrastive loss 和论文方法对齐。
