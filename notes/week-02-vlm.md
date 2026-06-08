@@ -3,11 +3,12 @@
 ## 当前阶段
 
 - 日期：2026-05-28
-- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口。
+- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
 - Day10 笔记：`docs/day-10-clip-retrieval/index.html`
+- Day11 笔记：`docs/day-11-clip-paper-reading/index.html`
 
 ## Week2 主线
 
@@ -136,3 +137,21 @@ Day10 的目标是把 Day9 的 CLIP 相似度矩阵变成可用的检索流程�
 - 生产环境没有 oracle 直接知道候选库里是否有正确答案，只能用分数阈值、top1/top2 margin、reranker、metadata filter 和线上反馈来判断结果是否足够可信。
 
 Day10 的 checklist 已完成。下一步进入 Day11：阅读 CLIP 论文，把代码中的 encoder、projection、similarity matrix、contrastive loss 和论文方法对齐。
+
+## Day11 收口
+
+Day11 的目标是阅读 CLIP 论文 `Learning Transferable Visual Models From Natural Language Supervision`，并把论文方法和 Day9/Day10 已经跑过的代码主线对齐。
+
+完成内容：
+
+- Day11 HTML 主笔记已添加：`docs/day-11-clip-paper-reading/index.html`
+- CLIP 原论文 PDF 已下载：`papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf`
+- 正式论文笔记已添加：`papers/clip.md`
+- 已理解 Figure 1：从固定类别预测转向自然语言描述匹配，再迁移到 zero-shot。
+- 已理解 Figure 3：`N x N` 相似度矩阵、对角线正样本、in-batch negatives、双向 contrastive loss。
+- 已理解 zero-shot classifier：类别 prompt 经过 text encoder 动态构造分类器。
+- 已理解实验链路：zero-shot transfer、linear probe、robustness、limitations 分别证明什么。
+- 已理解工程边界：CLIP 是开放词表视觉语义匹配器，不是万能视觉逻辑推理器。
+- 5 分钟复述检查已完成。
+
+Day11 已收口。下一步进入 Day12：VLM 图像问答入门，重点学习视觉特征如何进入语言模型。

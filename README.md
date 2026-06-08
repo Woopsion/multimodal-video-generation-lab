@@ -30,8 +30,10 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 9 final note: `docs/day-09-clip-alignment/index.html`
 - Day 10 final note: `docs/day-10-clip-retrieval/index.html`
 - Day 10 demos: `experiments/day-10-clip-retrieval/`, `demos/clip-image-search/`
+- Day 11 final note: `docs/day-11-clip-paper-reading/index.html`
+- Day 11 paper note: `papers/clip.md`
 - Status note: `notes/week-02-vlm.md`
-- Current task: Day 11 CLIP paper reading after completing the Day 10 retrieval demo.
+- Current task: Day 12 VLM image question answering after completing the CLIP paper reading.
 
 ## Repository Hygiene
 

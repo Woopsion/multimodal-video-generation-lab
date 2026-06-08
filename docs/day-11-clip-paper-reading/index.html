@@ -1,0 +1,2104 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 11 - CLIP 论文精读</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1014;
+        --surface: #111a21;
+        --surface-2: #17232b;
+        --ink: #eef7f4;
+        --muted: #a8b8b3;
+        --line: #2b3c43;
+        --teal: #5eead4;
+        --teal-soft: #0e3734;
+        --amber: #fbbf24;
+        --amber-soft: #3a2b10;
+        --rose: #fb7185;
+        --rose-soft: #3b1720;
+        --code: #071015;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.75;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .hero {
+        min-height: 64svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 54px 0 34px;
+        background:
+          linear-gradient(90deg, rgba(11, 16, 20, 1) 0%, rgba(11, 16, 20, 0.94) 50%, rgba(11, 16, 20, 0.78) 100%),
+          linear-gradient(135deg, rgba(94, 234, 212, 0.12), rgba(251, 191, 36, 0.08));
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
+        gap: 46px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--teal);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 840px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 740px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 22px);
+      }
+
+      .hero-visual,
+      .diagram {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #101820;
+      }
+
+      .hero-visual svg,
+      .diagram svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 44px;
+        padding: 58px 0 96px;
+      }
+
+      nav {
+        position: sticky;
+        top: 18px;
+        align-self: start;
+        max-height: calc(100svh - 36px);
+        overflow-y: auto;
+        padding: 18px;
+        border: 1px solid var(--line);
+        background: rgba(17, 26, 33, 0.86);
+      }
+
+      nav a {
+        display: block;
+        padding: 6px 0;
+        color: var(--muted);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--teal);
+      }
+
+      .nav-label {
+        margin: 0 0 12px;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .toc-note {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      nav details {
+        margin: 8px 0;
+        border: 0;
+        border-top: 1px solid var(--line);
+        background: transparent;
+      }
+
+      nav details:first-of-type {
+        border-top: 0;
+      }
+
+      nav summary {
+        padding: 10px 0 8px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      nav details > div {
+        padding: 0 0 8px 0;
+      }
+
+      .toc-sub {
+        padding-left: 14px;
+        border-left: 1px solid var(--line);
+      }
+
+      .toc-sub a {
+        padding: 5px 0;
+        font-size: 13px;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 30px 0 12px;
+        font-size: 24px;
+        line-height: 1.24;
+      }
+
+      section,
+      h3[id] {
+        scroll-margin-top: 24px;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 14px 0;
+        color: var(--ink);
+        font-size: 17px;
+      }
+
+      .lead {
+        color: var(--muted);
+        font-size: 19px;
+      }
+
+      .callout {
+        max-width: 920px;
+        margin: 22px 0;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .callout strong {
+        color: var(--teal);
+      }
+
+      .warn {
+        background: var(--amber-soft);
+        border-color: rgba(251, 191, 36, 0.42);
+      }
+
+      .warn strong {
+        color: var(--amber);
+      }
+
+      .rose {
+        background: var(--rose-soft);
+        border-color: rgba(251, 113, 133, 0.42);
+      }
+
+      .rose strong {
+        color: var(--rose);
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 16px;
+        margin: 24px 0;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .panel h3 {
+        margin-top: 0;
+        font-size: 20px;
+      }
+
+      .panel p {
+        margin-bottom: 0;
+        color: var(--muted);
+      }
+
+      .table-wrap {
+        max-width: 980px;
+        margin: 24px 0;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 680px;
+        background: var(--surface);
+      }
+
+      th,
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--teal);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      code {
+        color: var(--teal);
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.94em;
+      }
+
+      pre {
+        max-width: 980px;
+        overflow-x: auto;
+        margin: 22px 0;
+        padding: 18px;
+        border: 1px solid var(--line);
+        background: var(--code);
+      }
+
+      pre code {
+        color: #d8fff6;
+      }
+
+      ul,
+      ol {
+        max-width: 920px;
+        padding-left: 24px;
+      }
+
+      li {
+        margin: 10px 0;
+      }
+
+      details {
+        max-width: 980px;
+        margin: 14px 0;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 16px 18px;
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      details > div {
+        padding: 0 18px 18px;
+      }
+
+      .tag {
+        display: inline-block;
+        margin: 0 8px 8px 0;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        background: var(--surface-2);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .hero {
+          min-height: auto;
+        }
+
+        .hero-inner,
+        .content {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-visual {
+          min-width: 0;
+        }
+
+        nav {
+          position: static;
+          max-height: none;
+          overflow: visible;
+          padding: 14px 0 20px;
+          border: 0;
+          border-bottom: 1px solid var(--line);
+          background: transparent;
+        }
+
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 11 - CLIP Paper Reading</p>
+          <h1>从代码回到论文：读懂 CLIP 为什么这样设计</h1>
+          <p class="hero-copy">
+            Day9 你已经拆过 CLIP 的 forward、相似度矩阵和 contrastive loss；Day10 又把相似度矩阵变成了检索系统。Day11 不从零读论文，而是把论文里的方法、伪代码和实验结论对齐到你已经跑过的代码。
+          </p>
+        </div>
+        <div class="hero-visual" aria-label="CLIP paper reading map">
+          <svg viewBox="0 0 760 520" role="img">
+            <rect width="760" height="520" fill="#0f1820" />
+            <text x="48" y="58" fill="#5eead4" font-size="22" font-weight="800">Paper Reading Route</text>
+            <text x="48" y="92" fill="#a8b8b3" font-size="16">Day9 / Day10 code becomes the reading anchor.</text>
+
+            <rect x="54" y="138" width="204" height="92" fill="#14242a" stroke="#2b3c43" />
+            <text x="76" y="172" fill="#eef7f4" font-size="18" font-weight="800">Day9</text>
+            <text x="76" y="200" fill="#a8b8b3" font-size="15">encoder + projection</text>
+            <text x="76" y="222" fill="#a8b8b3" font-size="15">contrastive loss</text>
+
+            <rect x="54" y="286" width="204" height="92" fill="#14242a" stroke="#2b3c43" />
+            <text x="76" y="320" fill="#eef7f4" font-size="18" font-weight="800">Day10</text>
+            <text x="76" y="348" fill="#a8b8b3" font-size="15">retrieval ranking</text>
+            <text x="76" y="370" fill="#a8b8b3" font-size="15">top-k + threshold</text>
+
+            <rect x="388" y="118" width="268" height="110" fill="#18312e" stroke="#5eead4" />
+            <text x="416" y="154" fill="#eef7f4" font-size="18" font-weight="800">CLIP paper</text>
+            <text x="416" y="184" fill="#d8fff6" font-size="15">natural language supervision</text>
+            <text x="416" y="208" fill="#d8fff6" font-size="15">image-text contrastive training</text>
+
+            <rect x="388" y="286" width="268" height="116" fill="#1f2630" stroke="#2b3c43" />
+            <text x="416" y="322" fill="#eef7f4" font-size="18" font-weight="800">What to extract</text>
+            <text x="416" y="352" fill="#a8b8b3" font-size="15">method figure</text>
+            <text x="416" y="376" fill="#a8b8b3" font-size="15">zero-shot classifier</text>
+            <text x="416" y="400" fill="#a8b8b3" font-size="15">limitations and transfer</text>
+
+            <path d="M258 184 C310 184 326 172 388 172" fill="none" stroke="#5eead4" stroke-width="3" />
+            <path d="M258 332 C314 332 330 348 388 348" fill="none" stroke="#fbbf24" stroke-width="3" />
+            <path d="M522 228 L522 286" fill="none" stroke="#a8b8b3" stroke-width="2" stroke-dasharray="8 8" />
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day11 学习导航">
+          <div class="nav-label">Day11 论文目录</div>
+          <p class="toc-note">按阅读顺序组织，可折叠。二级标题用于快速回到关键解释。</p>
+
+          <details open>
+            <summary>起点</summary>
+            <div>
+              <a href="#goal">0. 今天怎么学</a>
+              <a href="#plan">1. 分阶段计划</a>
+              <a href="#paper-card">2. 论文信息卡</a>
+              <a href="#why-this-paper">3. 为什么选这篇</a>
+            </div>
+          </details>
+
+          <details open>
+            <summary>论文主线</summary>
+            <div>
+              <a href="#bridge">4. 论文主线精读入口</a>
+              <div class="toc-sub">
+                <a href="#paper-abstract-main">4.1 摘要主张</a>
+                <a href="#paper-figure1-main">4.2 Figure 1 路线</a>
+                <a href="#figure1-shift">4.3 Figure 1 关键转变</a>
+                <a href="#zero-shot-classifier">4.4 Zero-shot classifier</a>
+                <a href="#prompt-engineering">4.5 Prompt engineering</a>
+                <a href="#paper-code-anchor">4.6 代码只是辅助</a>
+              </div>
+              <a href="#problem">5. 论文解决的问题</a>
+              <div class="toc-sub">
+                <a href="#problem-fixed-head">5.1 固定分类头限制</a>
+                <a href="#problem-limitations">5.2 固定类别缺陷</a>
+                <a href="#natural-language-supervision">5.3 自然语言监督</a>
+              </div>
+              <a href="#figure3">6. Figure 3 方法伪代码</a>
+              <div class="toc-sub">
+                <a href="#figure3-day9">6.1 对齐 Day9 代码</a>
+                <a href="#figure3-two-encoders">6.2 为什么两个 encoder</a>
+                <a href="#figure3-negatives">6.3 Batch 负样本</a>
+                <a href="#figure3-nxn">6.4 为什么是 N x N</a>
+                <a href="#pretraining-design">6.5 预训练设计选择</a>
+              </div>
+              <a href="#experiments-transfer">7. 实验证据链</a>
+              <div class="toc-sub">
+                <a href="#experiments-zero-shot">7.1 Zero-shot transfer</a>
+                <a href="#experiments-linear-probe">7.2 Linear probe</a>
+                <a href="#experiments-robustness">7.3 鲁棒性与局限</a>
+                <a href="#experiments-limitations">7.4 Limitations</a>
+                <a href="#limitations-why">7.5 弱点从哪里来</a>
+                <a href="#limitations-usage">7.6 工程使用原则</a>
+              </div>
+              <a href="#clip-paradigm">8. 是否开创 CLIP 模式</a>
+              <a href="#paper-takeaways">9. 论文贡献与讲稿</a>
+              <div class="toc-sub">
+                <a href="#paper-contributions">9.1 三个核心贡献</a>
+                <a href="#five-minute-script">9.2 五分钟讲稿</a>
+                <a href="#paper-note-output">9.3 论文笔记产出</a>
+                <a href="#final-recap-check">9.4 最终复述检查</a>
+              </div>
+            </div>
+          </details>
+
+          <details open>
+            <summary>阅读执行</summary>
+            <div>
+              <a href="#reading-method">10. 论文阅读方法</a>
+              <div class="toc-sub">
+                <a href="#reading-blocks">10.1 先抓 5 个核心块</a>
+                <a href="#reading-order">10.2 具体阅读顺序</a>
+                <a href="#reading-questions">10.3 第一轮 6 个问题</a>
+              </div>
+              <a href="#checkpoint">11. 当前检查点</a>
+              <a href="#sources">12. 资料来源</a>
+            </div>
+          </details>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天怎么学</h2>
+            <p class="lead">
+              Day11 的目标不是“把论文从头翻译一遍”。更专业的读法是：拿你已经写过和跑过的代码当锚点，去论文里找设计依据、训练目标、实验结论和局限性。
+            </p>
+            <div class="callout">
+              <strong>学习边界：</strong>当前只展开第一阶段：论文整体定位、阅读路线、核心问题和 Figure 3 伪代码。训练数据细节、zero-shot prompt、实验表格和局限性后续逐步展开。
+            </div>
+            <p>
+              你现在已经具备读 CLIP 论文的必要前置知识：ViT patch token、image/text encoder、projection、L2 normalize、相似度矩阵、CrossEntropyLoss、top-k retrieval。今天开始把这些工程概念放回论文语境。
+            </p>
+          </section>
+
+          <section id="plan">
+            <h2>1. 分阶段计划</h2>
+            <p>
+              CLIP 论文不能按页码硬读。我们按“你能不能把论文内容映射到代码”来推进。
+            </p>
+
+            <details open>
+              <summary>Step 01 当前展开：论文问题意识 + 方法主线</summary>
+              <div>
+                <p>
+                  先读论文标题、摘要、方法图和 Figure 3 伪代码。目标是确认：CLIP 到底不是在做图像生成，也不是在做 VLM 问答，而是在学习一个可迁移的图文共享表示空间。
+                </p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Step 02：Natural Language Supervision</summary>
+              <div>
+                <p>
+                  解释论文为什么强调“自然语言监督”，它和 ImageNet 这种固定类别监督有什么根本区别。
+                </p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Step 03：Zero-shot 分类机制</summary>
+              <div>
+                <p>
+                  把“文本类别名”变成 prompt，再用 text encoder 得到类别向量；图片向量和类别向量比较后完成零样本分类。
+                </p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Step 04：实验结论与局限性</summary>
+              <div>
+                <p>
+                  看论文如何证明 transfer 能力，也看它在哪些细粒度、抽象推理、数据偏差任务上仍然有限。
+                </p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Step 05：形成 5 分钟讲解稿</summary>
+              <div>
+                <p>
+                  最后把 Day9/Day10 代码、论文方法和实验结论整理成一份能讲给别人听的短稿。
+                </p>
+              </div>
+            </details>
+          </section>
+
+          <section id="paper-card">
+            <h2>2. 论文信息卡</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th>内容</th>
+                    <th>你应该抓住什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>论文标题</td>
+                    <td><em>Learning Transferable Visual Models From Natural Language Supervision</em></td>
+                    <td>重点不是“CLIP”这个缩写，而是 transferable、visual models、natural language supervision。</td>
+                  </tr>
+                  <tr>
+                    <td>核心模型</td>
+                    <td>Contrastive Language-Image Pre-training</td>
+                    <td>用图文对做对比学习，让匹配图文靠近，不匹配图文远离。</td>
+                  </tr>
+                  <tr>
+                    <td>训练对象</td>
+                    <td>image encoder、text encoder、projection、temperature/logit scale</td>
+                    <td>这对应你 Day9 看到的 CLIPModel.forward 主线。</td>
+                  </tr>
+                  <tr>
+                    <td>训练结果</td>
+                    <td>共享向量空间中的 image embedding 与 text embedding</td>
+                    <td>这对应你 Day10 做 retrieval 时排序的向量空间。</td>
+                  </tr>
+                  <tr>
+                    <td>应用方式</td>
+                    <td>zero-shot 分类、图文检索、迁移评估</td>
+                    <td>CLIP 不是直接生成文本，而是提供图文语义匹配能力。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>一句话定位：</strong>这篇论文的主张是：与其让视觉模型只学习固定类别标签，不如直接从大规模图文对中学习视觉概念和自然语言描述之间的关系。
+            </div>
+          </section>
+
+          <section id="why-this-paper">
+            <h2>3. 为什么选这篇</h2>
+            <p>
+              这篇不是随机选择的论文。它属于多模态学习、视觉语言对齐、图文检索和开放词表视觉分类里必须掌握的经典论文之一。更准确地说：如果目标是理解 VLM、CLIP 检索、图文对齐、Stable Diffusion 这类模型背后的视觉语言表示，那么这篇论文应该放在早期主线阅读位置。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>判断维度</th>
+                    <th>客观依据</th>
+                    <th>对你当前学习的意义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>问题重要性</td>
+                    <td>论文直接挑战传统视觉模型只能预测固定类别标签的问题，提出用自然语言监督学习可迁移视觉表示。</td>
+                    <td>解释为什么图文对齐不是小技巧，而是多模态基础能力。</td>
+                  </tr>
+                  <tr>
+                    <td>方法影响力</td>
+                    <td>CLIP 的双塔编码器、共享向量空间、对比学习目标，后来成为大量图文检索、开放词表分类和多模态系统的基础组件。</td>
+                    <td>你 Day9/Day10 写的代码主线，正是这篇论文方法的工程化简化版。</td>
+                  </tr>
+                  <tr>
+                    <td>引用与复用</td>
+                    <td>Semantic Scholar 当前搜索结果显示该论文引用量约 4.5 万级，并标注为 highly influential；Hugging Face paper 页面也能看到大量模型和项目围绕它展开。</td>
+                    <td>这说明它不是冷门论文，而是社区长期复用的基础论文。</td>
+                  </tr>
+                  <tr>
+                    <td>作者阵容</td>
+                    <td>作者包括 Alec Radford、Jong Wook Kim、Aditya Ramesh、Gabriel Goh、Ilya Sutskever 等 OpenAI 研究者。</td>
+                    <td>这些作者和 GPT-2、DALL·E、Whisper、OpenAI 核心研究线都有交集，影响力很高。</td>
+                  </tr>
+                  <tr>
+                    <td>学习时机</td>
+                    <td>你已经掌握 encoder、projection、similarity matrix、contrastive loss、retrieval，所以现在读这篇不会只是背结论。</td>
+                    <td>它正好把你前两天的代码知识提升到论文层面的设计理解。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>客观结论：</strong>这篇是经典论文，且非常适合放在 Day11。它不是唯一重要的 VLM 论文，但它是理解后续 BLIP、LLaVA、Qwen-VL、图文检索和扩散模型文本条件机制时绕不开的基础。
+            </div>
+          </section>
+
+          <section id="bridge">
+            <h2>4. 论文主线精读入口</h2>
+            <p>
+              从这里开始，阅读重心回到论文本身。Day9/Day10 的代码只作为辅助定位，不再反复追问基础概念。我们先按论文自己的叙事推进：为什么传统监督不够，CLIP 提出什么训练范式，它如何把这个范式用于 zero-shot transfer。
+            </p>
+
+            <h3 id="paper-abstract-main">4.1 先抓摘要里的主张</h3>
+            <p>
+              摘要的核心不是介绍一个普通分类模型，而是在提出一个更大的判断：自然语言中已经包含大量视觉概念的监督信号，视觉模型可以直接从图文配对中学习，而不必只依赖固定类别标签。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>摘要信息</th>
+                    <th>论文真正想表达什么</th>
+                    <th>先记住的版本</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>传统视觉监督依赖人工标注类别</td>
+                    <td>标签空间窄，迁移到新任务时需要重新适配。</td>
+                    <td>固定类别分类不是开放世界视觉理解。</td>
+                  </tr>
+                  <tr>
+                    <td>自然语言可以作为监督</td>
+                    <td>文本描述比类别 id 更丰富，可以覆盖对象、属性、动作、场景和关系。</td>
+                    <td>监督信号从 class id 变成 image-text pair。</td>
+                  </tr>
+                  <tr>
+                    <td>训练目标是图文对齐</td>
+                    <td>模型学习图片和文本在共享空间中的匹配关系。</td>
+                    <td>CLIP 学的是比较能力，不是固定分类头。</td>
+                  </tr>
+                  <tr>
+                    <td>迁移方式是 zero-shot</td>
+                    <td>把新任务的类别写成文本 prompt，再和图片向量比较。</td>
+                    <td>新类别先变成文本，再进入共享空间。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="paper-figure1-main">4.2 Figure 1 的论文路线</h3>
+            <p>
+              Figure 1 可以当作整篇论文的地图。它不是在讲某个局部公式，而是在说明 CLIP 和传统分类训练的区别。
+            </p>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>传统路线</h3>
+                <p>图片进入模型，输出固定类别分数。类别集合由数据集预先规定。</p>
+              </div>
+              <div class="panel">
+                <h3>CLIP 训练路线</h3>
+                <p>图片和文本分别编码，在共享空间中判断哪张图和哪段文字匹配。</p>
+              </div>
+              <div class="panel">
+                <h3>CLIP 迁移路线</h3>
+                <p>把目标类别写成 prompt，作为文本候选，让图片向量去选择最匹配的文本。</p>
+              </div>
+            </div>
+            <div class="callout">
+              <strong>主线一句话：</strong>论文从“固定类别预测”转向“自然语言描述匹配”，再把这个匹配能力迁移到 zero-shot 分类和 retrieval。
+            </div>
+
+            <h3 id="figure1-shift">4.3 Figure 1 的关键转变</h3>
+            <p>
+              Figure 1 最重要的地方，是它把“训练时做什么”和“测试时怎么用”分开讲清楚。传统模型训练和测试都围绕固定类别；CLIP 训练时围绕图文配对，测试时才把类别名称转成文本候选。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>阶段</th>
+                    <th>传统监督分类</th>
+                    <th>CLIP 论文路线</th>
+                    <th>关键变化</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>训练输入</td>
+                    <td>图片 + 人工类别标签。</td>
+                    <td>图片 + 原始自然语言文本。</td>
+                    <td>监督信号从 class id 变成 image-text pair。</td>
+                  </tr>
+                  <tr>
+                    <td>训练输出</td>
+                    <td>固定类别 logits。</td>
+                    <td>图片文本相似度矩阵。</td>
+                    <td>目标从“选类别”变成“找匹配文本”。</td>
+                  </tr>
+                  <tr>
+                    <td>学到的能力</td>
+                    <td>把图片映射到预设类别集合。</td>
+                    <td>把图片和文本放进可比较的共享空间。</td>
+                    <td>模型获得了开放文本描述的比较能力。</td>
+                  </tr>
+                  <tr>
+                    <td>测试方式</td>
+                    <td>仍然输出训练时那套类别。</td>
+                    <td>把新类别写成 prompt，用文本编码器生成分类器。</td>
+                    <td>分类头由文本动态构造，而不是固定参数矩阵。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              这就是 Figure 1 的论文价值：它不是只展示 CLIP 模型结构，而是在展示一种训练范式的迁移路径。先用图文对训练共享空间，再用自然语言 prompt 把新任务转成文本匹配问题。
+            </p>
+            <div class="warn callout">
+              <strong>读图时抓这一点：</strong>CLIP 不是训练时就知道所有下游任务类别。它训练的是“图片和文本是否匹配”的通用能力；下游分类任务是在测试时通过 prompt 临时组织出来的。
+            </div>
+
+            <h3 id="zero-shot-classifier">4.4 Zero-shot classifier：文本动态构造分类头</h3>
+            <p>
+              Figure 1 的下一层含义是：CLIP 没有传统意义上的固定分类头。它做 zero-shot 分类时，会把数据集里的类别名写成自然语言 prompt，然后用 text encoder 把这些 prompt 编码成一组文本向量。这组文本向量就临时充当分类器。
+            </p>
+            <pre><code>classes = ["cat", "dog", "car"]
+
+prompts = [
+  "a photo of a cat",
+  "a photo of a dog",
+  "a photo of a car",
+]
+
+text_embeddings = text_encoder(prompts)
+image_embedding = image_encoder(image)
+
+logits = image_embedding @ text_embeddings.T
+prediction = argmax(logits)</code></pre>
+            <p>
+              这里最关键的是：分类器不是一个训练好的 <code>W_class</code> 参数矩阵，而是由类别文本经过 text encoder 现场生成的。类别集合换了，只需要换一组 prompt，不一定要重新训练最后一层分类头。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>传统分类器</th>
+                    <th>CLIP zero-shot classifier</th>
+                    <th>差异</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>W_class</code> 是训练参数。</td>
+                    <td>类别文本向量来自 text encoder。</td>
+                    <td>分类权重从“学出来的固定矩阵”变成“由语言描述动态生成”。</td>
+                  </tr>
+                  <tr>
+                    <td>类别数固定在训练任务里。</td>
+                    <td>测试时可以重新写类别 prompt。</td>
+                    <td>更适合开放词表分类。</td>
+                  </tr>
+                  <tr>
+                    <td>类别 id 本身没有语义。</td>
+                    <td>prompt 直接带有自然语言语义。</td>
+                    <td>模型可以利用类别名称和上下文短语的信息。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>论文主线结论：</strong>CLIP 的 zero-shot 不是“凭空猜新类别”，而是把新类别转成文本候选，再复用预训练阶段学到的图文匹配能力。
+            </div>
+
+            <h3 id="prompt-engineering">4.5 Prompt engineering：为什么不是只写类别名</h3>
+            <p>
+              论文接下来非常重要的一点是 prompt。CLIP 的 text encoder 训练时看到的是自然语言文本，不是孤立的类别 id。所以 zero-shot 分类时，直接输入 <code>"cat"</code> 往往不如输入 <code>"a photo of a cat"</code> 这种更接近训练分布的自然语言描述。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>文本候选</th>
+                    <th>问题</th>
+                    <th>为什么 prompt 更好</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>"cat"</code></td>
+                    <td>只是一个孤立词，缺少图片语境。</td>
+                    <td>模型训练时更常见的是带上下文的自然语言片段。</td>
+                  </tr>
+                  <tr>
+                    <td><code>"a photo of a cat"</code></td>
+                    <td>明确告诉模型这是图片描述。</td>
+                    <td>更贴近图文对数据中的 caption 风格。</td>
+                  </tr>
+                  <tr>
+                    <td><code>"a blurry photo of a cat"</code></td>
+                    <td>加入图像条件或风格。</td>
+                    <td>可以让文本候选覆盖更多真实图片分布。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              论文还使用了 prompt ensemble。意思是：不是只写一个模板，而是给同一个类别写多种模板，分别编码后再平均这些文本向量。
+            </p>
+            <pre><code>class_name = "cat"
+
+templates = [
+  "a photo of a {}",
+  "a blurry photo of a {}",
+  "a black and white photo of a {}",
+]
+
+prompt_texts = [template.format(class_name) for template in templates]
+prompt_embeddings = text_encoder(prompt_texts)
+class_embedding = average(prompt_embeddings)</code></pre>
+            <p>
+              这样做的目的不是玄学调参，而是降低单个模板措辞带来的偏差。某个模板可能刚好适合 ImageNet，另一个模板可能更适合遥感图、医学图或手绘图。多个模板平均后，类别向量通常更稳定。
+            </p>
+            <div class="warn callout">
+              <strong>读论文时抓这一点：</strong>zero-shot 的效果不只取决于模型权重，也取决于你如何把任务“翻译”为文本。prompt 是 CLIP 和下游任务之间的接口。
+            </div>
+
+            <h3 id="paper-code-anchor">4.6 代码只是辅助定位</h3>
+            <p>
+              你之前问过很多关键问题：<code>image_embeddings</code> 到底是一张图的向量还是 patch 向量、<code>projection_dim</code> 和 hidden size 有什么区别、分数矩阵为什么不是参数、loss 怎么通过链式法则影响 encoder。现在这些问题只作为理解论文方法的定位工具。
+            </p>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3>Day9 代码里你已经掌握的</h3>
+                <p>
+                  <code>image_encoder</code> 和 <code>text_encoder</code> 先各自编码，再投影到同一个 <code>D</code> 维空间，最后用点积生成相似度矩阵。
+                </p>
+              </div>
+              <div class="panel">
+                <h3>Day10 代码里你已经掌握的</h3>
+                <p>
+                  相似度矩阵不只用于训练 loss，也可以直接用于 retrieval：排序、top-k、Recall@K、阈值拒答。
+                </p>
+              </div>
+            </div>
+
+            <h3>论文和代码的对应关系</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>你写过的概念</th>
+                    <th>论文里的概念</th>
+                    <th>读论文时要追问</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>image_embeddings</code></td>
+                    <td>image representation</td>
+                    <td>这个向量来自什么视觉 encoder？CNN 还是 ViT？是否做了 projection 和 normalize？</td>
+                  </tr>
+                  <tr>
+                    <td><code>text_embeddings</code></td>
+                    <td>text representation</td>
+                    <td>文本不是类别 id，而是一整句话或 prompt 的语义向量。</td>
+                  </tr>
+                  <tr>
+                    <td><code>logits = image @ text.T</code></td>
+                    <td>image-text similarity matrix</td>
+                    <td>为什么一整个 batch 可以同时构造正样本和负样本？</td>
+                  </tr>
+                  <tr>
+                    <td><code>CrossEntropyLoss(S, labels)</code></td>
+                    <td>contrastive objective</td>
+                    <td>为什么要 image-to-text 和 text-to-image 两个方向一起训？</td>
+                  </tr>
+                  <tr>
+                    <td><code>topk(scores)</code></td>
+                    <td>retrieval / transfer usage</td>
+                    <td>训练好的共享空间如何被直接拿来做检索和零样本分类？</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="final-recap-check">9.4 最终复述检查</h3>
+            <p>
+              Day11 的最终复述检查按 5 分钟讲稿完成。通过标准不是背诵原文，而是能围绕论文主线独立讲清楚下面 6 个点。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>检查点</th>
+                    <th>通过标准</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>背景问题</td>
+                    <td>能解释固定类别监督为什么限制开放词表和迁移能力。</td>
+                    <td>通过</td>
+                  </tr>
+                  <tr>
+                    <td>核心方法</td>
+                    <td>能解释 image encoder、text encoder、projection、normalize 和相似度矩阵。</td>
+                    <td>通过</td>
+                  </tr>
+                  <tr>
+                    <td>Figure 1</td>
+                    <td>能解释 CLIP 如何从固定类别预测转向自然语言描述匹配。</td>
+                    <td>通过</td>
+                  </tr>
+                  <tr>
+                    <td>Figure 3</td>
+                    <td>能解释 <code>N x N</code> 相似度矩阵、对角线正样本和双向 contrastive loss。</td>
+                    <td>通过</td>
+                  </tr>
+                  <tr>
+                    <td>实验证据</td>
+                    <td>能区分 zero-shot、linear probe、robustness 和 limitations 分别证明什么。</td>
+                    <td>通过</td>
+                  </tr>
+                  <tr>
+                    <td>工程边界</td>
+                    <td>能说明 CLIP 是开放词表视觉语义匹配器，不是万能视觉逻辑推理器。</td>
+                    <td>通过</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Day11 结论：</strong>CLIP 论文主线已收口。下一步进入 Day12：VLM 图像问答入门，重点学习视觉特征如何进入语言模型。
+            </div>
+          </section>
+
+          <section id="problem">
+            <h2>5. 论文解决的问题</h2>
+            <p>
+              传统图像分类模型通常被训练成“输入图片，输出固定类别”。例如 ImageNet 里有 1000 个类别，模型最终学的是这 1000 个类别的分类边界。问题是：现实世界的视觉概念远远不止这些固定类别。
+            </p>
+
+            <h3 id="problem-fixed-head">5.1 你的理解：固定分类头为什么限制扩展</h3>
+            <div class="callout">
+              <strong>你的当前理解：</strong>图片先被模型提取成特征向量，然后通过一个固定的矩阵参数转成固定类别的 logits。这样类别空间被固定住了；如果要新增类别，往往还要训练新的分类矩阵参数，甚至需要重新微调模型，所以扩展能力变弱。
+            </div>
+            <p>
+              这个理解是对的。传统分类模型通常可以抽象成下面的形式：
+            </p>
+            <pre><code>image
+-> image_encoder
+-> h.shape = [hidden_dim]
+
+logits = h @ W_class + b
+W_class.shape = [hidden_dim, num_classes]
+logits.shape = [num_classes]</code></pre>
+            <p>
+              这里的 <code>num_classes</code> 是训练时就固定好的。如果 ImageNet 是 1000 类，那么最后输出就是 1000 个类别分数。模型只能在这 1000 个位置里选一个或几个高分，不能自然地输出“一个红色老式汽车停在雨夜街边”这种开放描述。
+            </p>
+            <div class="warn callout">
+              <strong>再精确一点：</strong>新增类别不一定永远要重训整个模型。如果 encoder 冻结，可以只训练新的分类头；如果新类别和原任务差异大，通常还要补数据并微调 encoder。无论哪种方式，传统固定分类头都不能像 CLIP 那样直接把新类别写成一句文本 prompt 来比较。
+            </div>
+
+            <div class="grid-3">
+              <div class="panel">
+                <h3>固定类别监督</h3>
+                <p>标签空间被人为固定，模型只能在训练标签定义好的类别里选择。</p>
+              </div>
+              <div class="panel">
+                <h3>自然语言监督</h3>
+                <p>文本可以描述物体、属性、关系、场景和动作，表达空间比类别 id 更丰富。</p>
+              </div>
+              <div class="panel">
+                <h3>CLIP 的选择</h3>
+                <p>不直接预测一个类别编号，而是学习图片和文本描述是否匹配。</p>
+              </div>
+            </div>
+
+            <div class="warn callout">
+              <strong>这里不要误解：</strong>CLIP 不是不需要监督。它仍然有监督信号，只是监督来自“图片和文本原本是否配对”，而不是来自人工定义的单一类别标签。
+            </div>
+
+            <p>
+              这也是为什么论文标题里写的是 <em>Natural Language Supervision</em>。自然语言不是装饰，它改变了视觉模型的训练目标：模型被迫把视觉内容和语言描述联系起来。
+            </p>
+
+            <h3 id="problem-limitations">5.2 固定类别分类还有哪些缺陷</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>缺陷</th>
+                    <th>具体含义</th>
+                    <th>CLIP 为什么缓解它</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>闭集分类</td>
+                    <td>模型只能在训练时规定好的类别集合里选择。类别表外的概念没有位置。</td>
+                    <td>CLIP 可以把新概念写成文本，让图片向量和这条文本向量比较。</td>
+                  </tr>
+                  <tr>
+                    <td>标签信息太稀疏</td>
+                    <td>一个标签通常只是 <code>dog</code>、<code>car</code> 这种类别名，丢掉颜色、动作、关系、背景等信息。</td>
+                    <td>自然语言描述可以包含属性、场景、动作和关系，比如“一只黑狗站在草地上”。</td>
+                  </tr>
+                  <tr>
+                    <td>类别 id 没有语义</td>
+                    <td>传统 CrossEntropyLoss 看到的是类别下标，例如 17 或 281；这些数字本身不携带语言含义。</td>
+                    <td>CLIP 的文本塔会真正编码类别名称或句子，让“dog”和“a dog on grass”进入可比较的语义空间。</td>
+                  </tr>
+                  <tr>
+                    <td>人工标注成本高</td>
+                    <td>每新增一批类别，通常要收集图片、定义标签、人工标注、再训练或微调。</td>
+                    <td>CLIP 利用大规模图文对，虽然文本噪声更高，但扩展规模更强。</td>
+                  </tr>
+                  <tr>
+                    <td>多标签和长尾表达弱</td>
+                    <td>一张图可能同时包含人、狗、草地、飞盘、动作和关系，单一类别标签表达不完整。</td>
+                    <td>文本描述天然可以表达多个对象和它们之间的关系。</td>
+                  </tr>
+                  <tr>
+                    <td>迁移能力受限</td>
+                    <td>在一个固定标签数据集上训练好的分类头，换到新任务、新类别、新数据集时往往要适配。</td>
+                    <td>CLIP 训练的是图文共享空间，很多新任务可以先通过 prompt 和相似度比较完成 zero-shot 尝试。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>本阶段关键结论：</strong>固定分类不是错，而是适合“类别明确、边界固定、任务稳定”的场景。CLIP 要解决的是更开放的问题：现实世界的视觉概念可以被自然语言不断组合、扩展和重新描述。
+            </div>
+
+            <h3 id="natural-language-supervision">5.3 Natural Language Supervision 到底是什么</h3>
+            <div class="callout">
+              <strong>你的当前理解：</strong>自然语言不能被彻底枚举，它不是固定分类表，而是更广义、可组合、带有关系结构的表达。CLIP 的监督信号来自描述图片的文字；训练目标不是表面地记住类别，而是学习图片和一段文字描述之间的联系。
+            </div>
+            <p>
+              这个理解是对的。更严格地说，CLIP 的监督信号来自“这张图片和这段文本原本是一对”。它不是告诉模型“这张图属于第 281 类”，而是告诉模型：
+            </p>
+            <pre><code>positive pair:
+image_i  <->  text_i
+
+negative pairs in the same batch:
+image_i  <->  text_j   where j != i</code></pre>
+            <p>
+              所以 CLIP 学到的不是一个固定类别表，而是一个比较函数：给定一张图片和一段文本，判断它们在语义上是否接近。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>维度</th>
+                    <th>传统分类标签</th>
+                    <th>自然语言监督</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>表达形式</td>
+                    <td><code>class_id = 281</code></td>
+                    <td><code>"a photo of a tabby cat sitting on a sofa"</code></td>
+                  </tr>
+                  <tr>
+                    <td>是否固定枚举</td>
+                    <td>是。类别集合在训练前定义好。</td>
+                    <td>不是严格固定。文本可以不断组合新描述。</td>
+                  </tr>
+                  <tr>
+                    <td>信息量</td>
+                    <td>通常只有类别名。</td>
+                    <td>可以包含物体、属性、动作、场景、关系。</td>
+                  </tr>
+                  <tr>
+                    <td>训练目标</td>
+                    <td>把图片分到固定类别位置。</td>
+                    <td>让匹配图文向量靠近，让不匹配图文向量远离。</td>
+                  </tr>
+                  <tr>
+                    <td>新类别处理</td>
+                    <td>通常需要新标签数据和新分类头适配。</td>
+                    <td>可以先把新类别写成 prompt，用文本向量直接比较。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="warn callout">
+              <strong>边界要说清楚：</strong>CLIP 确实学习了图片和文本描述之间的语义对齐，但它不是严格意义上的逻辑推理系统。它主要从大规模图文共现中学习统计关联和可迁移表示，所以对复杂计数、精细空间关系、否定句和多步逻辑仍然可能不稳定。
+            </div>
+
+            <p>
+              因此，Natural Language Supervision 的本质不是“文字更漂亮”，而是监督空间变了：从固定的类别编号空间，变成开放的语言描述空间。CLIP 后续能做 zero-shot，正是因为测试时的新类别也可以先写成文本，再进入这个共享空间比较。
+            </p>
+          </section>
+
+          <section id="figure3">
+            <h2>6. Figure 3 方法伪代码</h2>
+            <p>
+              论文的 Figure 3 是 Day11 第一阶段最值得先吃透的部分。它几乎就是你 Day9 写过的代码的论文版。
+            </p>
+
+            <pre><code># 一批 N 个图文对
+images -> image_encoder -> image_features
+texts  -> text_encoder  -> text_features
+
+# 投影到共享空间
+image_embeddings = image_features @ W_image
+text_embeddings  = text_features  @ W_text
+
+# 每一行做 L2 normalize
+image_embeddings = normalize(image_embeddings)
+text_embeddings  = normalize(text_embeddings)
+
+# 得到 N x N 的图文相似度矩阵
+logits = exp(logit_scale) * image_embeddings @ text_embeddings.T
+
+# 对角线是正确配对
+labels = [0, 1, 2, ..., N - 1]
+
+# 两个方向的 contrastive loss
+loss_i2t = cross_entropy(logits, labels)
+loss_t2i = cross_entropy(logits.T, labels)
+loss = (loss_i2t + loss_t2i) / 2</code></pre>
+
+            <h3 id="figure3-day9">6.1 这段伪代码和 Day9 的关系</h3>
+            <p>
+              你 Day9 已经掌握了核心计算：<code>[B, D] @ [D, B] -> [B, B]</code>。论文这里的 <code>N</code> 就是 batch size，和我们代码里的 <code>B</code> 是同一个位置的概念。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>论文伪代码</th>
+                    <th>你代码里的写法</th>
+                    <th>解释</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>I_f = image_encoder(I)</code></td>
+                    <td><code>image_raw / image_features</code></td>
+                    <td>一张图最终先得到整图级表示，不是单个 patch 表示。</td>
+                  </tr>
+                  <tr>
+                    <td><code>T_f = text_encoder(T)</code></td>
+                    <td><code>text_raw / text_features</code></td>
+                    <td>一句话最终得到整句级表示，不是某个 token id。</td>
+                  </tr>
+                  <tr>
+                    <td><code>I_e = l2_normalize(I_f W_i)</code></td>
+                    <td><code>F.normalize(image_raw, dim=1)</code></td>
+                    <td>沿每一行的特征维做 L2 normalize，不是标准化均值和方差。</td>
+                  </tr>
+                  <tr>
+                    <td><code>logits = I_e @ T_e.T</code></td>
+                    <td><code>scores = image_embeddings @ text_embeddings.T</code></td>
+                    <td>每个格子是一张图和一句话的匹配分数。</td>
+                  </tr>
+                  <tr>
+                    <td><code>loss = CE(row) + CE(column)</code></td>
+                    <td><code>loss_i2t + loss_t2i</code></td>
+                    <td>同时训练“图片找文本”和“文本找图片”。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="figure3-two-encoders">6.2 为什么论文要保留两个 encoder</h3>
+            <p>
+              图片和文本的原始数据结构不同：图片是像素网格，文本是 token 序列。CLIP 不强行让它们共用同一个输入处理器，而是让两边先各自编码，再在输出端对齐到同一个向量空间。
+            </p>
+            <div class="callout">
+              <strong>和你之前的理解对齐：</strong><code>vision hidden_size = 768</code> 可以是视觉塔内部宽度，<code>text hidden_size = 512</code> 可以是文本塔内部宽度；但最终 <code>projection_dim = 512</code> 必须一致，因为相似度矩阵要求两边在同一个坐标系里做点积。
+            </div>
+
+            <h3 id="figure3-negatives">6.3 为什么 batch 里其他样本自动成为负样本</h3>
+            <p>
+              假设一个 batch 有 4 对图文：
+            </p>
+            <pre><code>image 0 <-> text 0
+image 1 <-> text 1
+image 2 <-> text 2
+image 3 <-> text 3</code></pre>
+            <p>
+              对 <code>image 0</code> 来说，<code>text 0</code> 是正样本，<code>text 1</code>、<code>text 2</code>、<code>text 3</code> 就是同 batch 内负样本。这样一个 batch 不是只提供 4 个训练信号，而是提供了一整张 <code>4 x 4</code> 的比较表。
+            </p>
+
+            <div class="rose callout">
+              <strong>客观说法：</strong>相似度分数本身不是可学习参数。loss 对分数的梯度只是中间梯度，它会继续沿着 <code>score = image_embedding · text_embedding</code> 回传，最终影响 projection、image encoder 和 text encoder 的参数。
+            </div>
+
+            <h3 id="figure3-nxn">6.4 为什么能构造 N x N 相似度矩阵</h3>
+            <div class="callout">
+              <strong>你的当前理解：</strong>为了让文字和图片能建立联系并被量化计算，需要把两种模态都变成同一维度的向量。图片可以经过 ViT 或 CNN 编码，文本经过 Transformer 编码，再通过 projection 对齐到相同维度。一个 batch 里有 N 张图片和 N 条文本，保持第 i 张图片和第 i 条文本是配对关系，就能构造出 <code>N x N</code> 相似度矩阵；对角线是正样本，其他组合可以当负样本。
+            </div>
+            <p>
+              这条主线是对的。再精确一点，encoder 和 projection 是两个相邻但不同的步骤：
+            </p>
+            <pre><code>images.shape = [N, C, H, W]
+texts.shape  = [N, L]
+
+image_features = image_encoder(images)
+text_features  = text_encoder(texts)
+
+image_embeddings = image_features @ W_image
+text_embeddings  = text_features  @ W_text
+
+image_embeddings.shape = [N, D]
+text_embeddings.shape  = [N, D]</code></pre>
+            <p>
+              encoder 负责把原始图片或文本变成高层特征；projection 负责把两边特征映射到同一个共享维度 <code>D</code>。如果两边最终都是 <code>[N, D]</code>，那么矩阵乘法自然得到：
+            </p>
+            <pre><code>logits = image_embeddings @ text_embeddings.T
+
+[N, D] @ [D, N] -> [N, N]</code></pre>
+            <p>
+              矩阵第 <code>i</code> 行第 <code>j</code> 列，就是第 <code>i</code> 张图片和第 <code>j</code> 条文本的匹配分数。如果数据加载时保证 <code>image_i</code> 和 <code>text_i</code> 是原始配对，那么对角线 <code>logits[i, i]</code> 就是正样本。
+            </p>
+            <div class="warn callout">
+              <strong>用词再校正：</strong>非对角线最好不要叫“噪音”，更准确叫 <em>in-batch negatives</em>，也就是同一个 batch 内临时构造出来的负样本。它们通常是不匹配图文对，但并不保证 100% 错误；如果两张图都和“a dog on grass”相关，就可能出现 false negative。
+            </div>
+            <p>
+              所以 CLIP 的训练非常高效：一个 batch 里的 N 个图文对，不只产生 N 个正样本，还产生了大量图文比较关系。模型被训练成把对角线分数拉高，把大多数非对角线分数压低。
+            </p>
+
+            <h3 id="pretraining-design">6.5 Pre-training Method 的四个设计选择</h3>
+            <p>
+              到这里，Figure 3 不应该只被看成一段公式。论文真正要表达的是一套可扩展的预训练设计：用两个 encoder 分别处理图片和文本，用 projection 进入共享空间，用归一化和温度控制相似度，再用双向对比损失训练。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>设计选择</th>
+                    <th>论文为什么这么做</th>
+                    <th>你读论文时要抓住什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>双编码器</td>
+                    <td>图片和文本原始结构不同，各自需要适合自己的 encoder。</td>
+                    <td>CLIP 不是把图片 token 直接塞进文本模型，而是先分别编码再对齐。</td>
+                  </tr>
+                  <tr>
+                    <td>线性 projection</td>
+                    <td>视觉塔和文本塔内部 hidden size 可以不同，但相似度计算要求最终维度一致。</td>
+                    <td>projection 是把两种模态翻译到同一个比较空间。</td>
+                  </tr>
+                  <tr>
+                    <td>L2 normalize + temperature</td>
+                    <td>归一化后点积更接近余弦相似度；temperature 控制 softmax 分布的尖锐程度。</td>
+                    <td>模型比较的是方向相似性，不希望单纯被向量长度支配。</td>
+                  </tr>
+                  <tr>
+                    <td>双向 contrastive loss</td>
+                    <td>既训练图片找文本，也训练文本找图片。</td>
+                    <td>共享空间要同时支持 image-to-text 和 text-to-image。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>6.6 论文方法的训练闭环</h3>
+            <p>
+              把 Figure 3 读成训练闭环，会更接近论文主线：
+            </p>
+            <pre><code>1. 从数据集中取 N 个 image-text pairs
+2. image encoder 得到 N 个图片特征
+3. text encoder 得到 N 个文本特征
+4. 两边 projection 到同一个 D 维空间
+5. normalize 后计算 N x N 相似度矩阵
+6. 对角线是正样本，非对角线是 in-batch negatives
+7. image-to-text loss + text-to-image loss
+8. 反向传播更新两个 encoder、两个 projection 和 temperature</code></pre>
+            <div class="callout">
+              <strong>本节结论：</strong>CLIP 的 pre-training method 不是为某个固定分类任务训练分类头，而是在训练一个可复用的图文比较空间。后面的 zero-shot、retrieval、开放词表分类，都是这个空间的使用方式。
+            </div>
+          </section>
+
+          <section id="experiments-transfer">
+            <h2>7. 实验：如何证明迁移能力</h2>
+            <p>
+              CLIP 论文的实验部分信息量很大，但第一轮不需要逐个背 benchmark。你要先看懂它的证据链：模型不是只在训练集上对齐图文，而是真的能迁移到没有专门训练过的下游视觉任务。
+            </p>
+            <div class="callout">
+              <strong>读实验的主问题：</strong>CLIP 训练出来的图文共享空间，是否能在没有下游标注训练的情况下，直接解决分类、检索和分布迁移问题？
+            </div>
+            <p>
+              论文实验部分可以拆成四条证据链。不要把它看成一堆榜单，而要看成作者在逐步证明同一个核心主张。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>证据链</th>
+                    <th>论文在问什么</th>
+                    <th>如果成立，说明什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Zero-shot transfer</td>
+                    <td>不训练下游分类头，只用类别文本，能不能直接做分类？</td>
+                    <td>图文共享空间本身具备迁移能力。</td>
+                  </tr>
+                  <tr>
+                    <td>Linear probe</td>
+                    <td>冻结 image encoder，只训练线性头，视觉表示质量如何？</td>
+                    <td>CLIP 的 image encoder 学到的视觉特征本身有用。</td>
+                  </tr>
+                  <tr>
+                    <td>Robustness</td>
+                    <td>遇到分布变化时，是否比只优化 ImageNet 的模型更稳？</td>
+                    <td>不直接针对 benchmark 优化，可能降低 benchmark overfitting。</td>
+                  </tr>
+                  <tr>
+                    <td>Limitations</td>
+                    <td>哪些任务上 CLIP 仍然不可靠？</td>
+                    <td>CLIP 是强大的图文表示模型，不是万能视觉推理系统。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="experiments-zero-shot">7.1 Zero-shot transfer：不训练新分类头也能分类</h3>
+            <p>
+              第一条证据是 zero-shot transfer。论文把下游分类任务的类别名称写成 prompt，用 text encoder 得到类别文本向量，再让图片向量和这些类别文本向量比较。
+            </p>
+            <pre><code>downstream classes
+-> prompt templates
+-> text encoder
+-> text classifier
+
+image
+-> image encoder
+-> compare with text classifier
+-> predicted class</code></pre>
+            <p>
+              这里的重点不是“CLIP 在某一个数据集上分数是多少”，而是：它没有用这个下游数据集的训练标签去训练新分类头，却能直接完成分类。这就是论文要证明的 transfer。
+            </p>
+            <h3>7.1.1 论文原文里的 zero-shot 评估逻辑</h3>
+            <p>
+              论文把 zero-shot 分类解释成一个“生成分类器”的过程：先用 text encoder 编码所有类别文本，再把这些文本向量当成分类器权重。论文甚至把 text encoder 类比为一个 hypernetwork：它根据类别的自然语言描述生成线性分类器的权重。
+            </p>
+            <pre><code>dataset class names
+-> prompt templates
+-> text encoder
+-> zero-shot classifier weights
+
+image
+-> image encoder
+-> image feature
+-> cosine similarity against text weights
+-> softmax probability over classes</code></pre>
+            <p>
+              论文在 ImageNet 上给了一个标志性结果：最好的 CLIP zero-shot 模型达到 76.2% top-1，匹配原始监督训练 ResNet-50 的表现，而且没有使用 ImageNet 的 128 万人工标注训练样本。这个结果不是说 CLIP 在所有任务上都赢，而是证明“自然语言监督 + 图文对齐”可以在经典视觉分类任务上达到强监督模型级别的迁移效果。
+            </p>
+            <p>
+              论文还把 CLIP 和早期 Visual N-Grams 结果做了上下文比较：在 ImageNet zero-shot 上，从 11.5% 提升到 76.2%。这个比较不是严格控制变量实验，作者也提醒两者训练数据、模型规模、计算量都有差异；但它能说明 CLIP 把自然语言监督视觉模型推到了可用级别。
+            </p>
+            <div class="warn callout">
+              <strong>读表格时不要迷路：</strong>先看 zero-shot 是否能接近或超过一些传统监督 baseline，再看它在哪些任务上明显弱。数字只是证据，主线是“自然语言监督是否带来可迁移能力”。
+            </div>
+
+            <h3 id="experiments-linear-probe">7.2 Linear probe：视觉表示本身是否有用</h3>
+            <p>
+              第二条证据是 linear probe。它的做法是冻结 CLIP 的 image encoder，只在下游数据集上训练一个线性分类器。这样可以测试：CLIP 学到的图片表示本身是不是强，而不只是 prompt 技巧有效。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>评估方式</th>
+                    <th>是否训练下游分类头</th>
+                    <th>它回答什么问题</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Zero-shot</td>
+                    <td>不训练，用文本 prompt 构造分类器。</td>
+                    <td>图文共享空间能不能直接迁移？</td>
+                  </tr>
+                  <tr>
+                    <td>Linear probe</td>
+                    <td>训练一个很浅的线性分类头，encoder 冻结。</td>
+                    <td>image encoder 学到的视觉表示质量如何？</td>
+                  </tr>
+                  <tr>
+                    <td>Fine-tuning</td>
+                    <td>通常会更新更多模型参数。</td>
+                    <td>如果专门适配下游任务，性能上限还能到哪里？</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              你读这部分时要分清：zero-shot 证明“语言接口能迁移”，linear probe 证明“视觉特征本身有用”。两者回答的问题不一样。
+            </p>
+            <h3>7.2.1 论文原文里的 linear probe 证据</h3>
+            <p>
+              论文把 CLIP 的 image encoder 冻结，然后在下游数据集上训练线性分类器。这样做有一个很明确的控制变量：不让整个模型为下游任务大规模微调，只看冻结后的视觉表示是否已经包含有用信息。
+            </p>
+            <p>
+              在论文的 27 个数据集评估中，CLIP 的特征在 21 个数据集上超过 Noisy Student EfficientNet-L2。它提升最明显的任务包括 OCR 相关任务、地理定位和场景识别、视频动作识别、细粒度汽车和交通标志识别。这个证据说明：CLIP 学到的 image representation 不是只会配文本，它作为视觉特征本身也很强。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CLIP 线性探测更强的任务类型</th>
+                    <th>论文中提到的例子</th>
+                    <th>为什么符合 CLIP 的训练优势</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>OCR / 文本图像理解</td>
+                    <td>SST2、HatefulMemes</td>
+                    <td>图文预训练让模型接触到图片中的文字和语义文本。</td>
+                  </tr>
+                  <tr>
+                    <td>地理定位与场景识别</td>
+                    <td>Country211、SUN397</td>
+                    <td>网络图文数据中经常包含地点、场景、环境描述。</td>
+                  </tr>
+                  <tr>
+                    <td>视频动作识别</td>
+                    <td>Kinetics700、UCF101</td>
+                    <td>自然语言描述常包含动作词和活动语义。</td>
+                  </tr>
+                  <tr>
+                    <td>细粒度交通相关分类</td>
+                    <td>Stanford Cars、GTSRB</td>
+                    <td>固定 ImageNet 标签可能压缩细节，而文本描述能覆盖更多细粒度概念。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              论文也没有只报喜：CLIP 在 ImageNet、CIFAR10/100、PatchCamelyon、CLEVRCounts 等数据集上相对弱一些。这很重要，因为它说明 CLIP 的优势不是“所有任务都更强”，而是“更适合开放、多样、语义丰富的迁移任务”。
+            </p>
+
+            <h3 id="experiments-robustness">7.3 鲁棒性、分布迁移与局限性</h3>
+            <p>
+              第三条证据是鲁棒性。论文不只看标准数据集，还关心模型遇到分布变化时是否更稳定。原因很简单：如果一个模型只是记住某个数据集的标签风格，它到了新分布就会明显掉线；如果它学到更开放的视觉语言概念，迁移时可能更稳。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>实验关注点</th>
+                    <th>论文想证明什么</th>
+                    <th>你应该如何解读</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>跨数据集 zero-shot</td>
+                    <td>同一个 CLIP 模型能否适配多种视觉任务。</td>
+                    <td>看它是否不依赖单一数据集的标签系统。</td>
+                  </tr>
+                  <tr>
+                    <td>分布变化</td>
+                    <td>遇到和训练/标准测试不同的图片风格时是否更稳。</td>
+                    <td>自然语言监督可能带来更泛化的概念表示。</td>
+                  </tr>
+                  <tr>
+                    <td>失败案例</td>
+                    <td>CLIP 仍然不是通用视觉推理模型。</td>
+                    <td>重点看细粒度分类、计数、空间关系、抽象推理和偏见问题。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>7.3.1 论文原文里的 robustness 证据</h3>
+            <p>
+              论文重点比较 zero-shot CLIP 和标准 ImageNet 模型在自然分布迁移数据集上的表现，例如 ImageNetV2、ImageNet-A、ImageNet-R、ObjectNet、ImageNet Sketch。作者关心的是：标准 ImageNet 准确率高，是否真的代表模型在真实分布变化下也稳定？
+            </p>
+            <p>
+              Figure 13 的结论是：zero-shot CLIP 大幅缩小 ImageNet 准确率和分布迁移准确率之间的 gap，最多可缩小 75%。论文中一些例子很直观：在 ImageNet-R 上，标准 ResNet101 是 37.7，而 zero-shot CLIP 是 88.9；在 ObjectNet 上是 32.6 对 72.3；在 ImageNet Sketch 上是 25.2 对 60.2。
+            </p>
+            <p>
+              更关键的是后续控制实验：如果在 CLIP 特征上为 ImageNet 训练一个 logistic regression 分类器，ImageNet 准确率会上升 9.2%，但分布迁移数据集上的平均表现反而略降。这说明：针对某个 benchmark 做监督适配，可能提高该 benchmark 分数，却不一定提升真实迁移鲁棒性。
+            </p>
+            <div class="callout">
+              <strong>这条证据链的重点：</strong>CLIP 的 zero-shot 评估减少了“为某个 benchmark 复习”的机会，因此它的 benchmark 表现可能更接近真实泛化能力。
+            </div>
+
+            <h3 id="experiments-limitations">7.4 Limitations：论文主动承认的边界</h3>
+            <p>
+              最后一条证据链不是证明 CLIP 强，而是证明作者知道 CLIP 的边界。论文和官方说明都明确提到：CLIP 对常见物体识别通常不错，但在更抽象、更系统性的任务上会明显吃力。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>限制类型</th>
+                    <th>论文提到的现象</th>
+                    <th>为什么这不是小问题</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>抽象 / 系统任务</td>
+                    <td>计数、判断最近汽车距离这类任务接近随机。</td>
+                    <td>说明 CLIP 的图文对齐不等于精确视觉推理。</td>
+                  </tr>
+                  <tr>
+                    <td>细粒度分类</td>
+                    <td>车款、飞机型号、花的品种等任务弱于专用模型。</td>
+                    <td>语义对齐强，不代表所有局部细节都可靠。</td>
+                  </tr>
+                  <tr>
+                    <td>预训练覆盖不足</td>
+                    <td>MNIST 手写数字 zero-shot 只有 88%，低于人类水平。</td>
+                    <td>如果预训练分布覆盖不足，zero-shot 仍然会掉线。</td>
+                  </tr>
+                  <tr>
+                    <td>Prompt 敏感</td>
+                    <td>不同措辞会影响 zero-shot 分类效果。</td>
+                    <td>说明 prompt 是接口，也是误差来源。</td>
+                  </tr>
+                  <tr>
+                    <td>偏见与安全</td>
+                    <td>类别集合设计会影响模型输出，甚至放大有害类别判断。</td>
+                    <td>开放词表能力越强，越需要谨慎设计标签和使用场景。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="limitations-why">7.5 这些弱点从哪里来</h3>
+            <p>
+              论文里的 limitations 不是随便列缺点。它们大多来自同一个根源：CLIP 的训练目标是“图文整体匹配”，不是“精确解析图像里的每个结构化事实”。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>训练目标带来的倾向</th>
+                    <th>会擅长什么</th>
+                    <th>会不稳定什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>整体语义匹配</td>
+                    <td>判断图片大概像不像某段文本。</td>
+                    <td>精确计数、几何位置、局部细节。</td>
+                  </tr>
+                  <tr>
+                    <td>大规模网络图文共现</td>
+                    <td>学习大量常见概念、物体、场景、风格。</td>
+                    <td>训练数据里少见或表达不稳定的概念。</td>
+                  </tr>
+                  <tr>
+                    <td>Prompt 驱动分类</td>
+                    <td>开放词表、快速迁移新类别。</td>
+                    <td>对模板措辞、类别集合和上下文敏感。</td>
+                  </tr>
+                  <tr>
+                    <td>对比学习</td>
+                    <td>把匹配图文拉近，把不匹配图文推远。</td>
+                    <td>不直接训练多步推理、因果判断、否定理解。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              所以你可以把 CLIP 理解成一个很强的“开放词表视觉语义匹配器”，但不要把它理解成一个可靠的“视觉逻辑推理器”。这两个定位差别很大。
+            </p>
+
+            <h3>7.5.1 每类弱点的机制原因</h3>
+            <p>
+              更细地说，CLIP 的弱点不是“模型不够聪明”这么简单，而是训练任务本身没有强迫它学会这些能力。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>弱点</th>
+                    <th>为什么会出现</th>
+                    <th>直观例子</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>计数不稳定</td>
+                    <td>图文对比训练只要求整体描述匹配，caption 里也很少系统标注精确数量。模型看到“一群人”“几只狗”这类粗描述较多，但没有被严格训练成数出 3、4、5。</td>
+                    <td>“three dogs”和“four dogs”的图文相似度可能都很高，因为主体语义都是 dogs。</td>
+                  </tr>
+                  <tr>
+                    <td>空间关系弱</td>
+                    <td>CLIP 最终常用一个整图 embedding 做匹配，局部位置关系会被压缩进一个全局向量。训练 loss 也不会逐像素监督“左边、右边、上方、遮挡”。</td>
+                    <td>“杯子在书左边”和“杯子在书右边”可能都被理解成杯子 + 书的共现。</td>
+                  </tr>
+                  <tr>
+                    <td>细粒度分类弱</td>
+                    <td>网络文本往往不稳定地标注细粒度类别，很多图片 caption 只写 car、flower、bird，不写具体车款、花种、鸟种。没有足够稳定的文本监督，模型就难以学到细微差别。</td>
+                    <td>识别“这是汽车”容易，识别具体年份和型号更难。</td>
+                  </tr>
+                  <tr>
+                    <td>否定和逻辑弱</td>
+                    <td>对比学习主要学习图文共现相似度，不是自然语言逻辑证明。否定词在 embedding 空间里可能只产生很小变化，但语义上会完全翻转。</td>
+                    <td>“a dog on grass”和“no dog on grass”可能仍共享 dog、grass 等强语义词。</td>
+                  </tr>
+                  <tr>
+                    <td>Prompt 敏感</td>
+                    <td>zero-shot 分类把任务交给文本 prompt 表达。不同模板会让 text embedding 落在不同位置，类别边界也会变化。</td>
+                    <td>“cat”“a photo of a cat”“a sketch of a cat”对不同图片分布会产生不同效果。</td>
+                  </tr>
+                  <tr>
+                    <td>偏见与安全风险</td>
+                    <td>训练数据来自大规模网络图文，里面会有社会偏见、刻板关联和噪声。开放词表又允许用户构造敏感标签集合，模型可能把这些关联放大。</td>
+                    <td>如果候选标签设计不当，模型可能在身份、职业、外貌等敏感维度上产生不可靠判断。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>核心原因：</strong>CLIP 被优化成“匹配图文整体语义”，而不是被优化成“解析图像中的结构化事实”。训练目标没有明确奖励精确计数、空间推理、否定理解和安全判断，这些能力自然不会稳定出现。
+            </div>
+
+            <h3 id="limitations-usage">7.6 工程上应该如何使用 CLIP</h3>
+            <p>
+              读完 limitations，工程上的结论会非常具体：CLIP 适合做候选召回、zero-shot 初筛、图文检索、开放词表分类 baseline；但涉及高精度判断、强安全要求或细粒度事实时，要加验证机制。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>任务场景</th>
+                    <th>CLIP 是否适合</th>
+                    <th>推荐用法</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>图文检索 / 图片搜索</td>
+                    <td>适合。</td>
+                    <td>用 CLIP 做向量召回，再用阈值、reranker 或人工反馈控制误检。</td>
+                  </tr>
+                  <tr>
+                    <td>开放词表分类 baseline</td>
+                    <td>适合先试。</td>
+                    <td>设计 prompt、做 prompt ensemble，并用小验证集校准类别集合。</td>
+                  </tr>
+                  <tr>
+                    <td>细粒度专业分类</td>
+                    <td>谨慎。</td>
+                    <td>需要领域数据、专用模型、fine-tuning 或后续人工校验。</td>
+                  </tr>
+                  <tr>
+                    <td>计数 / 空间关系 / 逻辑判断</td>
+                    <td>不宜单独依赖。</td>
+                    <td>需要检测器、OCR、结构化视觉模块或 VLM 推理链路辅助。</td>
+                  </tr>
+                  <tr>
+                    <td>安全敏感标签</td>
+                    <td>高风险。</td>
+                    <td>限制标签空间，做偏见测试，加入人工审核和可解释记录。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="warn callout">
+              <strong>下一阶段连接：</strong>正因为 CLIP 主要输出“图文是否相似”，后续 VLM 才要在它上面继续加入视觉 token 到语言模型、指令微调、多轮问答和推理能力。CLIP 是多模态理解的重要地基，但不是终点。
+            </div>
+            <div class="callout">
+              <strong>实验部分一句话：</strong>CLIP 的实验不是只为了刷榜，而是在证明一件事：大规模自然语言监督训练出的图文比较空间，可以在许多下游任务上直接迁移，但它仍然有清晰边界。
+            </div>
+          </section>
+
+          <section id="clip-paradigm">
+            <h2>8. 是否开创 CLIP 模式</h2>
+            <p>
+              先给客观结论：如果你说的“CLIP 模式”是指现代多模态里常见的“图像编码器 + 文本编码器 + 共享向量空间 + 图文对比学习 + zero-shot / retrieval 使用方式”，那么这篇论文基本可以看作奠定并强势推广了这个范式。
+            </p>
+            <p>
+              但如果你说“它是不是从零发明了所有零件”，答案就不是。双塔检索、视觉语义嵌入、对比学习、自然语言弱监督这些思想在此前已经有相关工作。CLIP 的真正贡献不是凭空发明每个部件，而是把这些部件以非常清晰、可扩展、效果强的方式组合起来，并证明它可以训练出很强的开放词表视觉模型。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>问题</th>
+                    <th>客观回答</th>
+                    <th>你应该怎么理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CLIP 是否发明了对比学习？</td>
+                    <td>不是。对比学习思想早已有之。</td>
+                    <td>CLIP 把对比学习用于大规模图文配对，并让图像和文本进入同一个语义空间。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP 是否发明了双塔结构？</td>
+                    <td>不是。双塔结构在检索系统中很常见。</td>
+                    <td>CLIP 的重要点是双塔分别处理图片和文本，然后用大规模图文对训练共享空间。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP 是否开创现代 CLIP 范式？</td>
+                    <td>可以这么说。更严谨地说，它确立并推广了一个非常有影响力的现代图文对齐训练范式。</td>
+                    <td>后续大量模型、检索系统和开放词表视觉任务都直接继承或改造了这条路线。</td>
+                  </tr>
+                  <tr>
+                    <td>为什么它是必读论文？</td>
+                    <td>因为它把图像分类从“固定类别标签”推进到“自然语言可描述的开放概念空间”。</td>
+                    <td>这正是后续 VLM、图文检索、zero-shot 分类和文本条件生成模型的重要基础。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>最准确的说法：</strong>CLIP 不是所有底层思想的唯一源头，但它是现代“CLIP-style 图文对齐范式”的标志性论文。你学它，不是在学一个孤立模型，而是在学多模态模型工业化前的一条关键主线。
+            </div>
+          </section>
+
+          <section id="paper-takeaways">
+            <h2>9. 论文贡献与 5 分钟讲稿</h2>
+            <p>
+              到这一阶段，Day11 不再继续展开更多实验细节，而是要把论文收束成你能复述的结构。读论文的目标不是记住每个数字，而是能讲清楚：它解决什么问题、怎么做、证据是什么、边界在哪里、为什么影响后续多模态。
+            </p>
+
+            <h3 id="paper-contributions">9.1 三个核心贡献</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>贡献</th>
+                    <th>具体内容</th>
+                    <th>为什么重要</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>训练范式</td>
+                    <td>用大规模图文对进行 contrastive pre-training，而不是只用固定类别标签训练分类器。</td>
+                    <td>把视觉监督从封闭类别空间推进到开放语言描述空间。</td>
+                  </tr>
+                  <tr>
+                    <td>迁移方式</td>
+                    <td>通过 prompt 把下游类别转成文本向量，动态构造 zero-shot classifier。</td>
+                    <td>让模型不用重新训练分类头，也能尝试新类别和新任务。</td>
+                  </tr>
+                  <tr>
+                    <td>实验证据</td>
+                    <td>用 zero-shot、linear probe、robustness 和 limitations 证明共享空间有迁移能力但不是万能。</td>
+                    <td>把“图文对齐”从直觉变成可评估的基础能力。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="five-minute-script">9.2 五分钟讲稿</h3>
+            <p>
+              下面这段就是你之后复述 CLIP 论文时可以使用的骨架。
+            </p>
+            <pre><code>1. 论文背景
+传统视觉模型通常依赖固定类别标签，比如 ImageNet 的 1000 类。
+这种方式在类别扩展、开放词表和跨任务迁移上有明显限制。
+
+2. 核心思想
+CLIP 用大规模 image-text pairs 做自然语言监督。
+它不训练一个固定分类头，而是训练 image encoder 和 text encoder，
+让匹配图文在共享向量空间中更接近。
+
+3. 方法
+一个 batch 里有 N 个图文对。
+图片和文本分别编码、projection、normalize，
+然后计算 N x N 相似度矩阵。
+对角线是正样本，非对角线是 in-batch negatives。
+训练目标是 image-to-text 和 text-to-image 的双向 contrastive loss。
+
+4. Zero-shot
+测试时，把类别名写成 prompt，例如 "a photo of a cat"。
+prompt 经过 text encoder 得到类别文本向量。
+图片向量和这些文本向量比较，分数最高的类别就是预测结果。
+
+5. 实验证据
+论文用 zero-shot transfer 证明语言接口能迁移，
+用 linear probe 证明视觉表示本身有质量，
+用 robustness 实验证明它不只是过拟合某个 benchmark。
+
+6. 局限性
+CLIP 擅长开放词表语义匹配，
+但不稳定于计数、空间关系、细粒度专业分类、否定逻辑和安全敏感判断。
+所以它是后续多模态模型的重要地基，但不是终点。</code></pre>
+            <div class="callout">
+              <strong>Day11 收束判断：</strong>如果你能不看页面讲出上面 6 点，并能解释 Figure 1 和 Figure 3 的区别，CLIP 论文主线就已经掌握了。
+            </div>
+
+            <h3 id="paper-note-output">9.3 论文笔记产出</h3>
+            <p>
+              Day11 的正式论文笔记已经整理为 Markdown，适合之后复盘、提交和继续扩写。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>产出物</th>
+                    <th>路径</th>
+                    <th>用途</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CLIP 论文笔记</td>
+                    <td><code>papers/clip.md</code></td>
+                    <td>沉淀背景、方法、训练数据、损失函数、实验、局限性和 5 分钟讲稿。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP 原论文 PDF</td>
+                    <td><code>papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf</code></td>
+                    <td>本地阅读论文原文。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="reading-method">
+            <h2>10. 论文阅读方法</h2>
+            <p>
+              你现在读论文，建议采用“代码锚点阅读法”。每读一个段落，都问它能不能落到某段你已经写过的代码上。
+            </p>
+
+            <div class="warn callout">
+              <strong>不要整篇硬读：</strong>这篇论文信息量很大，第一次读不应该追求“每个实验表格都看懂”。第一目标是读懂训练范式，也就是：为什么用自然语言监督、为什么用两个 encoder、为什么用 <code>N x N</code> 相似度矩阵、为什么训练后能 zero-shot。
+            </div>
+
+            <h3 id="reading-blocks">10.1 先只抓 5 个核心块</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>核心块</th>
+                    <th>先读什么</th>
+                    <th>先跳过什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>问题背景</td>
+                    <td>标题、摘要、Figure 1。</td>
+                    <td>暂时跳过长篇 related work。</td>
+                  </tr>
+                  <tr>
+                    <td>训练方法</td>
+                    <td>Figure 3 伪代码和 pre-training method。</td>
+                    <td>暂时跳过所有实验表格的细节数字。</td>
+                  </tr>
+                  <tr>
+                    <td>自然语言监督</td>
+                    <td>为什么文本比固定类别标签更开放。</td>
+                    <td>暂时不纠结数据集构造的全部细节。</td>
+                  </tr>
+                  <tr>
+                    <td>Zero-shot 分类</td>
+                    <td>类别名如何变成 prompt，prompt 如何变成 text embedding。</td>
+                    <td>暂时不看每个 benchmark 的逐项排名。</td>
+                  </tr>
+                  <tr>
+                    <td>局限性</td>
+                    <td>CLIP 不擅长什么，为什么不能当万能视觉模型。</td>
+                    <td>暂时不深入每个失败案例的统计细节。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>读到论文内容</th>
+                    <th>马上追问</th>
+                    <th>落到哪里</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>natural language supervision</td>
+                    <td>监督信号到底来自哪里？</td>
+                    <td>图文对的配对关系，对角线 labels。</td>
+                  </tr>
+                  <tr>
+                    <td>contrastive pre-training</td>
+                    <td>正负样本怎么构造？</td>
+                    <td><code>[B, B]</code> 相似度矩阵。</td>
+                  </tr>
+                  <tr>
+                    <td>zero-shot transfer</td>
+                    <td>没有训练新分类头，怎么做分类？</td>
+                    <td>类别名变 prompt，经 text encoder 变成类别向量。</td>
+                  </tr>
+                  <tr>
+                    <td>web-scale dataset</td>
+                    <td>数据规模为什么对 CLIP 很关键？</td>
+                    <td>自然语言描述空间太大，需要大量图文对覆盖概念。</td>
+                  </tr>
+                  <tr>
+                    <td>limitations</td>
+                    <td>它在哪些任务上不能直接当万能视觉理解模型？</td>
+                    <td>细粒度判断、计数、空间关系、偏见与安全问题。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout">
+              <strong>今天先不要急：</strong>我们下一步会专门拆 “natural language supervision” 和 “zero-shot classifier”。它们是论文真正把分类模型变成开放词表视觉模型的关键。
+            </div>
+
+            <h3 id="reading-order">10.2 你的具体阅读顺序</h3>
+            <p>
+              这篇论文不要从第 1 页一路读到最后。更适合你的方式是分三轮读，每一轮都有明确目标。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>轮次</th>
+                    <th>阅读范围</th>
+                    <th>目标</th>
+                    <th>你要写下来的东西</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>第 1 轮</td>
+                    <td>标题、摘要、Figure 1、Figure 3、方法概述</td>
+                    <td>搞清楚论文主张和训练流程，不纠结实验数字。</td>
+                    <td>用自己的话写出：CLIP 训练了什么、输入是什么、输出是什么、loss 怎么算。</td>
+                  </tr>
+                  <tr>
+                    <td>第 2 轮</td>
+                    <td>Natural Language Supervision、Pre-training Method、Zero-shot Transfer</td>
+                    <td>理解为什么自然语言监督能支持开放词表分类。</td>
+                    <td>画出：图片向量如何和 prompt 文本向量做分类比较。</td>
+                  </tr>
+                  <tr>
+                    <td>第 3 轮</td>
+                    <td>实验结果、消融、局限性</td>
+                    <td>理解 CLIP 强在哪里、弱在哪里，避免把它当万能视觉模型。</td>
+                    <td>整理 3 个强项、3 个限制、3 个后续 VLM 为什么还要改进 CLIP。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 id="reading-questions">10.3 第一轮阅读时只回答 6 个问题</h3>
+            <ol>
+              <li>这篇论文为什么不满足于 ImageNet 式固定类别分类？</li>
+              <li>图片输入经过什么路径变成 image embedding？</li>
+              <li>文本输入经过什么路径变成 text embedding？</li>
+              <li>为什么一个 batch 可以构造出 <code>N x N</code> 的训练信号？</li>
+              <li>为什么训练完后可以直接做 zero-shot 分类和 retrieval？</li>
+              <li>论文承认 CLIP 还有哪些限制？</li>
+            </ol>
+
+            <div class="callout">
+              <strong>本地 PDF：</strong>已下载到 <a href="../../papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf"><code>papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf</code></a>。你可以从这个链接直接打开。
+            </div>
+          </section>
+
+          <section id="checkpoint">
+            <h2>11. 当前检查点</h2>
+            <p>
+              Day11 已收口，当前需要掌握下面几句话。
+            </p>
+            <ol>
+              <li>CLIP 论文的核心不是发明检索排序，而是训练出可迁移的图文共享表示空间。</li>
+              <li>Day9 的 <code>image_embeddings @ text_embeddings.T</code> 就是论文 Figure 3 的核心计算。</li>
+              <li>论文里的 batch size <code>N</code> 对应你代码里的 <code>B</code>。</li>
+              <li>对角线图文对是正样本，非对角线组合是同 batch 内负样本。</li>
+              <li>loss 的梯度不会“更新相似度表”这个中间结果，而是继续回传到 projection 和两个 encoder。</li>
+              <li>Day10 的 retrieval 是训练后共享空间的一种用法，不是 CLIP 训练目标的全部。</li>
+              <li>CLIP 是后续 VLM 的重要地基，但它本身主要输出图文相似度，不负责完整语言推理。</li>
+            </ol>
+          </section>
+
+          <section id="sources">
+            <h2>12. 资料来源</h2>
+            <p>
+              Day11 以论文原文为主，官方介绍作为辅助背景。
+            </p>
+            <ul>
+              <li><a href="../../papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf">Local PDF: papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf</a></li>
+              <li><a href="https://arxiv.org/abs/2103.00020">arXiv: Learning Transferable Visual Models From Natural Language Supervision</a></li>
+              <li><a href="https://cdn.openai.com/papers/Learning_Transferable_Visual_Models_From_Natural_Language_Supervision.pdf">OpenAI-hosted paper PDF</a></li>
+              <li><a href="https://openai.com/index/clip/">OpenAI CLIP introduction</a></li>
+            </ul>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

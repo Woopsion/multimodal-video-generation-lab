@@ -419,3 +419,27 @@
   - `.venv/bin/python demos/clip-image-search/app.py`
 - 下一步计划：
   - Day11 阅读 CLIP 论文，把 encoder、projection、similarity matrix、contrastive loss 和论文方法逐项对齐。
+
+## Day 11 - CLIP 论文阅读收口
+
+- 日期：2026-06-08
+- 今日目标：阅读 CLIP 论文主线，理解自然语言监督、Figure 1、Figure 3、zero-shot、实验和局限性。
+- 完成内容：
+  - 新增 Day11 HTML 主笔记：`docs/day-11-clip-paper-reading/index.html`
+  - 下载 CLIP 原论文 PDF：`papers/clip/learning-transferable-visual-models-from-natural-language-supervision.pdf`
+  - 新增正式论文笔记：`papers/clip.md`
+  - 更新 Week2 总览页：`docs/week-02-multimodal-understanding/index.html`
+  - 更新 Week2 状态笔记：`notes/week-02-vlm.md`
+  - 更新 30 天执行清单中的 Day11 完成状态。
+- 当前学习重点：
+  - Figure 1 展示训练范式迁移：固定类别预测 -> 自然语言描述匹配 -> zero-shot transfer。
+  - Figure 3 展示预训练方法：双 encoder、projection、normalize、`N x N` 相似度矩阵、双向 contrastive loss。
+  - Natural language supervision 的监督信号来自 image-text pair，不是固定 class id。
+  - Zero-shot classifier 由 prompt 文本向量动态构造，不是固定分类头。
+  - 实验证据链包括 zero-shot transfer、linear probe、robustness 和 limitations。
+  - CLIP 是开放词表视觉语义匹配器，不是万能视觉逻辑推理器。
+- 验收：
+  - 5 分钟复述检查已完成。
+  - 能解释 CLIP 论文背景、方法、zero-shot、实验和局限性。
+- 下一步计划：
+  - Day12 进入 VLM 图像问答入门，学习视觉特征如何进入语言模型。
