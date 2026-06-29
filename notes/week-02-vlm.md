@@ -2,13 +2,15 @@
 
 ## 当前阶段
 
-- 日期：2026-05-28
-- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口。
+- 日期：2026-06-29
+- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口，Day12 VLM 图像问答入门已收口；下一步进入 Day13 LLaVA 论文阅读。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
 - Day10 笔记：`docs/day-10-clip-retrieval/index.html`
 - Day11 笔记：`docs/day-11-clip-paper-reading/index.html`
+- Day12 笔记：`docs/day-12-vlm-image-qa/index.html`
+- Day12 状态：`notes/day-12-vlm-image-qa.md`
 
 ## Week2 主线
 
@@ -154,4 +156,29 @@ Day11 的目标是阅读 CLIP 论文 `Learning Transferable Visual Models From N
 - 已理解工程边界：CLIP 是开放词表视觉语义匹配器，不是万能视觉逻辑推理器。
 - 5 分钟复述检查已完成。
 
-Day11 已收口。下一步进入 Day12：VLM 图像问答入门，重点学习视觉特征如何进入语言模型。
+Day11 已收口。当前进入 Day12：VLM 图像问答入门，重点学习视觉特征如何进入语言模型。
+
+## Day12 收口
+
+Day12 的目标是从 CLIP 图文匹配过渡到 VLM 图像问答，重点理解视觉特征如何进入语言模型，并用轻量 VLM 跑通最小本地图像问答。
+
+已完成：
+
+- Day12 HTML 教学入口：`docs/day-12-vlm-image-qa/index.html`
+- Day12 状态笔记：`notes/day-12-vlm-image-qa.md`
+- 最小 VLM QA 脚本：`experiments/vlm-qa/image_qa.py`
+- 三类测试样例：`experiments/vlm-qa/sample_tasks.jsonl`
+- SmolVLM-256M 结果：`experiments/vlm-qa/results/smolvlm_256m_sample_results.jsonl`
+
+最终主线：
+
+```text
+image path + question
+-> processor(image, text)
+-> pixel_values / input_ids / attention_mask
+-> Idefics3ForConditionalGeneration.generate()
+-> decode new tokens
+-> answer + runtime boundary
+```
+
+Day12 已收口。下一步进入 Day13：阅读 LLaVA 论文，理解 VLM 的两阶段训练和视觉指令数据构造。

@@ -1,4 +1,4 @@
-﻿# 每日学习打卡记录
+# 每日学习打卡记录
 
 ## Day 1 - 环境与学习仓库初始化
 
@@ -443,3 +443,42 @@
   - 能解释 CLIP 论文背景、方法、zero-shot、实验和局限性。
 - 下一步计划：
   - Day12 进入 VLM 图像问答入门，学习视觉特征如何进入语言模型。
+
+## Day 12 - VLM 图像问答入门启动
+
+- 日期：2026-06-29
+- 今日目标：从 CLIP 图文匹配过渡到 VLM 图像问答，循序渐进理解视觉特征如何进入语言模型。
+- 文档更新：
+  - 新增 Day12 HTML 教学入口：`docs/day-12-vlm-image-qa/index.html`
+  - 新增 Day12 状态笔记：`notes/day-12-vlm-image-qa.md`
+  - 更新 README、Week2 总览页、Week2 状态笔记和 30 天 checklist。
+- 当前学习重点：
+  - 区分 CLIP 的相似度匹配和 VLM 的自然语言生成。
+  - 理解 VLM 的基本结构：vision encoder、projector、LLM。
+  - 理解图片不是直接进入 LLM，而是先变成 visual tokens，再对齐到 LLM hidden size。
+- 暂不推进：
+  - 暂不下载远程模型权重。
+  - 暂不做 OCR、图表、场景三类完整评测。
+- 下一步计划：
+  - 完成 Day12 Step 01：能解释 `image -> vision encoder -> visual tokens -> projector -> LLM -> answer` 这条主线。
+## Day 12 - VLM 图像问答收口
+
+- 日期：2026-06-29
+- 已完成：
+  - 理解 CLIP 与 VLM 的任务差异：匹配 vs 生成。
+  - 拆解 VLM 主线：vision encoder -> projector -> LLM context -> answer tokens。
+  - 补充理解 Q/K/V 的并行计算、causal mask 和答案 token 自回归生成顺序。
+  - 设计场景描述、OCR / 截图、图表理解三类测试任务。
+  - 创建真实轻量 VLM 推理脚本：`experiments/vlm-qa/image_qa.py`。
+  - 使用 `HuggingFaceTB/SmolVLM-256M-Instruct` 跑通本地 CUDA 图像问答实验。
+- 实验记录：
+  - processor：`Idefics3Processor`
+  - model：`Idefics3ForConditionalGeneration`
+  - device / dtype：`cuda` / `bfloat16`
+  - 显存峰值：约 `855 MB`
+  - 结果文件：`experiments/vlm-qa/results/smolvlm_256m_sample_results.jsonl`
+- 边界观察：
+  - 场景描述漏掉 laptop、notebook 和相对位置。
+  - OCR 读对按钮 `RUN DEMO`，但把 status 误读成 footer。
+  - 图表任务答对最高值 `Q4`，但没有回答最低值 `Q3`。
+- Day12 已收口。下一步进入 Day13：LLaVA 论文阅读。

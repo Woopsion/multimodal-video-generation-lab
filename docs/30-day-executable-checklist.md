@@ -1,4 +1,4 @@
-﻿# 多模态与视频生成 30 天可执行打卡清单
+# 多模态与视频生成 30 天可执行打卡清单
 
 > 来源：根据 `multimodal-video-generation-learning-plan.md` 拆解。  
 > 用法：每天完成「学习」「实践」「产出」三类任务，并在当天末尾填写复盘。  
@@ -173,11 +173,12 @@ logs/
 
 ### Day 12：VLM 图像问答入门
 
-- [ ] 学习：VLM 的视觉编码器、投影层、LLM、视觉指令微调。
-- [ ] 实践：选择 Qwen-VL、MiniCPM-V 或其他轻量 VLM 做图片问答。
-- [ ] 实践：测试 OCR、图表理解、场景描述三类图片。
-- [ ] 产出：`experiments/vlm-qa/image_qa.py`。
-- [ ] 验收：能解释 VLM 如何把图片信息交给 LLM。
+- [x] 学习：VLM 的视觉编码器、投影层、LLM、视觉指令微调。
+- [x] 产出：`docs/day-12-vlm-image-qa/index.html` 作为 Day12 循序渐进 HTML 教学入口。
+- [x] 实践：选择 `HuggingFaceTB/SmolVLM-256M-Instruct` 做本地图像问答。
+- [x] 实践：测试 OCR、图表理解、场景描述三类图片。
+- [x] 产出：`experiments/vlm-qa/image_qa.py`、`experiments/vlm-qa/sample_tasks.jsonl` 和样例结果。
+- [x] 验收：能解释 VLM 如何把图片信息交给 LLM，并能记录轻量模型的失败边界。
 
 ### Day 13：阅读 LLaVA 论文
 

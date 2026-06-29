@@ -32,8 +32,11 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 10 demos: `experiments/day-10-clip-retrieval/`, `demos/clip-image-search/`
 - Day 11 final note: `docs/day-11-clip-paper-reading/index.html`
 - Day 11 paper note: `papers/clip.md`
+- Day 12 final note: `docs/day-12-vlm-image-qa/index.html`
+- Day 12 status note: `notes/day-12-vlm-image-qa.md`
+- Day 12 VLM QA demo: `experiments/vlm-qa/image_qa.py`
 - Status note: `notes/week-02-vlm.md`
-- Current task: Day 12 VLM image question answering after completing the CLIP paper reading.
+- Current status: Day 12 VLM image question answering has been closed out with a SmolVLM-256M local experiment. Next task: Day 13 LLaVA paper reading.
 
 ## Repository Hygiene
 
