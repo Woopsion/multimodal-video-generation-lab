@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 12 - VLM 图像问答入门</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f7f3ea;
+        --ink: #202427;
+        --muted: #65706c;
+        --line: #d5cbb9;
+        --panel: #fffaf0;
+        --panel-2: #edf4ef;
+        --charcoal: #2f3836;
+        --green: #0f766e;
+        --green-soft: #d8eee7;
+        --clay: #b4532a;
+        --clay-soft: #f3ded0;
+        --violet: #5b4b8a;
+        --violet-soft: #e6e0f3;
+        --code: #18211f;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(90deg, rgba(32, 36, 39, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+          linear-gradient(rgba(32, 36, 39, 0.028) 1px, transparent 1px) 0 0 / 34px 34px,
+          var(--paper);
+        color: var(--ink);
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
+      }
+
+      a { color: inherit; }
+
+      .hero {
+        min-height: 66svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 54px 0 38px;
+        background: linear-gradient(115deg, #fbf6ec 0%, #eef6ef 52%, #f4eadf 100%);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.94fr) minmax(380px, 1.06fr);
+        gap: 42px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--clay);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 850px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .hero-copy {
+        max-width: 760px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 19px;
+      }
+
+      .hero-visual {
+        min-width: 0;
+        border: 1px solid #c6bba8;
+        background: #fffaf0;
+        box-shadow: 12px 12px 0 #d8c9b0;
+        overflow: hidden;
+      }
+
+      .hero-visual svg { display: block; width: 100%; height: auto; }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1180px) minmax(22px, 1fr);
+      }
+
+      .content {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 36px;
+        align-items: start;
+        padding: 34px 0 86px;
+      }
+
+      nav {
+        position: sticky;
+        top: 18px;
+        max-height: calc(100svh - 36px);
+        overflow: auto;
+        border: 1px solid var(--line);
+        background: rgba(255, 250, 240, 0.92);
+        padding: 18px;
+      }
+
+      .nav-label {
+        color: var(--green);
+        font-weight: 900;
+        margin-bottom: 8px;
+      }
+
+      .toc-note {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      nav a {
+        display: block;
+        padding: 8px 0;
+        border-top: 1px solid rgba(213, 203, 185, 0.72);
+        color: var(--charcoal);
+        font-size: 14px;
+        text-decoration: none;
+      }
+
+      nav a:hover { color: var(--clay); }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        padding: 34px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      section:first-child { padding-top: 0; }
+
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(28px, 3.4vw, 44px);
+        line-height: 1.12;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 28px 0 12px;
+        font-size: 22px;
+        line-height: 1.24;
+        letter-spacing: 0;
+      }
+
+      p { margin: 0 0 16px; }
+
+      .lead {
+        font-size: 19px;
+        color: var(--charcoal);
+      }
+
+      .callout {
+        margin: 18px 0;
+        padding: 16px 18px;
+        border-left: 6px solid var(--green);
+        background: var(--green-soft);
+      }
+
+      .warn {
+        border-left-color: var(--clay);
+        background: var(--clay-soft);
+      }
+
+      .violet {
+        border-left-color: var(--violet);
+        background: var(--violet-soft);
+      }
+
+      .grid-2, .grid-3 {
+        display: grid;
+        gap: 16px;
+        margin: 18px 0;
+      }
+
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 18px;
+      }
+
+      .panel.alt { background: var(--panel-2); }
+
+      .panel h3 {
+        margin-top: 0;
+        color: var(--green);
+      }
+
+      .tag {
+        display: inline-block;
+        margin: 0 8px 8px 0;
+        padding: 4px 9px;
+        border: 1px solid var(--line);
+        background: #fffdf7;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .table-wrap {
+        margin: 18px 0;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 720px;
+      }
+
+      th, td {
+        padding: 13px 15px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #efe5d4;
+        color: var(--charcoal);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      tr:last-child td { border-bottom: 0; }
+
+      code, pre {
+        font-family: "Cascadia Code", Consolas, monospace;
+      }
+
+      code {
+        padding: 2px 5px;
+        background: rgba(24, 33, 31, 0.08);
+      }
+
+      pre {
+        margin: 18px 0;
+        padding: 18px;
+        overflow-x: auto;
+        background: var(--code);
+        color: #e8fff6;
+        border: 1px solid #34423f;
+      }
+
+      ol, ul { padding-left: 22px; }
+      li { margin: 8px 0; }
+
+      .diagram {
+        margin: 22px 0;
+        border: 1px solid var(--line);
+        background: #fffaf0;
+        overflow: hidden;
+      }
+
+      .diagram svg { display: block; width: 100%; height: auto; }
+
+      @media (max-width: 920px) {
+        .hero-inner,
+        .content,
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+
+        .hero { min-height: auto; }
+        .hero-visual { min-width: 0; box-shadow: 8px 8px 0 #d8c9b0; }
+
+        nav {
+          position: static;
+          max-height: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 12 - VLM Image Question Answering</p>
+          <h1>让图片进入语言模型：VLM 图像问答入门</h1>
+          <p class="hero-copy">
+            Day11 已经读完 CLIP，知道图片和文本可以进入同一个语义空间。Day12 开始看下一步：VLM 如何把图片特征交给 LLM，让模型根据图片和问题生成自然语言答案。
+          </p>
+        </div>
+        <div class="hero-visual" aria-label="VLM image question answering route">
+          <svg viewBox="0 0 780 520" role="img">
+            <rect width="780" height="520" fill="#fffaf0" />
+            <text x="42" y="58" fill="#0f766e" font-size="24" font-weight="900">VLM data route</text>
+            <text x="42" y="90" fill="#65706c" font-size="16">image features become language-model inputs.</text>
+
+            <rect x="46" y="138" width="154" height="92" fill="#edf4ef" stroke="#8db8a9" />
+            <text x="76" y="174" fill="#202427" font-size="18" font-weight="800">Image</text>
+            <text x="76" y="204" fill="#65706c" font-size="15">pixels / patches</text>
+
+            <rect x="246" y="138" width="176" height="92" fill="#e6e0f3" stroke="#9b8fc8" />
+            <text x="274" y="174" fill="#202427" font-size="18" font-weight="800">Vision encoder</text>
+            <text x="274" y="204" fill="#65706c" font-size="15">visual tokens</text>
+
+            <rect x="468" y="138" width="166" height="92" fill="#f3ded0" stroke="#d19a7a" />
+            <text x="498" y="174" fill="#202427" font-size="18" font-weight="800">Projector</text>
+            <text x="498" y="204" fill="#65706c" font-size="15">match LLM width</text>
+
+            <rect x="246" y="310" width="388" height="118" fill="#2f3836" stroke="#202427" />
+            <text x="276" y="350" fill="#f7f3ea" font-size="20" font-weight="900">LLM decoder</text>
+            <text x="276" y="382" fill="#d7ebe3" font-size="15">image tokens + text question -> answer tokens</text>
+            <text x="276" y="410" fill="#d7ebe3" font-size="15">not just matching; it generates a response</text>
+
+            <rect x="46" y="310" width="154" height="118" fill="#fffdf7" stroke="#d5cbb9" />
+            <text x="70" y="350" fill="#202427" font-size="18" font-weight="800">Question</text>
+            <text x="70" y="380" fill="#65706c" font-size="15">What is in</text>
+            <text x="70" y="404" fill="#65706c" font-size="15">this image?</text>
+
+            <path d="M200 184 L246 184" stroke="#0f766e" stroke-width="4" fill="none" />
+            <path d="M422 184 L468 184" stroke="#5b4b8a" stroke-width="4" fill="none" />
+            <path d="M551 230 C551 270 492 292 464 310" stroke="#b4532a" stroke-width="4" fill="none" />
+            <path d="M200 370 L246 370" stroke="#202427" stroke-width="4" fill="none" />
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="content">
+        <nav aria-label="Day12 学习导航">
+          <div class="nav-label">Day12 学习路线</div>
+          <p class="toc-note">今天先建立架构主线，再逐步进入真实模型实验。</p>
+          <a href="#goal">0. 今天怎么学</a>
+          <a href="#roadmap">1. 分阶段计划</a>
+          <a href="#clip-to-vlm">2. 从 CLIP 到 VLM</a>
+          <a href="#architecture">3. VLM 基本架构</a>
+          <a href="#vision-encoder-detail">3.1 Vision encoder 细讲</a>
+          <a href="#image-to-llm">4. 图片如何进入 LLM</a>
+          <a href="#step02-modules">4.1 Step 02 四个部件</a>
+          <a href="#step03-context">4.2 Step 03 图像 token 进入上下文</a>
+          <a href="#step04-attention">4.3 Step 04 多模态 self-attention</a>
+          <a href="#step04-qkv-detail">4.4 Q/K/V 计算细节</a>
+          <a href="#step04-generation-order">4.5 生成顺序</a>
+          <a href="#qa-flow">5. 图像问答流程</a>
+          <a href="#tasks">6. Step 05 三类测试任务</a>
+          <a href="#experiment-plan">7. Step 06 最小实验</a>
+          <a href="#step06-script-shape">7.1 脚本结构</a>
+          <a href="#step06-model-boundary">7.2 模型边界</a>
+          <a href="#step06-observe">7.3 记录什么</a>
+          <a href="#step06-real-run">7.4 真实运行结果</a>
+          <a href="#checkpoint">8. 当前检查点</a>
+          <a href="#sources">9. 本地入口</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天怎么学</h2>
+            <p class="lead">
+              Day12 的目标不是立刻跑一个很大的视觉语言模型，而是先弄清楚 VLM 的最短链路：图片经过视觉编码器得到视觉特征，视觉特征通过投影层对齐到 LLM 的输入宽度，再和文本问题一起进入语言模型，最后生成答案。
+            </p>
+            <div class="callout">
+              <strong>学习边界：</strong>今天从架构和数据流开始。真实模型推理、OCR 图片、图表图片和场景图片测试会在理解主线后再做，避免把“会调用模型”误认为“理解 VLM”。
+            </div>
+            <p>
+              Day11 的 CLIP 只需要比较图片向量和文本向量的相似度；Day12 的 VLM 要更进一步：它要把视觉信息变成 LLM 能消费的上下文，让 LLM 根据问题逐 token 生成答案。
+            </p>
+          </section>
+
+          <section id="roadmap">
+            <h2>1. 分阶段计划</h2>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>Step 01</h3>
+                <p>先区分 CLIP 和 VLM：一个主要做匹配，一个要生成回答。</p>
+                <span class="tag">已完成</span>
+              </div>
+              <div class="panel alt">
+                <h3>Step 02</h3>
+                <p>拆开 VLM 架构：vision encoder、projector、LLM、prompt template。</p>
+                <span class="tag">已完成</span>
+              </div>
+              <div class="panel">
+                <h3>Step 03</h3>
+                <p>理解 image tokens 如何插入语言模型上下文，而不是简单拼接原始图片。</p>
+                <span class="tag">已完成</span>
+              </div>
+              <div class="panel alt">
+                <h3>Step 04</h3>
+                <p>理解 image tokens 和 text tokens 如何在 self-attention 中互相影响。</p>
+                <span class="tag">已完成</span>
+              </div>
+              <div class="panel">
+                <h3>Step 05</h3>
+                <p>设计 OCR、图表理解、场景描述三类测试图片和问题。</p>
+                <span class="tag">已完成</span>
+              </div>
+              <div class="panel alt">
+                <h3>Step 06</h3>
+                <p>再选择轻量 VLM 跑最小 image QA 脚本，并记录边界。</p>
+                <span class="tag">已完成</span>
+              </div>
+            </div>
+          </section>
+
+          <section id="clip-to-vlm">
+            <h2>2. 从 CLIP 到 VLM</h2>
+            <p>
+              CLIP 和 VLM 都处理图片和文本，但输出目标不一样。这个区别必须先讲清楚，否则后面很容易把 VLM 误解成“CLIP 加一个回答模板”。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>维度</th>
+                    <th>CLIP</th>
+                    <th>VLM 图像问答</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>核心输入</td>
+                    <td>图片和候选文本</td>
+                    <td>图片和用户问题</td>
+                  </tr>
+                  <tr>
+                    <td>核心输出</td>
+                    <td>相似度分数、ranking、top-k</td>
+                    <td>自然语言答案</td>
+                  </tr>
+                  <tr>
+                    <td>关键能力</td>
+                    <td>判断哪段文本更匹配图片</td>
+                    <td>根据视觉信息和问题生成解释、描述或答案</td>
+                  </tr>
+                  <tr>
+                    <td>模型形态</td>
+                    <td>通常是双塔：image encoder + text encoder</td>
+                    <td>通常是视觉编码器 + 投影层 + LLM</td>
+                  </tr>
+                  <tr>
+                    <td>Day12 要抓住</td>
+                    <td>共享向量空间是前置基础</td>
+                    <td>视觉特征要变成 LLM 可处理的上下文</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="architecture">
+            <h2>3. VLM 基本架构</h2>
+            <p>
+              入门阶段先用一个通用范式理解 VLM：视觉编码器负责看图，投影层负责换维度和接口，LLM 负责根据上下文生成文字。不同模型会有不同细节，但这条主线最重要。
+            </p>
+            <div class="diagram" aria-label="VLM architecture diagram">
+              <svg viewBox="0 0 920 330" role="img">
+                <rect width="920" height="330" fill="#fffaf0" />
+                <rect x="36" y="88" width="170" height="112" fill="#edf4ef" stroke="#8db8a9" />
+                <text x="68" y="132" fill="#202427" font-size="20" font-weight="900">Image</text>
+                <text x="68" y="164" fill="#65706c" font-size="15">pixels</text>
+                <text x="68" y="188" fill="#65706c" font-size="15">patches</text>
+
+                <rect x="260" y="62" width="190" height="164" fill="#e6e0f3" stroke="#9b8fc8" />
+                <text x="292" y="110" fill="#202427" font-size="20" font-weight="900">Vision encoder</text>
+                <text x="292" y="144" fill="#65706c" font-size="15">ViT / CLIP vision</text>
+                <text x="292" y="170" fill="#65706c" font-size="15">visual tokens</text>
+                <text x="292" y="196" fill="#65706c" font-size="15">[B, N, Dv]</text>
+
+                <rect x="506" y="88" width="154" height="112" fill="#f3ded0" stroke="#d19a7a" />
+                <text x="536" y="132" fill="#202427" font-size="20" font-weight="900">Projector</text>
+                <text x="536" y="164" fill="#65706c" font-size="15">Dv -> Dl</text>
+                <text x="536" y="188" fill="#65706c" font-size="15">adapter</text>
+
+                <rect x="714" y="62" width="170" height="164" fill="#2f3836" stroke="#202427" />
+                <text x="750" y="110" fill="#f7f3ea" font-size="20" font-weight="900">LLM</text>
+                <text x="750" y="144" fill="#d7ebe3" font-size="15">question tokens</text>
+                <text x="750" y="170" fill="#d7ebe3" font-size="15">image tokens</text>
+                <text x="750" y="196" fill="#d7ebe3" font-size="15">answer tokens</text>
+
+                <path d="M206 144 L260 144" stroke="#0f766e" stroke-width="4" />
+                <path d="M450 144 L506 144" stroke="#5b4b8a" stroke-width="4" />
+                <path d="M660 144 L714 144" stroke="#b4532a" stroke-width="4" />
+
+                <text x="42" y="280" fill="#65706c" font-size="16">Day12 一句话：VLM 不是把图片文件直接塞进 LLM，而是把视觉编码后的特征转成 LLM 能理解的 token-like 表示。</text>
+              </svg>
+            </div>
+            <h3 id="vision-encoder-detail">3.1 Vision encoder 细讲：ViT / CLIP vision 到底是什么</h3>
+            <p>
+              <strong>Vision encoder</strong> 可以先粗暴理解成“图片特征提取器”。它的输入是图片张量，输出不是一句话，也不是最终答案，而是一组视觉向量。后面的 projector 和 LLM 会继续使用这些视觉向量。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>概念</th>
+                    <th>它是什么</th>
+                    <th>在 VLM 里的作用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Vision encoder</td>
+                    <td>总称：任何把图片编码成视觉特征的模块。</td>
+                    <td>负责“看图”，输出 visual tokens，例如 <code>[B, N, Dv]</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>ViT</td>
+                    <td>一种视觉 Transformer 架构：把图片切成 patch，再像处理 token 一样处理 patch。</td>
+                    <td>常被用作 vision encoder 的骨架，适合输出一串 patch-level visual tokens。</td>
+                  </tr>
+                  <tr>
+                    <td>CLIP vision</td>
+                    <td>CLIP 里的视觉塔，可能是 ViT，也可能是其他视觉网络；重点是它经过图文对比学习训练。</td>
+                    <td>给 VLM 提供已经具备图文语义对齐能力的视觉特征。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>最容易混淆的一点：</strong><code>ViT</code> 更像“网络结构名字”，<code>CLIP vision</code> 更像“训练过的视觉编码器来源”。很多 VLM 会使用 CLIP 训练过的 ViT 视觉塔，所以图里写成 <code>ViT / CLIP vision</code>。
+            </div>
+            <p>
+              用 Day8 的记忆来接上：ViT 先把图片切成 patch。比如一张 <code>224 x 224</code> 的图片，如果 patch size 是 <code>14 x 14</code>，就会得到 <code>16 x 16 = 256</code> 个 patch。每个 patch 会被投影成一个向量，再加上位置编码，送进 Transformer Encoder。
+            </p>
+            <pre><code>image:          [B, 3, H, W]
+patches:        [B, N, patch_dim]
+patch embeddings:[B, N, Dv]
+vision output:  [B, N, Dv]</code></pre>
+            <p>
+              这里的 <code>N</code> 是视觉 token 数量，通常接近 patch 数量；<code>Dv</code> 是视觉编码器自己的 hidden size。这个 <code>Dv</code> 通常和 LLM 的 hidden size <code>Dl</code> 不一样，所以后面必须接 projector。
+            </p>
+            <div class="grid-2">
+              <div class="panel alt">
+                <h3>Vision encoder 不负责什么</h3>
+                <p>它不直接写答案，不负责聊天格式，也不直接输出“这是一只猫”这种自然语言。它只是把图片压成一组可计算的视觉特征。</p>
+              </div>
+              <div class="panel">
+                <h3>Vision encoder 负责什么</h3>
+                <p>它把颜色、边缘、局部形状、物体区域、文字区域、布局关系等信息编码进 visual tokens，供后面的 LLM 使用。</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="image-to-llm">
+            <h2>4. 图片如何进入 LLM</h2>
+            <p>
+              LLM 本来只会处理 token embedding。图片不能直接作为 JPG 或像素矩阵进入 LLM，必须先被视觉编码器转换成视觉 token，再经过 projector 对齐到 LLM 的 hidden size。
+            </p>
+            <pre><code>image:        [B, C, H, W]
+visual tokens: [B, N, Dv]
+projected:     [B, N, Dl]
+text tokens:   [B, T, Dl]
+LLM input:     [B, N + T, Dl]
+answer logits: [B, generated_steps, vocab_size]</code></pre>
+            <div class="callout violet">
+              <strong>关键类比：</strong>Day8 里图片先变成 patch token；Day6 里文本 token 进入 LLM。Day12 要把这两条线接起来：图片 token 和文本 token 都要变成同一种宽度的向量，才能进入同一个 LLM 上下文。
+            </div>
+            <h3 id="step02-modules">4.1 Step 02：四个部件如何接起来</h3>
+            <p>
+              进入 Step 02 后，把 VLM 看成四个部件的协作，而不是一个黑盒模型：<strong>vision encoder 负责看图，projector 负责换接口，LLM 负责生成，prompt template 负责组织输入格式。</strong>
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>部件</th>
+                    <th>输入</th>
+                    <th>输出</th>
+                    <th>你要记住的作用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Vision encoder</td>
+                    <td>图片张量 <code>[B, 3, H, W]</code></td>
+                    <td>视觉 token <code>[B, N, Dv]</code></td>
+                    <td>把图片变成可计算的视觉特征。</td>
+                  </tr>
+                  <tr>
+                    <td>Projector</td>
+                    <td>视觉 token <code>[B, N, Dv]</code></td>
+                    <td>对齐后的视觉 token <code>[B, N, Dl]</code></td>
+                    <td>把视觉编码器的宽度转换成 LLM 能接收的宽度。</td>
+                  </tr>
+                  <tr>
+                    <td>Prompt template</td>
+                    <td>用户问题、图片占位符、对话角色</td>
+                    <td>模型需要的文本格式</td>
+                    <td>告诉模型哪里是图片、哪里是用户问题、哪里开始回答。</td>
+                  </tr>
+                  <tr>
+                    <td>LLM</td>
+                    <td>对齐后的图片 token + 问题 token</td>
+                    <td>答案 token</td>
+                    <td>在视觉上下文和文字问题上逐 token 生成自然语言答案。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Projector 是 Step 02 的关键：</strong>它不是为了“理解图片”，而是为了让视觉 token 的维度和 LLM 的 token embedding 维度一致。没有这一步，LLM 无法把图片 token 当成自己的上下文来处理。
+            </div>
+            <pre><code># 只看形状，不看具体模型实现
+image_features = vision_encoder(image)      # [B, N, Dv]
+image_tokens = projector(image_features)    # [B, N, Dl]
+question_tokens = embed_text(question)      # [B, T, Dl]
+llm_input = concat(image_tokens, question_tokens)
+answer = llm.generate(llm_input)</code></pre>
+            <p>
+              <strong>Prompt template</strong> 可以先理解成“对话格式模板”。比如有的模型需要把输入组织成：<code>&lt;image&gt; User: 这张图里有什么？ Assistant:</code>。这个模板不会替代模型能力，但会影响模型是否知道当前图片和问题应该如何对应。
+            </p>
+            <h3 id="step03-context">4.2 Step 03：image tokens 如何进入 LLM 上下文</h3>
+            <p>
+              你刚才的理解很关键：VLM 最终仍然是语言模型在做<strong>下一个 token 预测</strong>。区别在于，预测下一个 token 时，LLM 看到的上下文不再只有文字 token，还包含已经投影到 <code>Dl</code> 宽度的 image tokens。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>它在 prompt 里看起来像什么</th>
+                    <th>模型内部真正使用什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>图片占位符</td>
+                    <td><code>&lt;image&gt;</code> 或类似特殊 token</td>
+                    <td>告诉 processor / model：这里要关联一组 projected image tokens。</td>
+                  </tr>
+                  <tr>
+                    <td>用户问题</td>
+                    <td><code>User: 这张图里有什么？</code></td>
+                    <td>普通文本 token embeddings，形状可以记作 <code>[B, T, Dl]</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>视觉上下文</td>
+                    <td>通常不会以普通文字显示出来</td>
+                    <td>projector 输出的 image tokens，形状是 <code>[B, N, Dl]</code>。</td>
+                  </tr>
+                  <tr>
+                    <td>回答开头</td>
+                    <td><code>Assistant:</code></td>
+                    <td>提示 LLM 从这里开始预测答案 token。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code># 概念化的 embedding 序列，不是直接拼字符串
+text_prefix = embed("User: ")
+image_tokens = projector(vision_encoder(image))
+question = embed("这张图里有什么？ Assistant:")
+
+llm_context = concat(text_prefix, image_tokens, question)
+next_token = LLM.predict_next_token(llm_context)</code></pre>
+            <div class="warn callout">
+              <strong>不要误解：</strong><code>&lt;image&gt;</code> 不是图片内容本身，也不是自动生成的图片描述。它更像一个插槽，真正进入 LLM 计算的是 projector 输出的 image token embeddings。
+            </div>
+            <p>
+              所以你说“提示词模板是预制前置 token 信息，让大模型顺着预测下一个 token 回答问题”这个理解是对的。更精确地补一句：模板提供的是文字结构和图片插槽；图片内容本身来自 vision encoder + projector 产生的 embedding 级上下文。
+            </p>
+            <h3 id="step04-attention">4.3 Step 04：image tokens 和 text tokens 如何共同参与 attention</h3>
+            <p>
+              进入 LLM 以后，<code>image_tokens</code> 和 <code>question_tokens</code> 都已经是同一个宽度 <code>Dl</code> 的向量。此时它们不再是两个完全分开的系统，而是同一段上下文里的 token。LLM 的 self-attention 会在这些 token 之间计算关系。
+            </p>
+            <pre><code>context = [image_1, image_2, ..., image_N, question_1, ..., question_T]
+
+# 在 Transformer block 里，每个 token 都会生成 Q/K/V
+Q = context @ Wq
+K = context @ Wk
+V = context @ Wv
+
+attention_scores = Q @ K.T
+attention_output = softmax(attention_scores) @ V</code></pre>
+            <h3 id="step04-qkv-detail">4.4 Q/K/V 是如何计算的</h3>
+            <p>
+              不要把 Q/K/V 理解成“先算图片 token，再算文本 token”。在一次 Transformer layer 的 forward 里，当前所有可见 token 会先堆成一个矩阵 <code>H</code>，然后用三套线性投影矩阵并行算出 <code>Q</code>、<code>K</code>、<code>V</code>。
+            </p>
+            <pre><code>H = [image_1, image_2, ..., image_N, question_1, ..., question_T]
+# H 的形状可以理解为 [seq_len, Dl]
+
+Q = H @ Wq  # [seq_len, d_head * num_heads]
+K = H @ Wk  # [seq_len, d_head * num_heads]
+V = H @ Wv  # [seq_len, d_head * num_heads]
+
+# 对第 i 个 token 来说
+q_i = H[i] @ Wq
+k_i = H[i] @ Wk
+v_i = H[i] @ Wv</code></pre>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>对象</th>
+                    <th>怎么来</th>
+                    <th>直观含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>H</code></td>
+                    <td>图片 token、问题 token、prompt token 拼成的 hidden states。</td>
+                    <td>当前层看到的全部上下文。</td>
+                  </tr>
+                  <tr>
+                    <td><code>Q = H @ Wq</code></td>
+                    <td>每个 token 的 hidden state 乘查询矩阵。</td>
+                    <td>这个 token 想从上下文里找什么信息。</td>
+                  </tr>
+                  <tr>
+                    <td><code>K = H @ Wk</code></td>
+                    <td>每个 token 的 hidden state 乘键矩阵。</td>
+                    <td>这个 token 对外声明自己能被什么查询匹配。</td>
+                  </tr>
+                  <tr>
+                    <td><code>V = H @ Wv</code></td>
+                    <td>每个 token 的 hidden state 乘值矩阵。</td>
+                    <td>这个 token 真正提供给别人的内容。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              接下来，对某个 token <code>i</code>，模型会用它的 <code>q_i</code> 去和所有可见 token 的 <code>k_j</code> 做相似度，然后用 softmax 得到权重，再对所有 <code>v_j</code> 加权求和。
+            </p>
+            <pre><code>score(i, j) = q_i dot k_j / sqrt(d_head)
+weight(i, j) = softmax(score(i, j))
+output_i = sum_j weight(i, j) * v_j</code></pre>
+            <div class="callout">
+              <strong>放到 VLM 里看：</strong>回答 token 的 <code>Q</code> 可以去匹配图片 token 的 <code>K</code>，也可以匹配问题 token 的 <code>K</code>。匹配上以后，真正被汇入当前 hidden state 的是对应 token 的 <code>V</code>。
+            </div>
+            <h3 id="step04-generation-order">4.5 计算顺序和生成顺序</h3>
+            <p>
+              这里要分清两个层面的“顺序”：一次 forward 内部的矩阵计算，和答案 token 的自回归生成。Q/K/V 的计算在已有上下文内是并行矩阵运算；真正逐步发生的是答案生成。
+            </p>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>一次 forward 内部</h3>
+                <ol>
+                  <li>已有上下文形成 <code>H</code>。</li>
+                  <li>所有可见 token 并行计算 <code>Q/K/V</code>。</li>
+                  <li>每个 token 用自己的 <code>Q</code> 匹配可见 token 的 <code>K</code>。</li>
+                  <li>用 attention 权重汇总对应的 <code>V</code>。</li>
+                  <li>经过多层 Transformer，得到下一个 token 概率。</li>
+                </ol>
+              </div>
+              <div class="panel alt">
+                <h3>答案生成过程</h3>
+                <ol>
+                  <li>输入 image tokens + question tokens。</li>
+                  <li>预测第一个 answer token。</li>
+                  <li>把新 token 接到上下文后面。</li>
+                  <li>再次 forward，预测下一个 token。</li>
+                  <li>重复直到生成结束符或达到长度限制。</li>
+                </ol>
+              </div>
+            </div>
+            <div class="warn callout">
+              <strong>关于 causal mask：</strong>如果是 LLaVA 这类 decoder-only VLM，回答 token 不能看未来 token，但可以看前面的 image tokens、prompt tokens 和 question tokens。所以图片通常作为前置上下文被答案 token 使用。
+            </div>
+            <p>
+              因此，image tokens 和 text tokens 共同参与计算的细节是：它们先共同形成 <code>H</code>，共同产生 <code>K/V</code>；当回答位置生成新 token 时，用当前回答位置的 <code>Q</code> 去检索这些 <code>K/V</code>，再完成下一 token 预测。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>当模型回答时</th>
+                    <th>attention 可以做什么</th>
+                    <th>直观理解</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>问题 token 关注图片 token</td>
+                    <td>把“图里有什么”这个问题和相关视觉区域联系起来。</td>
+                    <td>问题在向图片要证据。</td>
+                  </tr>
+                  <tr>
+                    <td>回答 token 关注问题 token</td>
+                    <td>保持回答围绕用户问的内容，而不是随便描述图片。</td>
+                    <td>回答知道自己要回答哪个问题。</td>
+                  </tr>
+                  <tr>
+                    <td>回答 token 关注图片 token</td>
+                    <td>生成答案时引用视觉上下文里的主体、文字、布局或关系。</td>
+                    <td>答案不是凭空生成，而是读图后生成。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout violet">
+              <strong>关键结论：</strong>VLM 不是先把图片完整翻译成一句文字再交给 LLM。更常见的理解是：图片被转换成一串 embedding 级 image tokens，它们和文本 token 一起进入 Transformer，上下文内部通过 attention 发生信息交互。
+            </div>
+            <p>
+              所以“预测下一个 token”仍然成立，只是预测时的上下文变丰富了：除了 prompt 和问题文字，还有一串携带视觉信息的 image tokens。
+            </p>
+          </section>
+
+          <section id="qa-flow">
+            <h2>5. 图像问答流程</h2>
+            <p>
+              图像问答不是只做一次分类。模型需要读取图片特征，理解用户问题，再像 Day6 的生成式语言模型一样逐 token 生成答案。
+            </p>
+            <ol>
+              <li>用户提供图片和问题，例如“这张图里有什么异常？”</li>
+              <li>processor 把图片整理成模型需要的视觉输入，把问题整理成文本 token。</li>
+              <li>vision encoder 得到视觉 token。</li>
+              <li>projector 把视觉 token 映射到 LLM 的 hidden size。</li>
+              <li>LLM 在视觉 token 和问题 token 的上下文上生成回答。</li>
+              <li>tokenizer decode，把输出 token 还原成自然语言。</li>
+            </ol>
+            <div class="warn callout">
+              <strong>先不要跳过第 2-4 步：</strong>很多 VLM API 会把 processor 和 projector 封装起来，但学习时必须知道它们存在，否则看起来就像“模型直接看懂了图片”。
+            </div>
+          </section>
+
+          <section id="tasks">
+            <h2>6. Step 05：三类测试任务</h2>
+            <p>
+              现在先不急着跑模型，而是先学会设计问题。一个 VLM 如果只回答“图里有什么”，我们很难判断它到底强在哪里、弱在哪里。Day12 至少准备三类输入：场景描述、OCR / 截图、图表理解。它们分别考察不同能力。
+            </p>
+            <div class="grid-3">
+              <div class="panel">
+                <h3>场景描述</h3>
+                <p>问模型图里有什么、主体是谁、关系是什么。用于检查基本视觉语义理解。</p>
+              </div>
+              <div class="panel alt">
+                <h3>OCR / 截图</h3>
+                <p>问图片里的文字、表单、界面元素。用于检查视觉文字识别和布局理解。</p>
+              </div>
+              <div class="panel">
+                <h3>图表理解</h3>
+                <p>问趋势、最大值、对比关系。用于检查模型是否能结合视觉结构和语言推理。</p>
+              </div>
+            </div>
+            <h3 id="step05-task-design">6.1 怎样把测试任务设计清楚</h3>
+            <p>
+              每一类测试都要同时写清楚三件事：图片应该长什么样、问题怎么问、答案应该检查什么。这样后面模型回答以后，我们不是凭感觉判断“还行”，而是能明确知道它是否读到了关键视觉证据。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>任务类型</th>
+                    <th>建议图片</th>
+                    <th>建议问题</th>
+                    <th>主要检查点</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>场景描述</td>
+                    <td>一张有主体、背景、动作关系的普通照片，例如桌面、街景、室内工作区。</td>
+                    <td>“这张图的主要内容是什么？请指出主体和它们之间的关系。”</td>
+                    <td>是否能识别主体、属性、空间关系；是否会编造图中不存在的物体。</td>
+                  </tr>
+                  <tr>
+                    <td>OCR / 截图</td>
+                    <td>含有清晰文字的截图、海报、表单或 UI 页面。</td>
+                    <td>“图中标题是什么？按钮文字是什么？页面提示用户做什么？”</td>
+                    <td>是否读对文字；是否理解文字所在位置和界面功能；是否把相似字符读错。</td>
+                  </tr>
+                  <tr>
+                    <td>图表理解</td>
+                    <td>柱状图、折线图、饼图或简单表格，最好带标题、坐标轴和图例。</td>
+                    <td>“哪个类别最高？整体趋势是什么？A 和 B 相比有什么变化？”</td>
+                    <td>是否能看懂坐标轴、图例、数值大小和趋势；是否能做简单比较推理。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Step 05 的核心：</strong>测试任务不是随便找图聊天，而是用图片和问题去拆分能力。场景描述测“看懂物体和关系”，OCR / 截图测“读文字和布局”，图表理解测“视觉结构 + 语言推理”。
+            </div>
+            <h3>6.2 今天先写一个最小测试集</h3>
+            <ol>
+              <li>准备 1 张场景图，问题聚焦主体、动作、空间关系。</li>
+              <li>准备 1 张截图或文字图，问题聚焦可见文字和界面元素。</li>
+              <li>准备 1 张简单图表，问题聚焦最大值、趋势或对比关系。</li>
+              <li>每个问题旁边先写一条“人工期望答案”，后面模型输出时再对比。</li>
+            </ol>
+            <div class="warn callout">
+              <strong>不要只问开放问题：</strong>“请描述这张图”太宽泛，模型很容易给出看似流畅但不可验证的回答。学习阶段要多问可检查的问题，例如“标题是什么”“哪个柱子最高”“左侧人物在做什么”。
+            </div>
+          </section>
+
+          <section id="experiment-plan">
+            <h2>7. Step 06：最小 image QA 实验计划</h2>
+            <p>
+              现在进入下一阶段：从“理解架构”过渡到“准备最小脚本”。这一步的目标不是评测模型强弱，也不是马上下载大模型，而是把单图单问答的推理链路拆清楚：图片和问题如何进入 processor，模型如何生成答案，输出时要记录哪些边界信息。
+            </p>
+            <div class="callout">
+              <strong>Step 06 的目标：</strong>先准备一个最小 <code>image_qa.py</code> 脚本设计。它只处理一张图片、一个问题、一次回答，并打印模型、设备、耗时、答案和失败原因。
+            </div>
+            <h3 id="step06-script-shape">7.1 最小脚本应该长什么样</h3>
+            <p>
+              VLM 推理脚本不要一开始就写成完整评测框架。先保持最小闭环：参数进入、模型加载、图片读取、prompt 组装、生成答案、输出记录。不同 VLM 的具体类名和 chat template 可能不同，但主线结构基本一致。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>脚本部分</th>
+                    <th>负责什么</th>
+                    <th>先观察什么</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>命令行参数</td>
+                    <td>接收 <code>--image</code>、<code>--question</code>、<code>--model</code>、<code>--device</code>。</td>
+                    <td>输入是否清楚，图片路径是否存在。</td>
+                  </tr>
+                  <tr>
+                    <td>processor</td>
+                    <td>把图片和文本整理成模型需要的张量、token ids、attention mask。</td>
+                    <td>它是连接“原始输入”和“模型输入”的入口。</td>
+                  </tr>
+                  <tr>
+                    <td>model</td>
+                    <td>加载 vision encoder、projector、LLM 等参数，执行 <code>generate</code>。</td>
+                    <td>是否能放到目标设备，是否需要半精度或量化。</td>
+                  </tr>
+                  <tr>
+                    <td>decode</td>
+                    <td>把生成的 token ids 还原成自然语言答案。</td>
+                    <td>输出是否只包含新答案，是否混入 prompt。</td>
+                  </tr>
+                  <tr>
+                    <td>记录信息</td>
+                    <td>打印耗时、设备、显存、模型名、问题、答案。</td>
+                    <td>以后比较不同图片和模型时有依据。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code># 伪代码：不绑定某一个具体 VLM 类名
+args = parse_args()
+image = load_image(args.image)
+question = args.question
+
+processor = load_processor(args.model)
+model = load_vlm_model(args.model, device=args.device)
+
+inputs = processor(image=image, text=question)
+inputs = move_to_device(inputs, args.device)
+
+with inference_mode():
+    output_ids = model.generate(**inputs, max_new_tokens=128)
+
+answer = decode_new_tokens(output_ids)
+print(answer)
+print(runtime, device, model_name, failure_boundary)</code></pre>
+            <h3 id="step06-model-boundary">7.2 先把模型边界说清楚</h3>
+            <p>
+              真实 VLM 比 CLIP 更重，因为它通常同时包含视觉塔、projector 和语言模型。Day12 的脚本默认应该是本地优先、离线优先；只有明确允许下载时，才去拉远程权重。
+            </p>
+            <div class="grid-2">
+              <div class="panel">
+                <h3>先选轻量模型</h3>
+                <p>目标是跑通链路，不是追求最好效果。轻量模型更容易暴露输入格式、设备、显存和 decode 细节。</p>
+              </div>
+              <div class="panel alt">
+                <h3>默认不下载</h3>
+                <p>如果本地没有权重，脚本应该清楚提示缺少模型，而不是静默联网下载。这样实验可控，也方便复现。</p>
+              </div>
+            </div>
+            <div class="warn callout">
+              <strong>不要跳过边界记录：</strong>如果模型跑不起来，也要记录失败原因：缺依赖、缺权重、显存不够、processor 不匹配、chat template 不匹配，还是 decode 出错。
+            </div>
+            <h3 id="step06-observe">7.3 第一次运行要记录什么</h3>
+            <p>
+              最小实验不是只看答案好不好，而是确认整个 VLM 推理链路是否真实跑通。第一次记录越具体，后面排错越轻松。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>记录项</th>
+                    <th>为什么要记录</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>模型名称和加载方式</td>
+                    <td>确认用的是本地缓存、指定路径，还是远程模型名。</td>
+                  </tr>
+                  <tr>
+                    <td>设备和精度</td>
+                    <td>确认是 CPU、CUDA，还是其他设备；后续解释速度和显存。</td>
+                  </tr>
+                  <tr>
+                    <td>图片路径和问题</td>
+                    <td>确保答案可以回溯到具体输入，不混淆测试样例。</td>
+                  </tr>
+                  <tr>
+                    <td>生成参数</td>
+                    <td>例如 <code>max_new_tokens</code>、是否采样；这些会影响答案长度和稳定性。</td>
+                  </tr>
+                  <tr>
+                    <td>耗时和失败信息</td>
+                    <td>记录模型能不能实际运行，以及瓶颈在哪里。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout violet">
+              <strong>下一步真正写脚本时的判断标准：</strong>能用一条命令完成“输入图片 + 输入问题 + 输出答案 + 打印运行信息”，就算 Day12 的最小 image QA 闭环跑通。
+            </div>
+            <h3 id="step06-real-run">7.4 真实运行结果：SmolVLM-256M</h3>
+            <p>
+              已经创建并运行最小脚本 <code>experiments/vlm-qa/image_qa.py</code>。本次使用轻量模型 <code>HuggingFaceTB/SmolVLM-256M-Instruct</code>，首次运行通过 <code>--allow-download</code> 拉取模型；后续运行使用本地 Hugging Face 缓存，脚本保持默认离线。
+            </p>
+            <pre><code># 生成三类本地测试图片和任务清单
+uv run python experiments/vlm-qa/image_qa.py --create-samples
+
+# 首次下载并跑单图问答
+uv run python experiments/vlm-qa/image_qa.py \
+  --image experiments/vlm-qa/assets/scene_desk.png \
+  --question "What objects are on the desk, and where is the coffee cup relative to the laptop?" \
+  --max-new-tokens 64 \
+  --allow-download
+
+# 使用本地缓存跑三类测试任务，并保存结果
+uv run python experiments/vlm-qa/image_qa.py \
+  --tasks experiments/vlm-qa/sample_tasks.jsonl \
+  --max-new-tokens 64 \
+  --output experiments/vlm-qa/results/smolvlm_256m_sample_results.jsonl</code></pre>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>观察项</th>
+                    <th>本次结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>processor</td>
+                    <td><code>Idefics3Processor</code></td>
+                  </tr>
+                  <tr>
+                    <td>model</td>
+                    <td><code>Idefics3ForConditionalGeneration</code></td>
+                  </tr>
+                  <tr>
+                    <td>device / dtype</td>
+                    <td><code>cuda</code> / <code>bfloat16</code></td>
+                  </tr>
+                  <tr>
+                    <td>典型输入形状</td>
+                    <td><code>input_ids [1, 888]</code>，<code>pixel_values [1, 13, 3, 512, 512]</code></td>
+                  </tr>
+                  <tr>
+                    <td>CUDA 显存峰值</td>
+                    <td>约 <code>855 MB</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>任务</th>
+                    <th>人工期望答案</th>
+                    <th>模型回答</th>
+                    <th>初步判断</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>场景描述</td>
+                    <td>桌面中央有 laptop，左侧有 notebook 和 pen，coffee cup 在 laptop 右侧。</td>
+                    <td>There is a pen and a coffee cup on the desk.</td>
+                    <td>部分正确，但漏掉 laptop、notebook 和相对位置。</td>
+                  </tr>
+                  <tr>
+                    <td>OCR / 截图</td>
+                    <td>Button label: RUN DEMO. Status text: READY.</td>
+                    <td>The button label is "RUN DEMO" and the status text is "FOOTER: Day12 VLM QA".</td>
+                    <td>按钮读对，但 status 读错，混入了 footer 文本。</td>
+                  </tr>
+                  <tr>
+                    <td>图表理解</td>
+                    <td>Q4 最高，Q3 最低。</td>
+                    <td>Q4.</td>
+                    <td>最高值答对，但没有回答最低值。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="warn callout">
+              <strong>本阶段结论：</strong>最小 VLM 闭环已经跑通，但轻量模型在细节定位、OCR 文本区分、图表完整比较上都有明显边界。后续测试不要只看“能不能回答”，要把回答和人工期望答案逐项对比。
+            </div>
+          </section>
+
+          <section id="checkpoint">
+            <h2>8. 当前检查点</h2>
+            <p>
+              完成 Day12 Step 06 时，你需要能回答下面 5 个问题。
+            </p>
+            <ol>
+              <li>最小 image QA 脚本的输入和输出分别是什么？</li>
+              <li>processor 在真实 VLM 推理脚本里负责什么？</li>
+              <li>为什么 Day12 第一次实验不要追求最强模型？</li>
+              <li>如果模型没有跑起来，应该记录哪些失败原因？</li>
+              <li>为什么脚本默认本地优先、离线优先会更适合学习和复现？</li>
+            </ol>
+            <div class="callout violet">
+              <strong>Day12 已收口：</strong>已经完成 VLM 架构理解、Q/K/V 与多模态 attention 细化、三类测试任务设计、SmolVLM-256M 最小本地图像问答实验和失败边界记录。下一天进入 LLaVA 论文阅读。
+            </div>
+          </section>
+          <section id="sources">
+            <h2>9. 本地入口</h2>
+            <ul>
+              <li><a href="../week-02-multimodal-understanding/index.html">Week2 总览页</a></li>
+              <li><a href="../day-11-clip-paper-reading/index.html">Day11 CLIP 论文阅读</a></li>
+              <li><a href="../../notes/week-02-vlm.md">Week2 状态笔记</a></li>
+              <li><a href="../../experiments/vlm-qa/image_qa.py">Day12 VLM QA 脚本</a></li>
+              <li><a href="../30-day-executable-checklist.md">30 天执行清单</a></li>
+            </ul>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
