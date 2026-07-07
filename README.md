@@ -35,8 +35,10 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 12 final note: `docs/day-12-vlm-image-qa/index.html`
 - Day 12 status note: `notes/day-12-vlm-image-qa.md`
 - Day 12 VLM QA demo: `experiments/vlm-qa/image_qa.py`
+- Day 13 active note: `docs/day-13-llava-paper-reading/index.html`
+- Day 13 paper note: `papers/llava.md`
 - Status note: `notes/week-02-vlm.md`
-- Current status: Day 12 VLM image question answering has been closed out with a SmolVLM-256M local experiment. Next task: Day 13 LLaVA paper reading.
+- Current task: Day 13 LLaVA paper reading, starting with architecture positioning and the CLIP vision encoder -> projection matrix -> Vicuna route.
 
 ## Repository Hygiene
 

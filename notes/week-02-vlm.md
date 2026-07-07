@@ -3,7 +3,7 @@
 ## 当前阶段
 
 - 日期：2026-06-29
-- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口，Day12 VLM 图像问答入门已收口；下一步进入 Day13 LLaVA 论文阅读。
+- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口，Day12 VLM 图像问答入门已收口；当前进入 Day13 LLaVA 论文阅读。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
@@ -182,3 +182,20 @@ image path + question
 ```
 
 Day12 已收口。下一步进入 Day13：阅读 LLaVA 论文，理解 VLM 的两阶段训练和视觉指令数据构造。
+## Day13 启动
+
+Day13 的目标是阅读 LLaVA 原论文 `Visual Instruction Tuning`，理解一个 VLM 如何从 CLIP vision encoder、projection matrix 和 Vicuna / LLM 组合成视觉助手。
+
+已创建：
+
+- Day13 HTML 教学入口：`docs/day-13-llava-paper-reading/index.html`
+- Day13 状态笔记：`notes/day-13-llava-paper-reading.md`
+- LLaVA 论文笔记：`papers/llava.md`
+
+当前只推进 Step 01-02：
+
+```text
+image -> CLIP ViT-L/14 -> visual features -> projection matrix -> Vicuna -> answer tokens
+```
+
+暂不复现训练，先把论文定位、架构组件和两阶段训练预告讲清楚。

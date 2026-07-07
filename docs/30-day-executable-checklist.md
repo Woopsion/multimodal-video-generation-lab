@@ -182,6 +182,7 @@ logs/
 
 ### Day 13：阅读 LLaVA 论文
 
+- [x] 产出：`docs/day-13-llava-paper-reading/index.html` 作为 Day13 循序渐进 HTML 教学入口。
 - [ ] 学习：阅读 LLaVA 的模型结构、训练流程和视觉指令数据构造。
 - [ ] 记录：总结 pretrain、instruction tuning 两阶段的区别。
 - [ ] 实践：对比 CLIP 与 LLaVA 的任务目标差异。

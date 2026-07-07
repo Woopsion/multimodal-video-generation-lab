@@ -482,3 +482,18 @@
   - OCR 读对按钮 `RUN DEMO`，但把 status 误读成 footer。
   - 图表任务答对最高值 `Q4`，但没有回答最低值 `Q3`。
 - Day12 已收口。下一步进入 Day13：LLaVA 论文阅读。
+## Day 13 - LLaVA 论文阅读启动
+
+- 日期：2026-06-30
+- 今日目标：从 Day12 的 VLM 推理过渡到 LLaVA 的论文和训练主线。
+- 文档更新：
+  - 新增 Day13 HTML 教学入口：`docs/day-13-llava-paper-reading/index.html`
+  - 新增 Day13 状态笔记：`notes/day-13-llava-paper-reading.md`
+  - 新增 LLaVA 论文笔记入口：`papers/llava.md`
+- 当前学习重点：
+  - 区分 CLIP 图文匹配与 LLaVA 视觉指令跟随。
+  - 理解 LLaVA 三个组件：CLIP ViT-L/14、projection matrix、Vicuna。
+  - 先知道两阶段训练：feature alignment 与 visual instruction tuning。
+- 暂不推进：
+  - 暂不复现 LLaVA 训练。
+  - 暂不下载 LLaVA 大模型权重。
