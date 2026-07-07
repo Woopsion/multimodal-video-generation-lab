@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深潜 §1.4 — REALM / DPR / FiD 源流详解</title>
+<link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+<main>
+<a class="backlink" href="../index.html#s1">← 返回主文档 §1</a>
+
+<header class="hero">
+  <p class="eyebrow">Deep Dive · 对应主文档 §1.4</p>
+  <h1>检索增强的源流：REALM、DPR、FiD 详解</h1>
+  <p class="hero-copy">
+    这三篇 2020 年的工作构成了现代 RAG 的"三块基石"：REALM 回答了<strong>检索能否成为语言模型的原生组件</strong>，
+    DPR 回答了<strong>稠密检索器怎么训练</strong>，FiD 回答了<strong>多文档证据怎么喂给生成器</strong>。
+    今天工程界的每一个 RAG 设计决策，几乎都能在这三篇里找到原型和反例。
+  </p>
+</header>
+
+<!-- ============================================================ -->
+<section id="realm">
+  <h2><span class="no">A</span>REALM：把检索塞进预训练</h2>
+  <p class="lead">Guu et al. 2020（Google），全称 Retrieval-Augmented Language Model Pre-training。它比 RAG 论文更早，野心也更大：不是"推理时外挂检索"，而是<strong>从预训练第一步起，检索就是模型的一部分</strong>。</p>
+
+  <h3>A.1 它要解决什么</h3>
+  <p>BERT 类模型做 MLM（完形填空）时，填空所需的世界知识全靠参数硬背。REALM 的问题是：能不能让模型在做完形填空前，<strong>先去一个外部语料库里查资料</strong>，让"查资料"这个动作本身也被梯度优化？</p>
+
+  <h3>A.2 结构：两阶段概率分解</h3>
+  <div class="formula">p(y | x) = Σ_{z ∈ Z}  p(y | x, z) · p(z | x)
+
+x = 带 [MASK] 的句子    z = 从维基百科检索到的文档    y = 被 mask 的词
+p(z|x)  = 检索器：exp(Embed(x)·Embed(z)) 归一化 —— 一个双塔 BERT
+p(y|x,z) = 编码器：把 x 和 z 拼接后过 Transformer 预测 mask</div>
+  <p>关键点：检索文档 z 是<strong>隐变量（latent variable）</strong>。训练时没有任何"哪篇文档是正确的"标注——模型只知道最终填空对不对。梯度通过 <code>p(z|x)</code> 反传给检索器，形成一个非常优雅的自动信号：</p>
+  <div class="callout deep">
+    <span class="tag">核心洞见</span>
+    <p style="margin:0">如果某篇文档 z 让填空概率 <code>p(y|x,z)</code> 变高，梯度就会提升 <code>p(z|x)</code>，即拉近 x 和 z 的向量；反之推远。
+    翻译成人话：<strong>"对预测有用" 自动定义了 "什么叫相关"</strong>——不需要人工标注 query-document 对。
+    这是整个"检索器与生成器联合训练"路线的思想源头，也是今天"用 LLM 反馈信号蒸馏/微调 embedding 模型"的祖先。</p>
+  </div>
+
+  <h3>A.3 两个著名的工程难题（面试深挖点）</h3>
+  <ul>
+    <li><strong>难题一：对全库求和不可行。</strong>公式里 Σ 遍历数百万文档，实际近似为只对 MIPS（最大内积搜索）取回的 top-k（k=8）求和。也就是说：<em>今天所有 RAG 里 "ANN 取 top-k" 这个动作，在 REALM 里是训练目标的数学近似</em>。</li>
+    <li><strong>难题二：索引会"过期"（stale index）。</strong>训练中文档编码器的参数一直在更新，但几百万文档的向量索引不可能每步重建。REALM 的解法：<strong>异步重建</strong>——每隔几百步用最新参数重嵌全库、刷新 MIPS 索引，中间步骤容忍索引轻微过期。这个"索引新鲜度 vs 计算成本"的权衡，正是今天生产 RAG 里"换 embedding 模型必须全量重建索引"（主文档 §4.3 事故清单）的训练时版本。</li>
+    <li><strong>冷启动技巧</strong>：随机初始化的检索器取回的全是垃圾，梯度信号无从谈起。REALM 用 ICT（Inverse Cloze Task：把一句话抠出来当 query、其原始段落当正例）预热检索器。这也是后来无监督检索预训练（如 Contriever）的先声。</li>
+  </ul>
+
+  <h3>A.4 留给后世的遗产与局限</h3>
+  <ul>
+    <li>遗产：证明了"检索可微、可学、可预训练"；确立了 隐变量+边际化 的数学框架；ICT 预热、异步索引刷新成为标准技术。</li>
+    <li>局限：生成端只是 MLM 填空（不是自由生成）；训练系统复杂（要维护一个随训练更新的 ANN 索引），这直接导致后来工业界放弃联合训练、走向"冻结组件拼管道"的务实路线。</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="dpr">
+  <h2><span class="no">B</span>DPR：稠密检索器的标准训练配方</h2>
+  <p class="lead">Karpukhin et al. 2020（Facebook AI）。如果说 REALM 是思想源头，DPR 就是<strong>工程配方源头</strong>——今天 BGE/E5/GTE 等所有 embedding 模型的训练框架，本质上都是 DPR 配方的放大版。</p>
+
+  <h3>B.1 它反对的是什么</h3>
+  <p>2020 年之前开放域问答的标准检索器是 BM25（词匹配）。之前也有人试过稠密检索但打不过 BM25，普遍结论是"稠密检索需要海量标注才可行"。DPR 用一个惊人朴素的设定推翻了它：<strong>两个独立 BERT-base 双塔 + 几千到几万条标注 QA 对 + 精心设计的负例，就足以显著超越 BM25</strong>。</p>
+
+  <h3>B.2 结构与训练目标</h3>
+  <div class="formula">sim(q, p) = E_Q(q)ᵀ · E_P(p)        ← 两个独立 BERT，各取 [CLS]，点积打分（未归一化！）
+
+L(q, p⁺, p₁⁻…pₙ⁻) = -log  ------------------------------------
+                            exp(sim(q,p⁺)) + Σⱼ exp(sim(q,pⱼ⁻))</div>
+  <p>就是你熟悉的 InfoNCE / NLL over softmax，与 CLIP 的差异只在三个细节：(1) 两塔不共享结构对称性（query 塔和 passage 塔是两套独立参数）；(2) 用点积而非余弦、且没有温度系数；(3) 只做单向（query→passage）分类，CLIP 是双向对称损失。</p>
+
+  <h3>B.3 负例设计：DPR 最重要的贡献</h3>
+  <p>论文系统实验了三种负例，这一节是全文的精华，也是面试深挖 embedding 训练时最值得引用的实验：</p>
+  <table>
+    <tr><th>负例类型</th><th>做法</th><th>实验结论</th></tr>
+    <tr><td>Random</td><td>语料库随机抽</td><td>太容易区分，信号弱</td></tr>
+    <tr><td>In-batch negatives</td><td>batch 内其他问题的正例段落互为负例。batch=B 时，一次前向获得 B×(B-1) 个"免费"负例对，计算被复用</td><td>大幅提效，且 batch 越大越好——这就是为什么 embedding 训练极度吃大 batch/多卡</td></tr>
+    <tr><td><strong>BM25 hard negative</strong></td><td>用 BM25 检索出"词面高度匹配、但不含答案"的段落，每问加 1 条</td><td><strong>单一改动带来最大提升</strong>。强迫模型学会"词面像 ≠ 语义相关"，即超越词匹配的判别边界</td></tr>
+  </table>
+  <div class="callout deep">
+    <span class="tag">对照你的 CLIP 知识</span>
+    <p style="margin:0">CLIP 靠 32768 的超大 batch 让 in-batch negatives 中自然出现足够多的难样本；DPR 在小得多的 batch 下用<strong>显式难负例挖掘</strong>补足。这是同一个对比学习问题的两种资源配置策略。
+    后续演进链条：DPR 的 BM25 难负例 → ANCE（用训练中的模型自己挖难负例，异步更新）→ RocketQA（跨 batch 负例 + 用 cross-encoder 过滤假负例）→ 今天 BGE 等模型的多阶段配方（弱监督海量对比预训练 + 难负例精调）。假负例（false negative：其实相关但没标注，被当负例打压）是难负例挖得越狠越严重的副作用，RocketQA 的"用更强的 cross-encoder 打分过滤"至今仍是标准解法。</p>
+  </div>
+
+  <h3>B.4 与 REALM 的路线分野</h3>
+  <p>DPR 的检索器是<strong>监督独立训练</strong>的（不与下游生成器联动），训练完就冻结。这条"简单、稳定、可复用"的路线赢得了工业界：训练一次 embedding 模型，服务一切下游。REALM 的联合训练路线则退守学术（Atlas、RA-DIT 等延续），直到近年才以"用 LLM 偏好信号微调 embedding"的形式部分回归。理解这个分野，你就理解了为什么今天的 RAG 是"拼装"而非"端到端"。</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="fid">
+  <h2><span class="no">C</span>FiD：多文档证据的融合范式</h2>
+  <p class="lead">Izacard &amp; Grave 2020，Fusion-in-Decoder。它回答的问题最"工程"：检索回来 100 个段落，怎么喂给 seq2seq 生成器？</p>
+
+  <h3>C.1 三种融合位置的对比</h3>
+  <table>
+    <tr><th>方案</th><th>做法</th><th>问题</th></tr>
+    <tr><td>拼接进 encoder<br/>（naive）</td><td>100 段全部串成一条超长输入</td><td>自注意力 O(L²)：100 段 × 250 token = 25k token，计算爆炸；且当时模型上下文只有 512-1024</td></tr>
+    <tr><td>RAG 式边际化</td><td>每段独立生成完整答案，按检索概率加权（主文档 §1.3）</td><td>每段各自为政，<strong>证据之间无法交叉参照</strong>——多跳问题需要综合两段信息，边际化做不到；且 k 大时要跑 k 次完整解码</td></tr>
+    <tr><td><strong>FiD</strong></td><td><strong>Encoder 独立、Decoder 融合</strong>：每个段落（拼上 question）单独过 encoder；把 k 个段落的输出隐状态<strong>拼接</strong>成一个大序列；decoder 通过 cross-attention 同时看到全部 k 段</td><td>见下方复杂度分析——这是它的全部精妙所在</td></tr>
+  </table>
+
+  <h3>C.2 复杂度分析：为什么这个设计聪明</h3>
+  <div class="formula">Encoder 端：k 个段落各自独立编码
+  自注意力成本 = k × O(L²)   而非拼接式的 O((kL)²)   → 随段落数线性增长，且可完全并行
+
+Decoder 端：cross-attention 面向全部 k×L 个隐状态
+  证据间的"交流"只发生在这里 → 便宜的融合，昂贵的部分被隔离</div>
+  <ul>
+    <li>实验结论：性能随检索段落数持续上升（10 → 25 → 50 → 100 段单调变好），证明"更多证据 + 正确的融合方式"有效。这在当年是反直觉的——之前的方法段落一多就被噪声淹没。</li>
+    <li>FiD + DPR 检索在 NQ / TriviaQA 上大幅刷新了当时的开放域问答纪录，成为此后两年检索问答的标准骨架（Atlas = FiD + 检索器联合训练的集大成者）。</li>
+  </ul>
+
+  <h3>C.3 FiD 思想在今天的回声</h3>
+  <ul>
+    <li><strong>今天的 decoder-only LLM 其实退回了"拼接"路线</strong>（把 top-k chunk 全塞进 prompt）——因为长上下文能力和算力增长让 O((kL)²) 变得可以承受。但 FiD 揭示的问题没有消失，只是换了名字：拼接后模型对中部证据利用率低 = <em>Lost in the Middle</em>（主文档 §9.5）；prompt 里 chunk 太多互相干扰 = 上下文噪声问题。</li>
+    <li>"各证据独立处理 + 轻量融合"的思想在长上下文推理优化中复活：并行上下文编码（Parallel Context Windows）、prompt cache 按 chunk 复用 KV、以及 map-reduce 式摘要（每段独立摘要再汇总——GraphRAG 的 global search 就是这个结构）。</li>
+    <li>面试可用的总结句：<strong>RAG 边际化、FiD、prompt 拼接是"多证据融合"的三个历史答案，分别把融合放在概率层、cross-attention 层、输入层；今天选输入层是算力红利的结果，而不是它在机制上最优。</strong></li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="summary">
+  <h2><span class="no">D</span>一张表收束：三块基石 → 现代实践</h2>
+  <table>
+    <tr><th>2020 基石</th><th>核心命题</th><th>在今天的直接后裔</th></tr>
+    <tr><td>REALM</td><td>检索可作为隐变量被端到端学习；"对预测有用"即"相关"</td><td>检索器蒸馏/偏好微调；异步索引刷新的工程模式；Self-RAG"按需检索"可视为把 REALM 的隐变量决策显式化为 token</td></tr>
+    <tr><td>DPR</td><td>双塔 + in-batch negatives + 难负例 = 稠密检索标准配方</td><td>BGE / E5 / GTE / OpenAI embeddings 的训练框架；难负例挖掘与假负例过滤仍是 embedding 微调的核心技艺</td></tr>
+    <tr><td>FiD</td><td>多证据融合应"独立编码、集中融合"，性能随证据量可扩展</td><td>Lost-in-the-Middle 问题意识；map-reduce 式全局综合（GraphRAG）；并行上下文/KV 复用等推理优化</td></tr>
+  </table>
+  <div class="callout link">
+    <span class="tag">原文与延伸</span>
+    <ul style="margin:0">
+      <li>REALM: <a href="https://arxiv.org/abs/2002.08909">arXiv:2002.08909</a> · DPR: <a href="https://arxiv.org/abs/2004.04906">arXiv:2004.04906</a> · FiD: <a href="https://arxiv.org/abs/2007.01282">arXiv:2007.01282</a></li>
+      <li>延伸阅读：Atlas（FiD+联合训练集大成）、Contriever（无监督对比检索预训练）、ANCE / RocketQA（难负例演进线）。</li>
+      <li>建议阅读顺序：DPR（最易读、配方最实用）→ FiD（短小精悍）→ REALM（数学框架最完整）。</li>
+    </ul>
+  </div>
+</section>
+
+<a class="backlink" href="../index.html#s1">← 返回主文档 §1</a>
+</main>
+</body>
+</html>

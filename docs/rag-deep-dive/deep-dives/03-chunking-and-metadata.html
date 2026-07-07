@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深潜 §3.3 — 分块策略全谱系、前沿进展与 Metadata 设计</title>
+<link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+<main>
+<a class="backlink" href="../index.html#s3">← 返回主文档 §3</a>
+
+<header class="hero">
+  <p class="eyebrow">Deep Dive · 对应主文档 §3.3</p>
+  <h1>分块策略：逐个拆解、前沿进展与 Metadata 设计</h1>
+  <p class="hero-copy">
+    主文档的谱系表是"地图"，本文是每个地点的"街景"：每种策略讲清<strong>机制细节、参数、失败模式、何时选它</strong>；
+    然后回答"为什么主流方法停在 2024"，并盘点 2025 以来的真实前沿；最后把 Metadata 设计展开成一份完整的字段手册。
+  </p>
+</header>
+
+<!-- ============================================================ -->
+<section id="detail">
+  <h2><span class="no">A</span>七种策略逐个拆透</h2>
+
+  <h3>A.1 固定长度 + Overlap</h3>
+  <ul>
+    <li><strong>机制</strong>：按 token 数（注意：用 embedding 模型自己的 tokenizer 计数，不是字符数——中文 1 字 ≈ 1-2 token，按字符切会严重超长）硬切；相邻块重叠 10-20%。</li>
+    <li><strong>overlap 的真实作用与代价</strong>：作用是保证"恰好跨在切点上的句子/事实"至少完整出现在某一个块里。代价是（1）存储与 embedding 成本 ×(1+overlap%)；（2）检索时同一内容的两个重叠块可能同时进 top-k，挤占名额——所以生产中常配"近重复去除"（对 top-k 内两两相似度 &gt; 0.95 的块去重，或用 MMR 采样）。</li>
+    <li><strong>何时用</strong>：日志、聊天记录、字幕这类真的没有结构的流水文本；或作为 baseline 对照组。</li>
+  </ul>
+
+  <h3>A.2 递归分割（RecursiveCharacterTextSplitter）</h3>
+  <ul>
+    <li><strong>机制细节</strong>：给定分隔符优先级列表（默认 <code>["\n\n", "\n", " ", ""]</code>），先用最高优先级切；某段仍超长，就对该段降级用下一分隔符继续切；然后自底向上把碎片贪心合并到不超过 chunk_size。本质是"<strong>尽量在最大的自然边界断开</strong>"。</li>
+    <li><strong>中文必改项</strong>：默认分隔符没有中文句读，长段中文会直接跌到按空格/字符切。要传 <code>["\n\n", "\n", "。", "！", "？", "；", "，", " ", ""]</code>。这是中文 RAG 最常见的低级失分点。</li>
+    <li><strong>失败模式</strong>：它只看字符不看语义——Markdown 的代码块中的空行、表格行之间的换行，都会被当成段落边界切碎。所以它的正确定位是"<strong>结构感知分块内部的兜底器</strong>"：先按结构切大块，超长的再交给它。</li>
+  </ul>
+
+  <h3>A.3 结构感知分块（Structure-Aware）</h3>
+  <ul>
+    <li><strong>机制</strong>：消费解析层输出的结构树（见<a href="02-document-parsing.html">解析深潜</a>），按逻辑单元切：Markdown 按标题层级；代码按 AST 的函数/类边界（<code>tree-sitter</code>，LangChain 的语言感知 splitter 即基于此）；法律合同按条款编号；表格整表保留或按行组切且<strong>每块重复表头</strong>。</li>
+    <li><strong>两条铁律</strong>：（1）<strong>标题路径要拼进 chunk 文本</strong>参与 embedding（"年度报告 &gt; 第三章 财务 &gt; 3.2 营收\n..."），否则"营收增长 3%"这种块脱离章节语境完全无法被正确检索——这其实是 Contextual Retrieval 的零成本简化版；（2）宁可块大小不均匀，也不要跨结构边界合并（把 3.2 节结尾和 3.3 节开头拼进同一块，会制造语义杂交的劣质向量）。</li>
+    <li><strong>何时用</strong>：只要文档有结构就应该用。它是生产系统的<strong>默认正确答案</strong>，A.2 只做它的下游兜底。</li>
+  </ul>
+
+  <h3>A.4 语义分块（Semantic Chunking）</h3>
+  <ul>
+    <li><strong>机制细节</strong>：① 按句切分 → ② 对每句（或滑动窗口内几句拼接，抗单句噪声）做 embedding → ③ 计算相邻窗口余弦距离序列 → ④ 在距离超过阈值处（常用分位数法，如取距离分布的 95 分位）设为断点。直觉：话题切换处相邻句相似度骤降。</li>
+    <li><strong>诚实的评价</strong>：学术对比（如 Chroma Research 2024 的分块评测、Vectara 等的实验）反复发现语义分块<strong>相对结构感知分块的增益不稳定</strong>，而成本（全库逐句 embedding）确定很高。根因：好文档的作者已经用段落和标题把语义边界标出来了，语义分块是在用模型重新发现作者已经告诉你的信息。</li>
+    <li><strong>何时用</strong>：仅当文本<strong>真的没有可用结构</strong>（转录稿、OCR 后丢失格式的旧档案）时才轮到它。</li>
+  </ul>
+
+  <h3>A.5 Parent-Child / Small-to-Big</h3>
+  <ul>
+    <li><strong>机制细节</strong>：子块（128-256 token，甚至单句）做 embedding 入向量库；父块（其所属段落/小节，512-2048 token）存文档库（KV store）。检索命中子块 → 通过 <code>parent_id</code> 取回父块进 prompt。多个子块命中同一父块时去重，只取一次父块。LangChain <code>ParentDocumentRetriever</code> / LlamaIndex 句子窗口检索（命中句 ± N 句）是现成实现。</li>
+    <li><strong>为什么有效（值得背下来的解释）</strong>：单向量的语义分辨率有限，块越小向量越"纯"、检索越准；但 LLM 需要语境。Parent-child 把"用什么检索"和"给 LLM 看什么"<strong>解耦成两个独立可调的自由度</strong>——这是它优雅的根本原因。</li>
+    <li><strong>变体</strong>：还可以给同一父块建多路子表示——子块 + LLM 生成的该块摘要 + LLM 生成的"该块可回答的假想问题"（HyDE 的镜像，query-question 对称匹配往往比 query-passage 更准），全部指回同一父块。LangChain <code>MultiVectorRetriever</code> 即此。</li>
+    <li><strong>代价</strong>:需要维护两个存储 + 映射一致性（父块更新时所有子向量要同步重建）。</li>
+  </ul>
+
+  <h3>A.6 Contextual Retrieval（Anthropic, 2024-09）</h3>
+  <ul>
+    <li><strong>机制细节</strong>：索引时，对每个 chunk 调一次 LLM，输入 = <em>整篇文档 + 该 chunk</em>，输出 = 50-100 token 的语境说明（"本块出自 ACME 公司 2023 年 Q2 SEC 文件，讨论其营收环比变化"），前置拼接后再做 embedding <strong>和 BM25 索引</strong>（两路都要加语境，BM25 同样受益）。</li>
+    <li><strong>成本工程</strong>：每 chunk 一次 LLM 调用看似昂贵，但"整篇文档"这个前缀对同一文档的所有 chunk 是相同的 → 用 <strong>prompt caching</strong> 后文档前缀只计一次完整费用，Anthropic 给出的参考成本约 $1.02 / 百万文档 token。</li>
+    <li><strong>官方消融数据</strong>（检索失败率相对下降）：contextual embedding 单独 -35%；+ contextual BM25 -49%；再 + rerank -67%。这组数字值得记住，面试引用很有说服力。</li>
+    <li><strong>与 A.3 的关系</strong>：标题路径拼接是它的"免费 80% 版"；当文档结构差、或语境无法从标题推出（如对话记录、邮件线程）时，才值得上完整 LLM 版。</li>
+  </ul>
+
+  <h3>A.7 Late Chunking（Jina, 2024）</h3>
+  <ul>
+    <li><strong>机制细节（用你的 Transformer 知识精确理解）</strong>：常规做法是 <em>先切块、每块独立过 encoder</em>——块内 token 的注意力被截断在块边界，代词"它"永远看不到上文的指代对象。Late chunking 反转顺序：<strong>整篇文档（≤8192 token）一次过长上下文 embedding 模型 → 得到全文注意力语境下的每 token 隐状态 → 再按块边界对 token 向量做 mean pooling</strong>。每个块向量因此"免费"携带全文语境。</li>
+    <li><strong>与 Contextual Retrieval 的精确对比</strong>：两者动机完全相同（块脱离上下文导致语义残缺），实现哲学相反——CR 把语境<strong>显式写成文字</strong>（可读、可加进 BM25、但要付 LLM 费），LC 把语境<strong>隐式编码进向量</strong>（零额外调用、但 BM25 无法受益、且受 embedding 模型最大长度限制）。</li>
+    <li><strong>要求</strong>：必须用支持长上下文且验证过 late chunking 的模型（jina-embeddings-v3 等）；超过 8k 的文档要先做粗粒度切分（long late chunking）。</li>
+  </ul>
+
+  <div class="callout deep">
+    <span class="tag">决策总图</span>
+    <p style="margin:0">实践排序：<strong>结构感知（含标题路径拼接）为地基 → 叠加 parent-child 解耦检索/生成粒度 → 语境缺失仍严重时按预算选 Contextual Retrieval（有钱、要 BM25 增益）或 Late Chunking（省钱、纯向量路线）</strong>。语义分块只服务无结构文本；固定长度只做 baseline。记住主文档的三角矛盾（检索粒度 / 生成粒度 / 语义自足性），每种策略不过是三角上的不同取舍点。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="frontier">
+  <h2><span class="no">B</span>为什么"停在 2024"？以及 2025 之后的真实前沿</h2>
+
+  <h3>B.1 先回答你的疑问：2024 不是知识过时，而是拐点本身</h3>
+  <p>主文档表格截到 2024 有一个客观原因：<strong>Contextual Retrieval 和 Late Chunking（均为 2024）恰好是"分块作为独立研究问题"的收官之作</strong>。它们把"块该带多少上下文"这个最后的大问题给出了两个工程上够用的答案。此后领域的演化方向发生了转移——不是"发明更聪明的切法"，而是以下四条线：</p>
+
+  <h3>B.2 前沿方向一：分块被上游"吸收"——解析层直接产出逻辑块</h3>
+  <p>随着 Docling / MinerU 等版面理解管线成熟（见<a href="02-document-parsing.html">解析深潜</a>），文档进入分块环节时已经是"标题树 + 元素类型"的结构化表示，分块退化为"在结构树上按 token 预算做装箱"的确定性算法（Docling 的 <code>HybridChunker</code>、各家 chunk-by-layout 功能）。<strong>行业共识正在变成：分块的质量问题，本质是解析的质量问题。</strong>这就是为什么 2025 年后你很少看到"新分块算法"论文，却大量看到文档解析模型的发布。</p>
+
+  <h3>B.3 前沿方向二：分块被下游"吸收"——检索单元与生成单元彻底解耦</h3>
+  <ul>
+    <li><strong>LLM 语境下的极端 small-to-big</strong>：检索单元做到命题级（Proposition-based Retrieval，Chen et al. 2023：把文本改写成一条条原子事实句"Dense X Retrieval"），生成单元给整节甚至整篇——长上下文模型让"父块"可以任意大，分块的生成侧约束基本消失。</li>
+    <li><strong>推理时动态选取</strong>：检索先命中粗粒度区域，再由模型在推理时决定实际读多少（LlamaIndex 的 auto-merging、各类"检索页码 → 现场读原文"的 agentic 读取工具）。块边界从"索引时固定"变成"查询时弹性"。</li>
+  </ul>
+
+  <h3>B.4 前沿方向三：Agentic / 查询时检索范式弱化预分块</h3>
+  <ul>
+    <li>Claude Code、Deep Research 类系统展示了另一条路：<strong>不建向量索引，用 grep/关键词/文件树导航 + LLM 现场读文件</strong>的 agentic 检索。当语料是代码库或结构良好的文件系统时，这条路的效果常常优于向量 RAG——因为它没有任何解析/分块损耗。你做智能体方向求职，这个对比一定要能讲（何时向量索引仍不可替代：海量非结构化语料、毫秒级延迟要求、模糊语义匹配）。</li>
+    <li><strong>记忆型/持续摄入型系统</strong>（mem0、各家 memory 产品）用"抽取式写入"（LLM 把新信息蒸馏成原子事实/知识条目再入库）取代"切块式写入"——分块被"抽取"替代。</li>
+  </ul>
+
+  <h3>B.5 前沿方向四：多模态检索绕过分块</h3>
+  <p>ColPali/ColQwen 路线（主文档 §11）把<strong>页面</strong>作为检索单元、patch 作为匹配单元，解析和分块整条链路被跳过。2025 年以来该家族持续演进（更强 VLM 底座、更省存储的池化方案），在视觉密集文档上已是严肃的生产选项。"最好的分块是不分块"在这条线上被字面实现。</p>
+
+  <div class="callout warn">
+    <span class="tag">给你的判断框架</span>
+    <p style="margin:0">面试被问"分块最新进展"时的高分答法：先讲 2024 的两个收官方案（CR / Late Chunking）及其背后的共同矛盾，再指出<strong>领域重心已从"怎么切"迁移到"上游解析结构化、下游粒度解耦、agentic 现场读取、多模态免切分"四条线</strong>——这展示的是趋势判断力，比背新名词值钱得多。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="metadata">
+  <h2><span class="no">C</span>Metadata 完全手册</h2>
+  <p class="lead">Metadata 是 chunk 的"户口本"。它的设计质量决定了四件事的上限：过滤检索、权限、溯源、索引运维。<strong>而且它必须在入库时一次打对——上线后补字段 = 全量重建。</strong></p>
+
+  <h3>C.1 字段分类：四种用途，四种命运</h3>
+  <table>
+    <tr><th>类别</th><th>典型字段</th><th>用途与去向</th></tr>
+    <tr><td><strong>1. 检索增强型</strong><br/>（参与 embedding）</td><td><code>title_path</code>（标题面包屑）、<code>doc_title</code>、<code>section_summary</code></td><td><strong>拼进 chunk 文本一起 embedding</strong>，直接改变向量语义。这是唯一"进向量"的一类，也是最容易被忽略的免费增益（见 A.3 铁律一）</td></tr>
+    <tr><td><strong>2. 过滤型</strong><br/>（结构化查询条件）</td><td><code>doc_type</code>、<code>department</code>、<code>product_line</code>、<code>language</code>、<code>updated_at</code>、<code>effective_date</code>、<code>status</code>(active/deprecated)</td><td>存为向量库 payload，检索时做 <code>filter</code>。是 self-query（主文档 §8）和时效消解的物质基础。<em>字段取值必须是受控枚举</em>（"hr" 不能一会儿写 "HR" 一会儿写 "人力"），否则过滤形同虚设</td></tr>
+    <tr><td><strong>3. 安全型</strong></td><td><code>acl_groups</code>、<code>tenant_id</code>、<code>classification</code>(public/internal/confidential)</td><td>检索层强制过滤（用户组 ∩ acl_groups ≠ ∅），绝不进 prompt 靠模型自觉。多租户 SaaS 中 <code>tenant_id</code> 过滤是数据不串号的生命线，通常配合 collection 物理隔离双保险</td></tr>
+    <tr><td><strong>4. 运维/溯源型</strong></td><td><code>doc_id</code>、<code>chunk_id</code>、<code>parent_id</code>、<code>source_uri</code>、<code>page_no</code>、<code>bbox</code>、<code>content_hash</code>、<code>ingest_version</code>、<code>embedding_model</code></td><td>不参与检索。支撑：按 doc_id 级联删除（防僵尸块）、hash 增量更新、引用跳转原文页码/高亮、"这批向量是哪个管线版本产的"事故追查</td></tr>
+  </table>
+
+  <h3>C.2 一个生产级 schema 示例（逐字段注释）</h3>
+  <pre><code>{
+  <span class="cm">// ---- 1. 检索增强（拼进文本参与 embedding）----</span>
+  <span class="st">"title_path"</span>: <span class="st">"员工手册 &gt; 假期制度 &gt; 年假"</span>,
+
+  <span class="cm">// ---- 2. 过滤（受控枚举 + 规范化格式）----</span>
+  <span class="st">"doc_type"</span>: <span class="st">"policy"</span>,              <span class="cm">// 枚举: policy|faq|report|contract|code</span>
+  <span class="st">"department"</span>: <span class="st">"hr"</span>,                <span class="cm">// 枚举，入库时校验</span>
+  <span class="st">"language"</span>: <span class="st">"zh"</span>,
+  <span class="st">"updated_at"</span>: <span class="nb">1774137600</span>,          <span class="cm">// 注意！存 unix 时间戳而非字符串——</span>
+                                     <span class="cm">// 多数向量库只支持数值范围过滤，"2026-03-01" 字符串没法做 &gt;= 查询</span>
+  <span class="st">"status"</span>: <span class="st">"active"</span>,               <span class="cm">// active|deprecated，废止文档默认过滤，防"引用旧政策"事故</span>
+
+  <span class="cm">// ---- 3. 安全 ----</span>
+  <span class="st">"tenant_id"</span>: <span class="st">"acme"</span>,
+  <span class="st">"acl_groups"</span>: [<span class="st">"hr"</span>, <span class="st">"managers"</span>],
+
+  <span class="cm">// ---- 4. 运维 / 溯源 ----</span>
+  <span class="st">"doc_id"</span>: <span class="st">"handbook-2026"</span>,         <span class="cm">// 级联删除/更新的键</span>
+  <span class="st">"chunk_id"</span>: <span class="st">"handbook-2026#014"</span>,
+  <span class="st">"parent_id"</span>: <span class="st">"handbook-2026#sec-3.2"</span>,  <span class="cm">// parent-child 映射</span>
+  <span class="st">"source_uri"</span>: <span class="st">"confluence://SPACE/pages/1234"</span>,
+  <span class="st">"page_no"</span>: <span class="nb">12</span>,                     <span class="cm">// + bbox → 前端引用高亮</span>
+  <span class="st">"content_hash"</span>: <span class="st">"sha256:9f2c…"</span>,   <span class="cm">// 增量更新：hash 未变则跳过重嵌</span>
+  <span class="st">"ingest_version"</span>: <span class="st">"pipeline-v3"</span>,   <span class="cm">// 管线版本，事故归因用</span>
+  <span class="st">"embedding_model"</span>: <span class="st">"bge-m3@q1"</span>     <span class="cm">// 防止混模型向量共存的静默灾难</span>
+}</code></pre>
+
+  <h3>C.3 Metadata 从哪来：三个来源</h3>
+  <ol>
+    <li><strong>解析层自动产出</strong>：title_path、page_no、bbox、元素类型——这是解析要输出结构化 JSON 而不只是纯文本的原因（见解析深潜 §B.6）。</li>
+    <li><strong>源系统携带</strong>：Confluence/SharePoint/数据库自带的作者、部门、权限、更新时间——connector 摄入时映射，<em>权限字段必须从源系统同步，且要处理源端权限变更的增量同步</em>（用户被移出用户组后，多久在 RAG 里生效？这是安全审计必问题）。</li>
+    <li><strong>LLM 抽取补全</strong>：源信息缺失时，用 LLM 从内容推断 doc_type、主题标签、涉及产品线等。注意抽取结果要落在受控枚举上（structured output + 枚举校验），并接受它有错误率——<em>过滤型字段错误会导致该 chunk 永久检索不到，比不打标更糟</em>，所以低置信度时宁可留空。</li>
+  </ol>
+
+  <div class="callout pitfall">
+    <span class="tag">Metadata 高频事故清单</span>
+    <ul style="margin:0">
+      <li>日期存成字符串 → 无法范围过滤（见上方注释），self-query 静默失效。</li>
+      <li>枚举值不受控（大小写/中英文混用）→ 过滤命中率诡异波动。</li>
+      <li>过滤条件过严 + 向量库 filtered-ANN 实现差 → 召回率断崖（主文档 §5.2 的图连通性问题）。排查时先去掉 filter 对照。</li>
+      <li>ACL 只打在文档级、chunk 继承逻辑有 bug → 单块越权泄露。ACL 必须落到每个 chunk 的 payload 上并写测试。</li>
+      <li>需要新过滤字段但当初没打 → 只能全量重跑摄入管线。<strong>所以 schema 设计时把"未来 6 个月可能的过滤需求"预留出来，宁多勿少（多余字段的成本几乎为零，缺字段的成本是一次全量重建）。</strong></li>
+    </ul>
+  </div>
+</section>
+
+<a class="backlink" href="../index.html#s3">← 返回主文档 §3</a>
+</main>
+</body>
+</html>
