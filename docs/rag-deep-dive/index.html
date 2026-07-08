@@ -555,6 +555,11 @@ sim(·,·) 通常为余弦相似度；τ 为温度（典型 0.01~0.05，比 CLIP
     <li><strong>难负例挖掘（Hard Negative Mining）</strong>：随机负例太容易区分，模型学不到细粒度差异。标准做法：用 BM25 或上一版模型检索出"排名靠前但不是答案"的段落作为难负例。<em>这是 embedding 训练中影响最大的单一因素之一</em>。注意假负例（false negative，其实相关但没标注）污染问题，通常用打分器过滤。</li>
     <li><strong>训练流程（以 BGE/E5 为代表）</strong>：大规模弱监督对比预训练（网页标题-正文、问答对等自然配对数据，量级 ~亿）→ 高质量标注数据 + 难负例精调（MS MARCO、NLI 等）。</li>
   </ul>
+  <div class="callout link">
+    <span class="tag">深潜文档</span>
+    <p style="margin:0">BERT 的 MLM 与双塔架构到底是什么关系？为什么"文档向量是推理出来的、不是训练出来的"？单塔为什么不能召回（两层原因）？权重共享与"拆掉右塔"的常见误解勘误、InfoNCE/负例工程细节与工业级四阶段闭环，展开在：
+    <a href="deep-dives/05-bert-dual-encoder.html"><strong>深潜 §4.1 — BERT、MLM 与双塔架构彻底讲透 →</strong></a></p>
+  </div>
 
   <h3>4.2 Pooling 与相似度的细节</h3>
   <ul>
@@ -668,6 +673,7 @@ Cross-Encoder: score = MLP( Enc([CLS] q [SEP] d) )      ← 拼接后进同一�
     <li>代价：无法预计算。每个 (q, d) 对都要跑一次前向，全库打分 O(N) 次推理不可行 → 所以只能做<strong>两段式</strong>：召回（快而糙，取 top 50-100）→ 重排（慢而准，取 top 5-10）。</li>
     <li>这就是经典的 <strong>recall-then-rank 级联架构</strong>，与推荐系统的召回/精排完全同构——面试时点出这一同构关系是加分项。</li>
     <li>ColBERT（§5.3）恰好卡在两者中间：精度接近 cross-encoder，文档侧可预计算，代价是存储。三者构成"精度-延迟-存储"的完整权衡光谱。</li>
+    <li>单塔为什么不能直接做召回（预计算不可行 + 单句向量质量差的双层原因），详见<a href="deep-dives/05-bert-dual-encoder.html">深潜 §4.1 — BERT 与双塔架构</a>。</li>
   </ul>
 
   <h3>7.2 选型与实践</h3>
