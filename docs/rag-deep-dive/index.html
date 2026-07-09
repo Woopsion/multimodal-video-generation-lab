@@ -602,6 +602,11 @@ sim(·,·) 通常为余弦相似度；τ 为温度（典型 0.01~0.05，比 CLIP
     <tr><td><strong>PQ / SQ 量化</strong><br/>（常与 IVF 组合）</td><td>PQ：把 D 维向量切成 m 段，每段用 256 个聚类中心之一表示 → 每段 1 字节。1024 维 float32（4KB）可压到 ~32B，百倍压缩。</td><td>有精度损失，常配合"量化粗筛 + 原始向量重打分（refine）"两段式。另有二值量化（BQ）更极端。</td></tr>
   </table>
   <p>其他值得知道的名字：<strong>DiskANN</strong>（图索引放 SSD，十亿级单机）、<strong>ScaNN</strong>（Google，各向异性量化）。</p>
+  <div class="callout link">
+    <span class="tag">深潜文档</span>
+    <p style="margin:0">用"100 万条 768 维向量"的统一设定，把暴力检索、IVF、PQ、HNSW 的内存字节数、计算次数、召回率、参数旋钮全部算成真实数字，并附可跑的 FAISS 三索引对比实验，展开在：
+    <a href="deep-dives/06-ann-indexes.html"><strong>深潜 §5.1 — ANN 索引底层机理与真实数字 →</strong></a></p>
+  </div>
 
   <h3>5.2 向量库选型速览</h3>
   <table>
