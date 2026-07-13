@@ -76,6 +76,26 @@ label   = assistant_answer_tokens
 loss    = answer prediction loss
 ```
 
+## Step 05：CLIP 与 LLaVA 的本质差异
+
+| 对比项 | CLIP | LLaVA |
+| --- | --- | --- |
+| 定位 | 跨模态表征与匹配模型 | 视觉指令跟随与生成模型 |
+| 输入 | 图片与候选文本 | 图片与用户问题 |
+| 输出 | embedding / similarity score | answer tokens |
+| 主要目标 | 对比学习 | 条件化 next-token prediction |
+| 适用任务 | 检索、零样本分类、图文匹配 | 视觉问答、描述、对话与推理 |
+
+LLaVA 复用了 CLIP 的视觉编码器，但没有沿用 CLIP 的文本编码器和相似度输出作为回答主体。CLIP vision encoder 提取视觉特征，projection layer 将其映射为 LLM 可处理的 image tokens，Vicuna / LLM 再根据问题生成回答。
+
+## 5 分钟论文复述
+
+LLaVA 解决的是如何把已有视觉模型和已有语言模型组合成视觉助手。视觉侧采用 CLIP ViT-L/14，语言侧采用 Vicuna，中间使用 projection matrix 对齐表示空间。原论文利用 language-only GPT-4，根据 caption、物体类别与 bounding box 等文本化场景信息生成视觉指令数据。
+
+训练分两阶段。Stage 1 使用过滤后的 CC3M image-caption pairs，冻结 CLIP 与 LLM，只训练 projection layer，让视觉特征能够进入语言模型。Stage 2 使用视觉指令数据，继续冻结 CLIP，训练 projection layer 与 LLM，让模型学会根据图片遵循指令并生成答案。训练本质仍是 next-token prediction，loss 主要计算在 assistant answer tokens 上。
+
+因此，CLIP 解决“图片和文本是否匹配”，LLaVA 进一步解决“看到图片并收到问题后应该如何回答”。
+
 ## 暂不展开
 
 - 暂不复现 LLaVA 训练。

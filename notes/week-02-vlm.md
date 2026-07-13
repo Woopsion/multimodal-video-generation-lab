@@ -2,8 +2,8 @@
 
 ## 当前阶段
 
-- 日期：2026-06-29
-- 学习状态：Day8 ViT patch embedding 已收口，Day9 CLIP 图文对齐已收口，Day10 CLIP 图文检索已收口，Day11 CLIP 论文阅读已收口，Day12 VLM 图像问答入门已收口；当前进入 Day13 LLaVA 论文阅读。
+- 日期：2026-07-13
+- 学习状态：Day8-Day13 已收口；当前下一步为 Day14 Week2 复盘与 VLM 小助手设计。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
@@ -181,21 +181,16 @@ image path + question
 -> answer + runtime boundary
 ```
 
-Day12 已收口。下一步进入 Day13：阅读 LLaVA 论文，理解 VLM 的两阶段训练和视觉指令数据构造。
-## Day13 启动
+Day12 已收口，并已完成 Day13 LLaVA 论文阅读。
+## Day13 收口
 
-Day13 的目标是阅读 LLaVA 原论文 `Visual Instruction Tuning`，理解一个 VLM 如何从 CLIP vision encoder、projection matrix 和 Vicuna / LLM 组合成视觉助手。
+Day13 已完成 `Visual Instruction Tuning` 的论文主线学习：
 
-已创建：
+- 理解 `CLIP vision encoder -> projection matrix -> Vicuna / LLM` 架构。
+- 理解 GPT-assisted visual instruction data generation。
+- 区分 Stage 1 feature alignment 与 Stage 2 visual instruction tuning。
+- 掌握冻结模块、参数更新范围与 assistant answer token loss。
+- 完成 CLIP 匹配模型与 LLaVA 视觉助手的任务目标对比。
+- 产出 `docs/day-13-llava-paper-reading/index.html`、`notes/day-13-llava-paper-reading.md`、`papers/llava.md`。
 
-- Day13 HTML 教学入口：`docs/day-13-llava-paper-reading/index.html`
-- Day13 状态笔记：`notes/day-13-llava-paper-reading.md`
-- LLaVA 论文笔记：`papers/llava.md`
-
-当前只推进 Step 01-02：
-
-```text
-image -> CLIP ViT-L/14 -> visual features -> projection matrix -> Vicuna -> answer tokens
-```
-
-暂不复现训练，先把论文定位、架构组件和两阶段训练预告讲清楚。
+下一步进入 Day14：Week2 复盘与 VLM 小助手方案设计。

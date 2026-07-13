@@ -497,3 +497,18 @@
 - 暂不推进：
   - 暂不复现 LLaVA 训练。
   - 暂不下载 LLaVA 大模型权重。
+
+## Day 13 - LLaVA 论文阅读收口
+
+- 日期：2026-07-13
+- 完成内容：
+  - 完成 LLaVA 论文定位、三组件架构和视觉指令数据学习。
+  - 详细理解 Stage 1 feature alignment 与 Stage 2 visual instruction tuning。
+  - 明确冻结模块仍参与前向计算，只是不更新参数。
+  - 对比 CLIP 的 embedding / similarity 目标与 LLaVA 的 answer token generation 目标。
+  - 完成 5 分钟论文复述主线与 Day13 验收总结。
+- 文档产出：
+  - `docs/day-13-llava-paper-reading/index.html`
+  - `notes/day-13-llava-paper-reading.md`
+  - `papers/llava.md`
+- Day13 已收口。下一步进入 Day14：Week2 复盘与 VLM 小助手方案设计。

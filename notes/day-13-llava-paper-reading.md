@@ -1,6 +1,6 @@
 # Day 13 - LLaVA 论文阅读
 
-> 当前阶段：Day13 Step 04。Step 01-03 已完成，现在重点理解两阶段训练里的“冻结”和“只训练 projector”。
+> 当前阶段：Day13 已收口。Step 01-06 已完成，下一步进入 Day14 Week2 复盘与 VLM 小助手设计。
 
 ## 今日目标
 
@@ -116,8 +116,29 @@ caption: 一句图片描述
 
 图片 token 和用户问题 token 是条件上下文，loss 主要算在 assistant answer tokens 上。否则模型会被训练去预测用户问题，而不是学习回答问题。
 
-## 下一步
+## Step 05：CLIP 与 LLaVA 对比
 
-- 先确认你能解释“冻结不是不用，只是不更新参数”。
-- 然后回答 Step 04 的三个检查问题。
-- 再进入 Step 05：对比 CLIP 与 LLaVA，整理匹配模型和视觉助手的本质差异。
+| 对比项 | CLIP | LLaVA |
+| --- | --- | --- |
+| 任务目标 | 图文表征对齐与匹配 | 视觉条件下的指令跟随与文本生成 |
+| 典型输出 | embedding / similarity score | 自回归生成的 answer tokens |
+| 训练信号 | 对比学习 loss | assistant answer token prediction loss |
+| 典型任务 | 检索、零样本分类、匹配 | 图片描述、视觉问答、视觉对话 |
+
+LLaVA 使用 CLIP vision encoder，但并不等于 CLIP。CLIP 只负责视觉特征提取；projector 负责维度与表示空间对齐；LLM 负责理解用户指令并生成自然语言回答。
+
+## Step 06：5 分钟复述主线
+
+1. LLaVA 的目标是把 CLIP 的视觉能力与 Vicuna 的语言生成能力连接成视觉助手。
+2. 架构是 `image -> CLIP -> projector -> LLM -> answer tokens`。
+3. GPT-4 在原论文中主要负责生成视觉指令训练数据，不参与 LLaVA 推理。
+4. Stage 1 冻结 CLIP 和 LLM，只训练 projector，完成 feature alignment。
+5. Stage 2 冻结 CLIP，训练 projector + LLM，完成 visual instruction tuning。
+6. 图片和问题作为上下文，loss 主要计算在 assistant answer tokens 上。
+
+## Day13 收口结论
+
+- 已完成论文定位、架构、数据、训练与 CLIP/LLaVA 对比。
+- 已产出 HTML 教学文档、Day13 状态笔记和 LLaVA 论文笔记。
+- 当前不复现完整 LLaVA 训练，不下载大模型权重。
+- 下一步：Day14 Week2 复盘与 VLM 小助手方案设计。
