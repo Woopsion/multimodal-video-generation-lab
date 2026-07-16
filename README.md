@@ -35,8 +35,14 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 12 final note: `docs/day-12-vlm-image-qa/index.html`
 - Day 12 status note: `notes/day-12-vlm-image-qa.md`
 - Day 12 VLM QA demo: `experiments/vlm-qa/image_qa.py`
+- Day 13 final note: `docs/day-13-llava-paper-reading/index.html`
+- Day 13 status note: `notes/day-13-llava-paper-reading.md`
+- Day 13 paper note: `papers/llava.md`
+- Day 14 active note: `docs/day-14-week2-review-vlm-assistant/index.html`
+- Day 14 status note: `notes/day-14-week2-review-vlm-assistant.md`
+- Day 14 design draft: `demos/vlm-visual-assistant/design.md`
 - Status note: `notes/week-02-vlm.md`
-- Current status: Day 12 VLM image question answering has been closed out with a SmolVLM-256M local experiment. Next task: Day 13 LLaVA paper reading.
+- Current task: Day 14 Step 02, defining the general multimodal demo contract for the VLM assistant.
 
 ## Repository Hygiene
 

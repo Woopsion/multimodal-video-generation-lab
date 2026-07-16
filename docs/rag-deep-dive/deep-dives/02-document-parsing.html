@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深潜 §3.1 — 文档解析工业级全流程</title>
+<link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+<main>
+<a class="backlink" href="../index.html#s3">← 返回主文档 §3</a>
+
+<header class="hero">
+  <p class="eyebrow">Deep Dive · 对应主文档 §3.1</p>
+  <h1>文档解析：工业级全流程详解</h1>
+  <p class="hero-copy">
+    "解析"听起来像脏活，但它是 RAG 中<strong>错误不可恢复</strong>的环节——分块可以重切、embedding 可以重算，
+    解析丢掉的结构信息永远回不来。本文给出工业成熟方案的完整流水线、工具选型矩阵、以及一个可跑的端到端例子。
+  </p>
+</header>
+
+<!-- ============================================================ -->
+<section id="why">
+  <h2><span class="no">A</span>为什么解析这么难：PDF 的本质</h2>
+  <p class="lead">理解了 PDF 格式的本质，你就理解了所有解析工具在对抗什么。</p>
+  <p><strong>PDF 不是文档格式，是打印指令格式。</strong>它的内部内容大致是这样的绘图指令流：</p>
+  <pre><code>BT /F1 12 Tf  72 700 Td  (第三季) Tj  ET     <span class="cm">← "在坐标(72,700)用12号字画出'第三季'"</span>
+BT /F1 12 Tf  110 700 Td (度营收) Tj  ET     <span class="cm">← 下一段文字，坐标独立</span></code></pre>
+  <p>它没有"段落""标题""表格"的概念，只有<strong>带坐标的文字碎片和线条</strong>。所以解析 PDF 本质上是一个<strong>逆向工程问题</strong>：从二维排版结果反推出一维逻辑结构。由此派生出全部经典病灶：</p>
+  <ul>
+    <li><strong>阅读顺序</strong>：双栏论文按 y 坐标扫描会左右两栏串行（"本文提出了在图3中可以看到一种新方法……"）。</li>
+    <li><strong>表格</strong>：PDF 里的表格 = 一堆线条 + 一堆按坐标摆放的文字，"哪些字属于哪个单元格"需要几何推断；合并单元格、跨页表格、无边框表格逐级加难。</li>
+    <li><strong>页眉页脚/页码</strong>：每页重复的噪声文本，混进 chunk 会污染检索（一个 chunk 里出现"第 12 页 机密 内部资料"）。</li>
+    <li><strong>公式/特殊符号</strong>：字体子集化后字符映射可能损坏，抽出来是乱码。</li>
+    <li><strong>扫描件</strong>：根本没有文字层，纯图片，必须 OCR。</li>
+    <li><strong>跨页断裂</strong>：一个段落/表格被分页截断，朴素的按页解析会把它切成两个不完整片段。</li>
+  </ul>
+  <div class="callout deep">
+    <span class="tag">认知升级</span>
+    <p style="margin:0">所以现代解析方案的共同思路是：<strong>不要试图从指令流"读"出结构，而是像人一样"看"出结构</strong>——把页面当图像，用视觉模型做版面分析（Layout Analysis）。这也解释了为什么解析技术近两年突然变好：它搭上了视觉深度学习的便车。你的 ViT/CLIP 背景在这里又一次可以直接迁移。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="pipeline">
+  <h2><span class="no">B</span>工业级解析流水线的标准解剖</h2>
+  <p class="lead">MinerU、Docling、marker、商用 Document AI 的内部结构高度趋同，都是下面这条流水线的变体。逐段拆解：</p>
+
+  <div class="pipeline">
+    <span class="step">1 文档分诊</span><span class="arrow">→</span>
+    <span class="step">2 版面检测</span><span class="arrow">→</span>
+    <span class="step">3 阅读顺序恢复</span><span class="arrow">→</span>
+    <span class="step">4 分类型内容抽取</span><span class="arrow">→</span>
+    <span class="step">5 跨页缝合</span><span class="arrow">→</span>
+    <span class="step">6 输出结构化 Markdown/JSON</span>
+  </div>
+
+  <h3>B.1 文档分诊（Triage）</h3>
+  <p>第一步判断文档类型，路由到不同处理路径——这一步常被自研管线遗漏，是很多线上事故的根源：</p>
+  <ul>
+    <li><strong>原生 PDF（有文字层）</strong>：走"文字层抽取 + 版面模型辅助"的快速路径，文字 100% 准确。判断方法：抽样几页看能否提取到合理文本。</li>
+    <li><strong>扫描件 / 图片型 PDF</strong>：走 OCR 路径。注意<strong>混合文档</strong>（前 10 页原生、后面是扫描附件）要按页分诊。</li>
+    <li><strong>Office 文档（docx/pptx/xlsx）</strong>：是 XML 压缩包，结构是显式的，<em>永远不要把它们转成 PDF 再解析</em>——那是把结构化数据先降级成打印指令再逆向，纯属自残。直接用 <code>python-docx</code> / Docling 原生读取。</li>
+    <li><strong>HTML / Markdown</strong>：结构现成，清洗掉导航/广告即可（<code>trafilatura</code> 做网页正文抽取很成熟）。</li>
+  </ul>
+
+  <h3>B.2 版面检测（Layout Detection）</h3>
+  <p>把每页渲染成图像，用目标检测模型（YOLO 系或 DETR 系，在 DocLayNet / PubLayNet 等标注数据集上训练）把页面切成带类别的区块：</p>
+  <pre><code>[
+  {<span class="st">"type"</span>: <span class="st">"title"</span>,   <span class="st">"bbox"</span>: [72, 60, 540, 95],  <span class="st">"conf"</span>: 0.98},
+  {<span class="st">"type"</span>: <span class="st">"text"</span>,    <span class="st">"bbox"</span>: [72, 110, 300, 400], <span class="st">"conf"</span>: 0.95},  <span class="cm">← 左栏</span>
+  {<span class="st">"type"</span>: <span class="st">"text"</span>,    <span class="st">"bbox"</span>: [310, 110, 540, 400],<span class="st">"conf"</span>: 0.94},  <span class="cm">← 右栏</span>
+  {<span class="st">"type"</span>: <span class="st">"table"</span>,   <span class="st">"bbox"</span>: [72, 420, 540, 600], <span class="st">"conf"</span>: 0.97},
+  {<span class="st">"type"</span>: <span class="st">"figure"</span>,  <span class="st">"bbox"</span>: [...]}, {<span class="st">"type"</span>: <span class="st">"formula"</span>, <span class="st">"bbox"</span>: [...]},
+  {<span class="st">"type"</span>: <span class="st">"page_footer"</span>, <span class="st">"bbox"</span>: [...]}   <span class="cm">← 直接丢弃或入 metadata</span>
+]</code></pre>
+  <p>典型类别集：标题/正文/列表/表格/图片/图题/公式/页眉/页脚/脚注。这一步解决了"页眉页脚污染"和"图文混排"问题。</p>
+
+  <h3>B.3 阅读顺序恢复（Reading Order）</h3>
+  <p>对检测出的区块排序。简单版面用几何规则（XY-Cut 递归切分：先找垂直空白带分栏、再按 y 排序）；复杂版面（杂志、报纸、试卷）用专门的阅读顺序模型（如 LayoutReader，把区块序列排序当作序列预测任务）。双栏串行问题在这一步被根治。</p>
+
+  <h3>B.4 分类型内容抽取</h3>
+  <ul>
+    <li><strong>正文区块</strong>：原生 PDF 直接按 bbox 裁取文字层（准确且免费）；扫描件送 OCR（PaddleOCR / 商用 OCR）。</li>
+    <li><strong>表格区块</strong>：送专门的表格结构识别模型（TSR，如 TableMaster、Docling 的 TableFormer）：先识别行列网格与合并单元格，再填充文字 → 输出 HTML/Markdown 表格。<em>表格是独立子问题，用通用 OCR 硬抽注定失败</em>。</li>
+    <li><strong>公式区块</strong>：公式识别模型转 LaTeX（如 UniMERNet / pix2tex）。</li>
+    <li><strong>图片区块</strong>：裁图保存，记录 bbox 与图题关联；可选调 VLM 生成描述（衔接主文档 §11 多模态路线 A）。</li>
+  </ul>
+
+  <h3>B.5 跨页缝合与 B.6 结构化输出</h3>
+  <ul>
+    <li>缝合：段落末页无句号 + 下页首无缩进 → 合并；表格跨页 → 按表头对齐拼接。</li>
+    <li>输出统一为<strong>带层级的 Markdown + 结构 JSON</strong>（每个元素保留 type / 页码 / bbox / 标题层级），供下游结构感知分块直接消费。保留 bbox 的价值：前端可以做"点击引用高亮原文位置"的溯源体验。</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="tools">
+  <h2><span class="no">C</span>工具选型矩阵（2026 视角）</h2>
+  <table>
+    <tr><th>方案</th><th>路线</th><th>强项</th><th>弱项 / 备注</th></tr>
+    <tr><td><strong>PyMuPDF (fitz)</strong></td><td>规则：直读文字层</td><td>极快（毫秒级/页）、零模型依赖；<code>pymupdf4llm</code> 可直接输出 Markdown</td><td>无版面理解，复杂排版/表格弱。适合：格式简单的大批量文档、或作为分诊阶段的文字层探针</td></tr>
+    <tr><td><strong>unstructured</strong></td><td>规则+模型混合</td><td>格式覆盖最广（PDF/Office/HTML/邮件…统一 API），输出带元素类型；LangChain/LlamaIndex 集成好</td><td>hi_res 模式速度一般；表格质量中等。适合：来源杂、想要一个 API 通吃</td></tr>
+    <tr><td><strong>Docling</strong>（IBM 开源）</td><td>专用模型流水线</td><td>自研版面模型 + TableFormer 表格识别，表格质量出色；原生支持 Office；输出统一 DoclingDocument（含层级与 bbox）；MIT 协议；与 LangChain / LlamaIndex 有官方集成，自带 <code>HybridChunker</code> 结构感知分块</td><td>较新但迭代活跃。<strong>当前自建管线的推荐默认起点</strong></td></tr>
+    <tr><td><strong>MinerU</strong>（上海AI Lab 开源）</td><td>专用模型流水线</td><td>科技文献场景强：公式转 LaTeX、双栏处理、中文支持好；即本节 B 流水线的完整开源实现</td><td>依赖较重（需 GPU 才有好体验）。适合：论文/教材/中文技术文档</td></tr>
+    <tr><td><strong>marker</strong></td><td>专用模型流水线</td><td>PDF→Markdown 速度/质量平衡好，可选接 LLM 提升表格与公式</td><td>许可证对商用有收入门槛限制，选型前必查</td></tr>
+    <tr><td><strong>VLM 直接解析</strong><br/>（GPT-4o / Qwen-VL / olmOCR、<br/>专用小模型如 Nougat）</td><td>端到端视觉</td><td>把整页图直接交给 VLM "看图说 Markdown"，对极端复杂版面、手写、混合内容鲁棒性最高；管线最短</td><td>成本高（每页一次推理）、可能幻觉（表格数字被"合理地编错"是致命伤，且难以发现）、长文档吞吐低。适合：高价值低容量文档，或作为其他管线失败页的兜底</td></tr>
+    <tr><td><strong>商用 API</strong><br/>（Azure Document Intelligence、<br/>Google Document AI、AWS Textract）</td><td>托管服务</td><td>免运维、SLA、表格/表单/发票等场景经过海量调优，支持自定义抽取模型</td><td>按页计费、数据出域合规问题。适合：企业预算充足、不想养解析团队</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <span class="tag">选型决策树</span>
+    <ul style="margin:0">
+      <li>文档简单（纯文字、单栏）→ PyMuPDF 快速路径，别过度工程。</li>
+      <li>自建、文档含表格/多栏 → <strong>Docling</strong>（通用）或 <strong>MinerU</strong>（学术/中文文献）。</li>
+      <li>来源极杂、要一个接口通吃 → unstructured。</li>
+      <li>预算充足求稳 → 商用 API。</li>
+      <li>无论选哪个：<strong>VLM 兜底失败页 + 人工抽检机制</strong>都值得配。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="example">
+  <h2><span class="no">D</span>端到端可跑示例：Docling 版</h2>
+  <pre><code><span class="cm"># uv add docling</span>
+<span class="kw">from</span> docling.document_converter <span class="kw">import</span> DocumentConverter
+<span class="kw">from</span> docling.chunking <span class="kw">import</span> HybridChunker
+
+converter = DocumentConverter()          <span class="cm"># 内部自动完成：分诊→版面检测→表格识别→阅读顺序→缝合</span>
+result = converter.convert(<span class="st">"annual_report.pdf"</span>)
+doc = result.document                    <span class="cm"># DoclingDocument：带层级结构的统一中间表示</span>
+
+<span class="cm"># 路线1：导出 Markdown（表格已是管道表格，标题带层级）人工抽检解析质量</span>
+md = doc.export_to_markdown()
+
+<span class="cm"># 路线2：直接结构感知分块（尊重标题/表格边界，chunk 自带标题路径元数据）</span>
+chunker = HybridChunker(tokenizer=<span class="st">"BAAI/bge-m3"</span>, max_tokens=<span class="nb">512</span>, merge_peers=<span class="kw">True</span>)
+<span class="kw">for</span> chunk <span class="kw">in</span> chunker.chunk(doc):
+    text = chunker.contextualize(chunk)  <span class="cm"># 关键：自动把 "文档名 &gt; 章 &gt; 节" 标题路径拼进 chunk 文本再去 embedding</span>
+    meta = {
+        <span class="st">"headings"</span>: chunk.meta.headings,             <span class="cm"># ['年度报告', '第三章 财务', '3.2 营收']</span>
+        <span class="st">"page"</span>: chunk.meta.doc_items[<span class="nb">0</span>].prov[<span class="nb">0</span>].page_no,  <span class="cm"># 页码 → 支持引用溯源</span>
+    }
+    vectorstore.add_texts([text], metadatas=[meta])</code></pre>
+  <div class="callout pitfall">
+    <span class="tag">上线前必做的质量验证</span>
+    <ul style="margin:0">
+      <li><strong>解析也需要评估集</strong>：抽 20-50 页有代表性的页面（含最难的表格/双栏页），人工核对解析输出，统计表格单元格错误率、阅读顺序错误率。解析质量不达标，后面全部白搭。</li>
+      <li>对数字敏感场景（财报、医疗），VLM/OCR 路线要加"抽取数字与原文交叉核对"的校验，防静默篡改。</li>
+      <li>监控解析失败率与异常页（空文本、乱码比例超标自动告警 + 转人工/VLM 兜底队列）。</li>
+    </ul>
+  </div>
+</section>
+
+<a class="backlink" href="../index.html#s3">← 返回主文档 §3</a>
+</main>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Day 14 - Week2 复盘与 VLM 小助手设计</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1010;
+        --surface: #121a19;
+        --surface-2: #172220;
+        --surface-3: #1d2926;
+        --ink: #edf5f1;
+        --muted: #9eb0a8;
+        --line: #31413c;
+        --cyan: #5eead4;
+        --cyan-soft: #123832;
+        --amber: #f6c66f;
+        --amber-soft: #3a2d17;
+        --coral: #f39a7b;
+        --coral-soft: #3b241d;
+        --blue: #8ec5ff;
+        --blue-soft: #182d42;
+        --code: #060b0a;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(237, 245, 241, 0.022) 1px, transparent 1px) 0 0 / 32px 32px,
+          linear-gradient(rgba(237, 245, 241, 0.018) 1px, transparent 1px) 0 0 / 32px 32px,
+          var(--bg);
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        line-height: 1.72;
+      }
+
+      a { color: inherit; }
+      button, select { font: inherit; }
+      button:focus-visible, a:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+      .hero {
+        min-height: 68svh;
+        display: grid;
+        grid-template-columns: minmax(22px, 1fr) minmax(0, 1200px) minmax(22px, 1fr);
+        align-items: center;
+        padding: 48px 0 42px;
+        border-bottom: 1px solid var(--line);
+        background:
+          linear-gradient(110deg, rgba(94, 234, 212, 0.08), transparent 42%),
+          linear-gradient(300deg, rgba(246, 198, 111, 0.07), transparent 38%),
+          #0e1514;
+      }
+
+      .hero-inner {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(400px, 1.1fr);
+        gap: 52px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--amber);
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      h1, h2, h3 { letter-spacing: 0; }
+      h1 {
+        margin: 0;
+        max-width: 820px;
+        font-family: Georgia, "Noto Serif SC", serif;
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1.04;
+        font-weight: 700;
+      }
+
+      .hero-copy { max-width: 760px; margin: 24px 0 0; color: var(--muted); font-size: 19px; }
+      .hero-status { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+      .status-mark { padding: 5px 9px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+      .status-mark.active { border-color: #4b9f91; background: var(--cyan-soft); color: #c9fff6; }
+
+      .hero-visual {
+        min-width: 0;
+        border: 1px solid #3a4c46;
+        background: #0a100f;
+        box-shadow: 12px 12px 0 #050908;
+        overflow: hidden;
+      }
+      .hero-visual svg { display: block; width: 100%; height: auto; }
+
+      .page { display: grid; grid-template-columns: minmax(22px, 1fr) minmax(0, 1200px) minmax(22px, 1fr); }
+      .workspace { grid-column: 2; display: grid; grid-template-columns: 276px minmax(0, 1fr); gap: 38px; padding: 36px 0 90px; align-items: start; }
+
+      nav {
+        position: sticky;
+        top: 18px;
+        max-height: calc(100svh - 36px);
+        overflow: auto;
+        border: 1px solid var(--line);
+        background: rgba(17, 25, 23, 0.94);
+        padding: 18px;
+        backdrop-filter: blur(12px);
+      }
+      .nav-label { color: var(--cyan); font-weight: 800; }
+      .nav-note { margin: 6px 0 14px; color: var(--muted); font-size: 13px; }
+      nav a { display: block; padding: 9px 0; border-top: 1px solid rgba(125, 151, 142, 0.22); color: #d9e7e1; font-size: 14px; text-decoration: none; }
+      nav a:hover { color: var(--amber); }
+
+      main { min-width: 0; }
+      section { padding: 38px 0; border-bottom: 1px solid var(--line); }
+      section:first-child { padding-top: 0; }
+      h2 { margin: 0 0 18px; font-family: Georgia, "Noto Serif SC", serif; font-size: clamp(29px, 3.4vw, 44px); line-height: 1.16; }
+      h3 { margin: 28px 0 12px; font-size: 21px; line-height: 1.3; }
+      p { margin: 0 0 16px; }
+      .lead { color: #d7e5df; font-size: 19px; }
+
+      .callout { margin: 20px 0; padding: 16px 18px; border-left: 5px solid var(--cyan); background: var(--cyan-soft); }
+      .callout.amber { border-left-color: var(--amber); background: var(--amber-soft); }
+      .callout.coral { border-left-color: var(--coral); background: var(--coral-soft); }
+
+      .roadmap { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin: 20px 0; border: 1px solid var(--line); background: var(--line); }
+      .road-step { min-width: 0; padding: 17px 15px; background: var(--surface); }
+      .road-step.current { background: var(--cyan-soft); }
+      .road-num { color: var(--amber); font-family: Consolas, monospace; font-size: 13px; }
+      .road-step h3 { margin: 6px 0 8px; font-size: 17px; }
+      .road-step p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+      .knowledge-lab { margin: 24px 0; }
+      .day-switcher { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+      .day-button {
+        min-height: 54px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .day-button:hover { border-color: #5a766d; background: var(--surface-2); }
+      .day-button[aria-pressed="true"] { border-color: var(--cyan); background: var(--cyan-soft); color: #d4fff8; }
+
+      .day-detail { min-height: 292px; display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(280px, 0.3fr); border: 1px solid var(--line); background: var(--surface); }
+      .day-main { padding: 24px; }
+      .day-side { padding: 24px; border-left: 1px solid var(--line); background: var(--surface-2); }
+      .day-kicker { margin: 0 0 8px; color: var(--cyan); font-family: Consolas, monospace; font-size: 13px; }
+      .day-main h3 { margin: 0 0 12px; font-family: Georgia, "Noto Serif SC", serif; font-size: 28px; }
+      .day-question { color: var(--amber); font-weight: 700; }
+      .io-label { margin: 0 0 7px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+      .io-value { margin: 0 0 18px; font-family: Consolas, monospace; color: #dffaf2; overflow-wrap: anywhere; }
+      .day-link { display: inline-block; margin-top: 4px; color: var(--blue); }
+
+      .pipeline { margin: 26px 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: stretch; border: 1px solid var(--line); background: var(--line); gap: 1px; }
+      .pipe-node { min-width: 0; padding: 16px 10px; background: #101817; text-align: center; }
+      .pipe-node strong { display: block; color: var(--ink); font-size: 14px; overflow-wrap: anywhere; }
+      .pipe-node span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+      .pipe-node:nth-child(2), .pipe-node:nth-child(3) { background: #14231f; }
+      .pipe-node:nth-child(4), .pipe-node:nth-child(5) { background: #18243a; }
+      .pipe-node:nth-child(6), .pipe-node:nth-child(7) { background: #2d2018; }
+
+      .compare { width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid var(--line); background: var(--surface); }
+      .compare th, .compare td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      .compare th { background: var(--surface-3); color: #d8e6e0; font-size: 13px; }
+      .compare tr:last-child td { border-bottom: 0; }
+
+      code, pre { font-family: "Cascadia Code", Consolas, monospace; }
+      code { padding: 2px 5px; color: #c8fff6; background: rgba(94, 234, 212, 0.09); }
+      pre { margin: 18px 0; padding: 18px; overflow: auto; border: 1px solid #2b3e38; background: var(--code); color: #ddf9f0; }
+
+      .scope-lab { margin: 24px 0; }
+      .scope-switcher { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+      .scope-button { min-height: 52px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 700; }
+      .scope-button:hover { border-color: #5a766d; background: var(--surface-2); }
+      .scope-button[aria-pressed="true"] { border-color: var(--amber); background: var(--amber-soft); color: #ffe5ae; }
+      .scope-detail { min-height: 244px; display: grid; grid-template-columns: minmax(0, 0.62fr) minmax(280px, 0.38fr); border: 1px solid var(--line); background: var(--surface); }
+      .scope-main, .scope-side { padding: 22px; }
+      .scope-side { border-left: 1px solid var(--line); background: var(--surface-2); }
+      .scope-main h3 { margin-top: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 27px; }
+      .scope-label { margin: 0 0 6px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+      .scope-value { margin: 0 0 16px; color: #deeee8; }
+      .contract-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
+      .contract-block { padding-top: 15px; border-top: 3px solid var(--line); }
+      .contract-block:nth-child(1) { border-top-color: var(--cyan); }
+      .contract-block:nth-child(2) { border-top-color: var(--amber); }
+      .contract-block:nth-child(3) { border-top-color: var(--coral); }
+      .contract-block h3 { margin: 0 0 8px; font-size: 18px; }
+      .contract-block ul { margin: 0; padding-left: 20px; color: var(--muted); }
+      .quiz { margin: 22px 0; border: 1px solid var(--line); background: var(--surface); padding: 20px; }
+      .quiz h3 { margin-top: 0; }
+      .quiz-options { display: grid; gap: 9px; margin-top: 16px; }
+      .quiz-option { padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; background: #101716; color: var(--ink); text-align: left; cursor: pointer; }
+      .quiz-option:hover { border-color: #5c776e; }
+      .quiz-option.correct { border-color: var(--cyan); background: var(--cyan-soft); }
+      .quiz-option.wrong { border-color: var(--coral); background: var(--coral-soft); }
+      .quiz-feedback { min-height: 54px; margin: 14px 0 0; padding: 12px 14px; border-left: 4px solid var(--line); color: var(--muted); background: #0e1514; }
+      .quiz-feedback.ok { border-left-color: var(--cyan); color: #d6fff8; }
+      .quiz-feedback.no { border-left-color: var(--coral); color: #ffd7cb; }
+
+      .preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+      .preview-item { border-top: 3px solid var(--line); padding: 16px 0 0; }
+      .preview-item:nth-child(1) { border-top-color: var(--amber); }
+      .preview-item:nth-child(2) { border-top-color: var(--blue); }
+      .preview-item:nth-child(3) { border-top-color: var(--coral); }
+      .preview-item:nth-child(4) { border-top-color: var(--cyan); }
+      .preview-item h3 { margin: 0 0 8px; }
+      .preview-item p { color: var(--muted); }
+
+      .source-list { padding-left: 22px; }
+      .source-list li { margin: 8px 0; }
+
+      @media (max-width: 980px) {
+        .hero-inner, .workspace { grid-template-columns: 1fr; }
+        .hero { min-height: auto; }
+        nav { position: static; max-height: none; }
+        .roadmap { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .day-detail, .scope-detail { grid-template-columns: 1fr; }
+        .day-side, .scope-side { border-left: 0; border-top: 1px solid var(--line); }
+        .pipeline { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+
+      @media (max-width: 640px) {
+        .hero-inner { gap: 30px; }
+        .hero-visual { box-shadow: 8px 8px 0 #050908; }
+        .day-switcher, .scope-switcher { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .roadmap, .preview-grid, .contract-grid { grid-template-columns: 1fr; }
+        .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .compare { display: block; overflow-x: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div>
+          <p class="eyebrow">Day 14 · Week 2 Integration Lab</p>
+          <h1>Week2 复盘与 VLM 小助手设计</h1>
+          <p class="hero-copy">今天不再单独学习一个模型组件，而是把 ViT、CLIP、检索、VLM 推理与 LLaVA 训练串成完整系统，再从真实需求反推一个可实现、可评测的视觉问答助手。</p>
+          <div class="hero-status" aria-label="Day14 learning status">
+            <span class="status-mark active">Step 02 当前阶段</span>
+            <span class="status-mark">先复盘，再设计</span>
+            <span class="status-mark">暂不直接写 Demo</span>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="Week2 knowledge to VLM assistant system map">
+          <svg viewBox="0 0 800 540" role="img">
+            <title>从 Week2 知识模块到 VLM 小助手方案</title>
+            <rect width="800" height="540" fill="#0a100f" />
+            <text x="42" y="55" fill="#5eead4" font-size="23" font-weight="800">FROM COMPONENTS TO SYSTEM</text>
+            <text x="42" y="86" fill="#9eb0a8" font-size="15">Day8-Day13 become one executable design.</text>
+            <g font-family="Segoe UI, sans-serif">
+              <rect x="44" y="130" width="150" height="76" fill="#15352f" stroke="#4fae9f" />
+              <text x="66" y="162" fill="#edf5f1" font-size="17" font-weight="700">Vision tokens</text>
+              <text x="66" y="187" fill="#a9bbb4" font-size="13">ViT · Day8</text>
+              <rect x="234" y="130" width="150" height="76" fill="#182d42" stroke="#6599c8" />
+              <text x="256" y="162" fill="#edf5f1" font-size="17" font-weight="700">Alignment</text>
+              <text x="256" y="187" fill="#b3cce3" font-size="13">CLIP · Day9-11</text>
+              <rect x="424" y="130" width="150" height="76" fill="#3a2d17" stroke="#c99b49" />
+              <text x="446" y="162" fill="#edf5f1" font-size="17" font-weight="700">Generation</text>
+              <text x="446" y="187" fill="#dfc99b" font-size="13">VLM · Day12</text>
+              <rect x="614" y="130" width="142" height="76" fill="#3b241d" stroke="#ca775d" />
+              <text x="636" y="162" fill="#edf5f1" font-size="17" font-weight="700">Training</text>
+              <text x="636" y="187" fill="#ddb5a8" font-size="13">LLaVA · Day13</text>
+              <path d="M194 168 H234 M384 168 H424 M574 168 H614" stroke="#7c9189" stroke-width="3" />
+              <path d="M400 206 V276" stroke="#5eead4" stroke-width="4" />
+              <rect x="132" y="276" width="536" height="156" fill="#111b18" stroke="#47635a" />
+              <text x="166" y="316" fill="#f6c66f" font-size="19" font-weight="800">VLM VISUAL ASSISTANT</text>
+              <text x="166" y="350" fill="#edf5f1" font-size="16">input contract · model choice · prompt · evaluation</text>
+              <text x="166" y="382" fill="#a9bbb4" font-size="14">screenshot / chart / photo</text>
+              <text x="166" y="410" fill="#a9bbb4" font-size="14">answer + runtime metadata + failure boundary</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="page">
+      <div class="workspace">
+        <nav aria-label="Day14 学习导航">
+          <div class="nav-label">Day14 学习路线</div>
+          <p class="nav-note">先把知识连接起来，再做工程选择。</p>
+          <a href="#goal">0. 今天解决什么</a>
+          <a href="#roadmap">1. 分阶段计划</a>
+          <a href="#step01-map">2. Step 01 知识地图</a>
+          <a href="#pipeline">2.1 统一数据流</a>
+          <a href="#boundaries">2.2 能力与边界</a>
+          <a href="#step02-contract">3. Step 02 需求契约</a>
+          <a href="#checkpoint">4. 当前检查点</a>
+          <a href="#next">5. 后续步骤预告</a>
+          <a href="#sources">6. 本地入口</a>
+        </nav>
+
+        <main>
+          <section id="goal">
+            <h2>0. 今天解决什么</h2>
+            <p class="lead">Day14 的核心不是“把本周内容再看一遍”，而是回答一个工程问题：如果现在要做一个 VLM 图像问答助手，Day8-Day13 的知识分别会在哪个决策点发挥作用？</p>
+            <div class="callout"><strong>学习顺序：</strong>知识地图 → 用户任务 → 输入输出契约 → 模型与约束 → 测试集 → 技术方案。没有前面的需求定义，后面的模型选择就只是猜测。</div>
+            <div class="callout amber"><strong>当前边界：</strong>初始化阶段只完成 Step 01。暂不直接创建应用代码，也不提前把模型选择写死；后续每一步都要由你的理解和回答推动。</div>
+          </section>
+
+          <section id="roadmap">
+            <h2>1. 分阶段计划</h2>
+            <div class="roadmap">
+              <article class="road-step"><span class="road-num">STEP 01</span><h3>知识地图</h3><p>把 ViT、CLIP、VLM、LLaVA 串成系统数据流。</p></article>
+              <article class="road-step current"><span class="road-num">STEP 02</span><h3>需求契约</h3><p>确定用户、任务、输入、输出和拒答边界。</p></article>
+              <article class="road-step"><span class="road-num">STEP 03</span><h3>模型决策</h3><p>根据能力、资源、速度和离线要求选型。</p></article>
+              <article class="road-step"><span class="road-num">STEP 04</span><h3>测试设计</h3><p>组织截图、图表、照片与明确评分标准。</p></article>
+              <article class="road-step"><span class="road-num">STEP 05</span><h3>技术方案</h3><p>形成可实现、可观测、可评测的设计稿。</p></article>
+            </div>
+          </section>
+
+          <section id="step01-map">
+            <h2>2. Step 01：重建 Week2 知识地图</h2>
+            <p>先不要按“第几天”背知识。每一天都在回答 VLM 系统中的一个关键问题。下面的知识地图会把它们重新放回完整链路。</p>
+
+            <div class="knowledge-lab" aria-label="Week2 interactive knowledge map">
+              <div class="day-switcher" role="group" aria-label="选择学习日">
+                <button class="day-button" type="button" data-day="8" aria-pressed="true">Day 8</button>
+                <button class="day-button" type="button" data-day="9" aria-pressed="false">Day 9</button>
+                <button class="day-button" type="button" data-day="10" aria-pressed="false">Day 10</button>
+                <button class="day-button" type="button" data-day="11" aria-pressed="false">Day 11</button>
+                <button class="day-button" type="button" data-day="12" aria-pressed="false">Day 12</button>
+                <button class="day-button" type="button" data-day="13" aria-pressed="false">Day 13</button>
+              </div>
+
+              <div class="day-detail" aria-live="polite">
+                <div class="day-main">
+                  <p class="day-kicker" id="dayKicker">DAY 08 · VISUAL TOKENIZATION</p>
+                  <h3 id="dayTitle">ViT Patch Embedding</h3>
+                  <p class="day-question" id="dayQuestion">图片像素怎样变成 Transformer 可以处理的 token 序列？</p>
+                  <p id="dayContribution">切分 patch、展平并线性投影，使二维图片成为一串带位置信息的视觉 embedding。</p>
+                  <p id="dayConnection">它是后续 CLIP vision encoder 和 VLM image tokens 的底层入口。</p>
+                  <a class="day-link" id="dayLink" href="../day-08-vit-patch-embedding/index.html">打开 Day8 教学文档</a>
+                </div>
+                <aside class="day-side">
+                  <p class="io-label">输入</p>
+                  <p class="io-value" id="dayInput">image tensor [B, C, H, W]</p>
+                  <p class="io-label">输出</p>
+                  <p class="io-value" id="dayOutput">patch embeddings [B, N, D]</p>
+                  <p class="io-label">系统职责</p>
+                  <p class="io-value" id="dayRole">把视觉空间转换为 token 空间</p>
+                </aside>
+              </div>
+            </div>
+
+            <h3 id="pipeline">2.1 把六天放进同一条数据流</h3>
+            <div class="pipeline" role="img" aria-label="VLM 从图片到回答的统一数据流">
+              <div class="pipe-node"><strong>Image</strong><span>原始输入</span></div>
+              <div class="pipe-node"><strong>Patch tokens</strong><span>Day8</span></div>
+              <div class="pipe-node"><strong>Vision features</strong><span>Day9 / 11</span></div>
+              <div class="pipe-node"><strong>Retrieval signal</strong><span>Day10</span></div>
+              <div class="pipe-node"><strong>Image tokens</strong><span>Day12</span></div>
+              <div class="pipe-node"><strong>Instruction tuning</strong><span>Day13</span></div>
+              <div class="pipe-node"><strong>Answer</strong><span>系统输出</span></div>
+            </div>
+
+            <pre><code>image pixels
+-> ViT patch embedding
+-> CLIP visual representation
+-> projector aligns hidden dimensions
+-> image tokens + question tokens
+-> LLM next-token prediction
+-> decoded answer</code></pre>
+
+            <div class="callout"><strong>关键连接：</strong>Day10 的检索路线和 Day12-Day13 的生成路线共享视觉表征基础，但后端目标不同。检索系统比较向量相似度；视觉助手把 image tokens 当作上下文生成回答。</div>
+
+            <h3 id="boundaries">2.2 每层能力都对应一个失败边界</h3>
+            <table class="compare">
+              <thead><tr><th>层级</th><th>解决的问题</th><th>典型失败</th><th>设计时要问什么</th></tr></thead>
+              <tbody>
+                <tr><td>视觉 token 化</td><td>把图片转换为序列表示</td><td>分辨率不足，小字或细节丢失</td><td>输入尺寸是否适合 OCR 与图表？</td></tr>
+                <tr><td>视觉语义表示</td><td>识别物体、场景和语义关系</td><td>细粒度属性、空间关系不稳定</td><td>视觉塔是否覆盖目标任务？</td></tr>
+                <tr><td>跨模态对齐</td><td>让视觉信息进入语言空间</td><td>图片信息被压缩或映射不足</td><td>模型是否针对图文任务训练？</td></tr>
+                <tr><td>语言生成</td><td>按问题组织自然语言回答</td><td>遗漏要点、幻觉、回答不完整</td><td>提示词和输出契约如何约束？</td></tr>
+                <tr><td>产品系统</td><td>处理输入、运行、记录与失败</td><td>格式错误、资源不足、结果不可追踪</td><td>如何校验、降级、记录和评测？</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="step02-contract">
+            <h2>3. Step 02：定义通用多模态 Demo</h2>
+            <p class="lead">你的目标已经明确：它是一个用于学习和验证 VLM 能力的通用小助手 Demo。第一版重点是跑通稳定的数据流、观察能力边界，而不是一次性覆盖所有模态和生产场景。</p>
+            <div class="callout"><strong>当前需求基线：</strong>单张图片与文本问题共同输入，模型生成自然语言回答；覆盖软件截图、基础图表和普通照片三类常见视觉任务。</div>
+
+            <h3>3.1 “通用多模态”需要先收窄</h3>
+            <table class="compare">
+              <thead><tr><th>第一版支持</th><th>暂不支持</th><th>原因</th></tr></thead>
+              <tbody>
+                <tr><td>单张图片 + 文本问题</td><td>多图对比、视频、音频</td><td>先把最小多模态链路做稳定，避免输入组织和模型选型同时膨胀。</td></tr>
+                <tr><td>截图、图表、普通照片</td><td>医疗、遥感、工业质检等专业领域</td><td>通用模型可以做基础理解，但不应把专业可靠性作为 Demo 承诺。</td></tr>
+                <tr><td>自然语言回答</td><td>自动操作界面、执行外部动作</td><td>当前目标是理解与问答，不引入工具调用和外部副作用。</td></tr>
+                <tr><td>本地单用户运行</td><td>高并发、权限、计费、SLA</td><td>这些属于产品化与服务治理，不是当前学习主线。</td></tr>
+              </tbody>
+            </table>
+            <div class="callout amber"><strong>概念纠偏：</strong>“支持多模态”在第一版中具体指图片模态和文本模态共同参与一次推理，不等于同时支持图片、视频、音频、文档和任意工具。</div>
+
+            <h3>3.2 三类通用任务的契约不同</h3>
+            <div class="scope-lab" aria-label="VLM demo task scope explorer">
+              <div class="scope-switcher" role="group" aria-label="选择任务类型">
+                <button class="scope-button" type="button" data-scope="screenshot" aria-pressed="true">截图理解</button>
+                <button class="scope-button" type="button" data-scope="chart" aria-pressed="false">图表问答</button>
+                <button class="scope-button" type="button" data-scope="photo" aria-pressed="false">普通照片</button>
+              </div>
+              <div class="scope-detail" aria-live="polite">
+                <div class="scope-main">
+                  <p class="day-kicker" id="scopeKicker">TASK 01 · SCREENSHOT</p>
+                  <h3 id="scopeTitle">软件截图理解</h3>
+                  <p id="scopeGoal">识别界面中的文字、控件、状态和相对位置，并围绕用户指定的问题回答。</p>
+                  <p class="day-question" id="scopeExample">示例：当前页面显示了什么错误？哪个按钮可以继续执行？</p>
+                </div>
+                <aside class="scope-side">
+                  <p class="scope-label">重点能力</p>
+                  <p class="scope-value" id="scopeAbility">OCR + 控件语义 + 布局关系</p>
+                  <p class="scope-label">主要风险</p>
+                  <p class="scope-value" id="scopeRisk">小字漏读、状态区域混淆、控件关系判断错误</p>
+                  <p class="scope-label">验收方式</p>
+                  <p class="scope-value" id="scopeEval">答案覆盖指定文字、控件和状态要点</p>
+                </aside>
+              </div>
+            </div>
+
+            <h3>3.3 输入、输出和失败契约</h3>
+            <div class="contract-grid">
+              <article class="contract-block"><h3>输入</h3><ul><li>必选：一个有效图片路径</li><li>必选：一个文本问题</li><li>可选：任务模式与生成参数</li></ul></article>
+              <article class="contract-block"><h3>输出</h3><ul><li>自然语言回答</li><li>模型、设备和耗时</li><li>可选的结构化 JSONL 记录</li></ul></article>
+              <article class="contract-block"><h3>失败</h3><ul><li>图片不存在或格式不支持</li><li>资源不足或模型加载失败</li><li>视觉信息不足时明确说明</li></ul></article>
+            </div>
+            <pre><code>request = {
+  "image": "path/to/image.png",
+  "question": "这张图片中最重要的信息是什么？",
+  "task_mode": "auto"
+}
+
+response = {
+  "answer": "...",
+  "model": "...",
+  "device": "...",
+  "latency_ms": 0,
+  "error": null
+}</code></pre>
+            <p><code>task_mode</code> 默认使用 <code>auto</code>，让通用问答保持简单；评测时可以显式指定 <code>screenshot</code>、<code>chart</code> 或 <code>photo</code>，便于采用不同提示词和评分规则。</p>
+            <div class="callout coral"><strong>不承诺“什么都能答”：</strong>通用 Demo 的价值是让三类代表性任务走过同一条 VLM 推理链路，并真实记录成功与失败，而不是隐藏模型能力边界。</div>
+          </section>
+          <section id="checkpoint">
+            <h2>4. 当前检查点</h2>
+            <p>Step 02 要确认的是：我们设计的是可学习、可运行、可评测的通用 Demo，而不是无限范围的多模态产品。</p>
+            <div class="quiz" data-answer="b">
+              <h3>下面哪一个最符合第一版需求？</h3>
+              <div class="quiz-options">
+                <button type="button" class="quiz-option" data-choice="a">A. 一开始同时支持图片、视频、音频、多图对比和自动操作电脑。</button>
+                <button type="button" class="quiz-option" data-choice="b">B. 接收单张图片和文本问题，覆盖三类通用视觉任务，并返回回答与运行信息。</button>
+                <button type="button" class="quiz-option" data-choice="c">C. 只输入图片并永远生成固定格式的图片描述，不允许用户提问。</button>
+              </div>
+              <p class="quiz-feedback" id="quizFeedback">请选择一个需求边界。</p>
+            </div>
+            <ol>
+              <li>为什么“通用多模态 Demo”仍然需要明确支持范围？</li>
+              <li>除了自然语言回答，你认为输出中为什么还要保留模型名称、设备和推理耗时？</li>
+              <li>当图片信息不足时，助手应该猜测答案，还是明确说明无法确认？为什么？</li>
+            </ol>
+          </section>
+
+          <section id="next">
+            <h2>5. 后续步骤预告</h2>
+            <p class="lead">后续不是继续堆概念，而是逐步做出工程决策。每一步都会更新本页和设计草稿。</p>
+            <div class="preview-grid">
+              <article class="preview-item"><h3>Step 03 · 模型决策</h3><p>在本地资源、任务质量、速度和维护成本之间做取舍。</p></article>
+              <article class="preview-item"><h3>Step 04 · 测试集</h3><p>为截图、图表、照片定义问题、期望要点和失败条件。</p></article>
+              <article class="preview-item"><h3>Step 05 · 技术方案</h3><p>确定模块、数据流、错误处理、结果记录与验收方式。</p></article>
+            </div>
+          </section>
+
+          <section id="sources">
+            <h2>6. 本地入口</h2>
+            <ul class="source-list">
+              <li><a href="../../notes/day-14-week2-review-vlm-assistant.md">Day14 状态笔记</a></li>
+              <li><a href="../../demos/vlm-visual-assistant/design.md">VLM 小助手设计草稿</a></li>
+              <li><a href="../week-02-multimodal-understanding/index.html">Week2 总览</a></li>
+              <li><a href="../day-13-llava-paper-reading/index.html">Day13 LLaVA 论文阅读</a></li>
+              <li><a href="../30-day-executable-checklist.md">30 天执行清单</a></li>
+            </ul>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const dayData = {
+        8: {
+          kicker: "DAY 08 · VISUAL TOKENIZATION",
+          title: "ViT Patch Embedding",
+          question: "图片像素怎样变成 Transformer 可以处理的 token 序列？",
+          contribution: "切分 patch、展平并线性投影，使二维图片成为一串带位置信息的视觉 embedding。",
+          connection: "它是后续 CLIP vision encoder 和 VLM image tokens 的底层入口。",
+          input: "image tensor [B, C, H, W]",
+          output: "patch embeddings [B, N, D]",
+          role: "把视觉空间转换为 token 空间",
+          href: "../day-08-vit-patch-embedding/index.html",
+          link: "打开 Day8 教学文档"
+        },
+        9: {
+          kicker: "DAY 09 · CROSS-MODAL ALIGNMENT",
+          title: "CLIP 图文对齐",
+          question: "图片和文本怎样进入可以直接比较的共享语义空间？",
+          contribution: "分别编码图片和文本，通过对比学习拉近正确图文对、推远错误图文对。",
+          connection: "它提供可复用的视觉语义表示，也是 LLaVA 选择 CLIP 视觉塔的重要基础。",
+          input: "image batch + text batch",
+          output: "aligned image/text embeddings",
+          role: "学习视觉与语言的语义对应关系",
+          href: "../day-09-clip-alignment/index.html",
+          link: "打开 Day9 教学文档"
+        },
+        10: {
+          kicker: "DAY 10 · RETRIEVAL SYSTEM",
+          title: "CLIP 图文检索",
+          question: "如何把 embedding 变成一个能搜索、排序和拒答的系统？",
+          contribution: "把文本作为 query、图片作为 gallery，通过相似度、top-k、Recall@K 和阈值形成检索流程。",
+          connection: "它展示了模型能力之外还需要索引、评测、阈值和产品边界。",
+          input: "query embedding + gallery embeddings",
+          output: "ranked results + scores",
+          role: "把模型表示转化为可评测应用",
+          href: "../day-10-clip-retrieval/index.html",
+          link: "打开 Day10 教学文档"
+        },
+        11: {
+          kicker: "DAY 11 · PAPER REASONING",
+          title: "CLIP 论文阅读",
+          question: "为什么大规模自然语言监督可以迁移到零样本视觉任务？",
+          contribution: "从论文层面理解数据规模、对比目标、prompt、zero-shot transfer 与局限性。",
+          connection: "它让模型选择不只停留在 API 使用，而能追溯能力来源与失败原因。",
+          input: "paper claims + figures + experiments",
+          output: "mechanism + evidence + limitations",
+          role: "建立论文证据与工程判断的连接",
+          href: "../day-11-clip-paper-reading/index.html",
+          link: "打开 Day11 教学文档"
+        },
+        12: {
+          kicker: "DAY 12 · MULTIMODAL GENERATION",
+          title: "VLM 图像问答",
+          question: "视觉 token 怎样与问题 token 一起参与 LLM 的回答生成？",
+          contribution: "理解 processor、vision encoder、projector、LLM、generate 和 decode，并运行本地轻量模型。",
+          connection: "它给出视觉助手的真实推理链路和 OCR、图表、场景任务的失败边界。",
+          input: "image path + question text",
+          output: "decoded answer + runtime result",
+          role: "把多模态架构落实为真实推理",
+          href: "../day-12-vlm-image-qa/index.html",
+          link: "打开 Day12 教学文档"
+        },
+        13: {
+          kicker: "DAY 13 · VISUAL INSTRUCTION TUNING",
+          title: "LLaVA 论文阅读",
+          question: "一个 VLM 怎样从视觉对齐进一步学会围绕图片遵循指令？",
+          contribution: "理解 CLIP 视觉塔、projection matrix、Vicuna、GPT-assisted 数据和两阶段训练。",
+          connection: "它解释了视觉助手能力如何被训练出来，也明确了冻结模块与参数更新范围。",
+          input: "image + visual instruction",
+          output: "assistant answer tokens",
+          role: "解释视觉问答行为的训练来源",
+          href: "../day-13-llava-paper-reading/index.html",
+          link: "打开 Day13 教学文档"
+        }
+      };
+
+      const scopeData = {
+        screenshot: { kicker: "TASK 01 · SCREENSHOT", title: "软件截图理解", goal: "识别界面中的文字、控件、状态和相对位置，并围绕用户指定的问题回答。", example: "示例：当前页面显示了什么错误？哪个按钮可以继续执行？", ability: "OCR + 控件语义 + 布局关系", risk: "小字漏读、状态区域混淆、控件关系判断错误", evaluation: "答案覆盖指定文字、控件和状态要点" },
+        chart: { kicker: "TASK 02 · CHART QA", title: "图表问答", goal: "读取标题、坐标轴、图例和数据趋势，回答比较、极值与变化问题。", example: "示例：哪个季度最高？Q2 到 Q4 的趋势是什么？", ability: "文字读取 + 数值比较 + 趋势解释", risk: "刻度误读、系列混淆、没有回答完整比较条件", evaluation: "答案包含正确对象、数值或趋势和问题要求的比较" },
+        photo: { kicker: "TASK 03 · PHOTO QA", title: "普通照片理解", goal: "回答主体、动作、位置、场景关系和可观察到的基础事实。", example: "示例：图片中有哪些主体？他们正在做什么？", ability: "主体识别 + 动作理解 + 空间关系", risk: "细粒度属性幻觉、遮挡物误判、常识推断过度", evaluation: "答案区分观察事实与不确定推断，覆盖关键主体和动作" }
+      };
+
+      const scopeButtons = Array.from(document.querySelectorAll(".scope-button"));
+      const scopeFields = {
+        kicker: document.getElementById("scopeKicker"),
+        title: document.getElementById("scopeTitle"),
+        goal: document.getElementById("scopeGoal"),
+        example: document.getElementById("scopeExample"),
+        ability: document.getElementById("scopeAbility"),
+        risk: document.getElementById("scopeRisk"),
+        evaluation: document.getElementById("scopeEval")
+      };
+
+      function selectScope(scope) {
+        const data = scopeData[scope];
+        if (!data) return;
+        scopeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.scope === scope)));
+        scopeFields.kicker.textContent = data.kicker;
+        scopeFields.title.textContent = data.title;
+        scopeFields.goal.textContent = data.goal;
+        scopeFields.example.textContent = data.example;
+        scopeFields.ability.textContent = data.ability;
+        scopeFields.risk.textContent = data.risk;
+        scopeFields.evaluation.textContent = data.evaluation;
+      }
+
+      scopeButtons.forEach((button) => button.addEventListener("click", () => selectScope(button.dataset.scope)));
+      const buttons = Array.from(document.querySelectorAll(".day-button"));
+      const fields = {
+        kicker: document.getElementById("dayKicker"),
+        title: document.getElementById("dayTitle"),
+        question: document.getElementById("dayQuestion"),
+        contribution: document.getElementById("dayContribution"),
+        connection: document.getElementById("dayConnection"),
+        input: document.getElementById("dayInput"),
+        output: document.getElementById("dayOutput"),
+        role: document.getElementById("dayRole"),
+        link: document.getElementById("dayLink")
+      };
+
+      function selectDay(day) {
+        const data = dayData[day];
+        if (!data) return;
+        buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.day === String(day))));
+        fields.kicker.textContent = data.kicker;
+        fields.title.textContent = data.title;
+        fields.question.textContent = data.question;
+        fields.contribution.textContent = data.contribution;
+        fields.connection.textContent = data.connection;
+        fields.input.textContent = data.input;
+        fields.output.textContent = data.output;
+        fields.role.textContent = data.role;
+        fields.link.href = data.href;
+        fields.link.textContent = data.link;
+      }
+
+      buttons.forEach((button) => button.addEventListener("click", () => selectDay(button.dataset.day)));
+
+      const quiz = document.querySelector(".quiz");
+      const feedback = document.getElementById("quizFeedback");
+      const options = Array.from(document.querySelectorAll(".quiz-option"));
+      options.forEach((option) => {
+        option.addEventListener("click", () => {
+          const correct = option.dataset.choice === quiz.dataset.answer;
+          options.forEach((item) => item.classList.remove("correct", "wrong"));
+          option.classList.add(correct ? "correct" : "wrong");
+          feedback.className = "quiz-feedback " + (correct ? "ok" : "no");
+          feedback.textContent = correct
+            ? "正确。第一版需求清楚地限定了图片 + 文本问题、三类任务和可追踪输出，这样才能学习和评测。"
+            : "还不准确。重新检查第一版的输入范围、三类任务和输出契约，不要把 Demo 扩张成无限产品。";
+        });
+      });
+    </script>
+  </body>
+</html>

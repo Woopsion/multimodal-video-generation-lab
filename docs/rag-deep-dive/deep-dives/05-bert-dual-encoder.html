@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深潜 §4.1 — BERT、MLM 与双塔架构彻底讲透</title>
+<link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+<main>
+<a class="backlink" href="../index.html#s4">← 返回主文档 §4</a>
+
+<header class="hero">
+  <p class="eyebrow">Deep Dive · 对应主文档 §4.1 / §7.1（基于你的学习总结整理、勘误并扩展）</p>
+  <h1>BERT 类模型与双塔架构：<br/>从 MLM 到"一个模型 + 一个向量库"的检索范式</h1>
+  <p class="hero-copy">
+    本文以你自己的学习总结为骨架——它的主体判断是对的（MLM 是预训练任务、双塔是应用架构、
+    文档向量是推理出来的、单塔不能召回）。本文做三件事：
+    ① 把这些结论的<strong>底层机理</strong>补全；② <strong>勘误几处与主流实现不符的细节</strong>（权重共享、"拆掉右塔"）；
+    ③ 把它接入现代 embedding 模型（BGE/E5）的真实谱系，让这份认知能直接用于面试与工程。
+  </p>
+</header>
+
+<!-- ============================================================ -->
+<section id="layers">
+  <h2><span class="no">A</span>先把"层面"分干净：预训练任务 ≠ 应用架构</h2>
+  <p class="lead">你总结的第一条关键结论完全正确，值得升格为一个通用的认知框架——很多人混淆 BERT 相关概念，根源都是把不同层面的东西放在一起比。</p>
+  <table>
+    <tr><th>层面</th><th>回答的问题</th><th>本文涉及的实例</th></tr>
+    <tr><td><strong>1. 模型结构</strong></td><td>网络长什么样</td><td>Transformer Encoder（双向注意力，无因果 mask）</td></tr>
+    <tr><td><strong>2. 预训练任务</strong></td><td>用什么代理任务学通用表示</td><td>MLM（完形填空）、NSP（RoBERTa 已废弃）、以及后来的对比学习预训练</td></tr>
+    <tr><td><strong>3. 应用架构</strong></td><td>拿预训练好的模型怎么"摆放"来解决业务问题</td><td><strong>单塔（Cross-Encoder）</strong>、<strong>双塔（Bi-Encoder / Dual-Encoder）</strong>、多向量（ColBERT）</td></tr>
+    <tr><td><strong>4. 训练目标（微调阶段）</strong></td><td>在应用架构上用什么损失继续训</td><td>InfoNCE、Triplet Loss、MultipleNegativesRankingLoss</td></tr>
+  </table>
+  <h3>A.1 MLM 到底给了我们什么</h3>
+  <p>MLM 随机遮蔽 ~15% 的 token，让模型凭<strong>双向上下文</strong>预测被遮词。它教会模型的是<strong>token 级的上下文语义</strong>——"bank 在'river bank'和'bank account'里该填不同的东西"。BERT 家族（RoBERTa 去掉 NSP + 动态 mask、ALBERT 参数共享、MacBERT 用同义词替代 [MASK] 缓解预训练-微调差异）都是这条线上的改良。</p>
+  <div class="callout deep">
+    <span class="tag">一个必须建立的关键认知</span>
+    <p style="margin:0"><strong>MLM 练出来的 BERT，直接拿去做向量检索是很差的。</strong>原因叫<strong>各向异性（anisotropy）</strong>：MLM 只要求"每个位置填对词"，从不要求"整句向量在空间中分布得好"——结果所有句向量挤在高维空间的一个狭窄锥形区域里，任意两句余弦相似度都在 0.9+，区分度极差（这就是主文档 §4.2 提到的问题）。
+    所以完整的因果链是：<strong>MLM 提供语言理解的初始化 → 对比学习微调把表示空间"撑开"</strong>——对比学习同时优化两件事：alignment（相关对拉近）和 uniformity（整体分布均匀铺开在超球面上）。双塔架构就是执行这次"空间重塑"的容器。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="anatomy">
+  <h2><span class="no">B</span>双塔架构解剖（含两处勘误）</h2>
+  <h3>B.1 结构</h3>
+  <div class="formula">          Query: "如何办理身份证"          Document: "居民身份证申领流程……"
+                    │                                  │
+             ┌──────▼──────┐                    ┌──────▼──────┐
+             │  Query 塔    │   两塔之间零信息交流  │  Doc 塔      │
+             │  (BERT 编码) │  ← ← ← ← ← ← ← →  │  (BERT 编码) │
+             └──────┬──────┘                    └──────┬──────┘
+                    │ pooling                          │ pooling
+                    ▼                                  ▼
+                 向量 q ────────── sim(q,d) ────────── 向量 d
+                          （点积或余弦，唯一的交互点）</div>
+  <p>核心设计原则你已经抓准了：<strong>两塔在编码过程中信息完全隔绝</strong>，没有任何 token 级交叉注意力，交互被压缩为最后一次向量点积。正是这个"隔绝"，同时造就了它的速度优势（文档向量可离线预计算）和精度上限（丢失词级交互）。</p>
+
+  <h3>B.2 勘误一：双塔"通常权重共享"？——不一定，且这是个有内容的选择题</h3>
+  <p>你的总结写"通常权重共享（孪生网络）"。实际情况是<strong>两种都是主流，选哪种取决于任务对称性</strong>：</p>
+  <table>
+    <tr><th>方案</th><th>代表</th><th>适用场景</th><th>理由</th></tr>
+    <tr><td><strong>独立双塔</strong>（两套参数）</td><td><strong>DPR 原论文</strong>（E_Q 和 E_P 是两个独立 BERT-base）、早期推荐系统双塔（user 塔/item 塔输入根本不是同类东西）</td><td><strong>非对称任务</strong>：query 短而口语，passage 长而书面，两者分布差异大</td><td>让每个塔专精自己那侧的输入分布</td></tr>
+    <tr><td><strong>共享权重</strong>（孪生网络，Siamese）</td><td>Sentence-BERT、以及 <strong>BGE/E5/GTE 等现代 embedding 模型</strong>（本质是一个编码器演两个角色）</td><td><strong>对称任务</strong>（句子相似度）；或非对称任务但用<strong>指令前缀</strong>区分角色</td><td>省一半参数；两侧向量天然在同一空间；泛化更稳</td></tr>
+  </table>
+  <div class="callout deep">
+    <span class="tag">现代主流的真实形态</span>
+    <p style="margin:0">今天你实际使用的 BGE/E5 既不是"两个 BERT"也不是简单孪生，而是<strong>"一个编码器 + 指令前缀"</strong>：同一套权重，编码 query 时加 <code>"query: "</code>（E5）或检索指令（BGE），编码 passage 时加 <code>"passage: "</code> 或不加。前缀让单一模型在参数内部"分裂"出两种编码行为——等效于用极低成本实现了非对称双塔。<strong>这也解释了主文档 §4.2 的高频事故"忘加前缀"为什么致命</strong>：忘了前缀，模型就用错了"人格"。</p>
+  </div>
+
+  <h3>B.3 勘误二："训练完拆除右塔"？——只在共享权重时字面成立</h3>
+  <p>你的总结把双塔比作"训练查询塔的脚手架，训练完拆除右塔"。这个比喻抓住了"在线服务只需 query 塔"的要点，但要精化：</p>
+  <ul>
+    <li><strong>共享权重时</strong>：本来就只有一套参数，"拆除"无从谈起——同一个模型既编 query 也编文档。</li>
+    <li><strong>独立双塔（DPR）时</strong>：文档塔<strong>不能扔</strong>。它不是只在训练时当"标尺"，而是长期离线服役：每次<strong>新文档入库</strong>、每次<strong>全量重建索引</strong>，都要用文档塔做前向推理。它只是不在"在线请求路径"上，不等于退役。</li>
+    <li>更准确的说法：<strong>双塔训练产出的是一对（或一套）编码器；文档塔活在离线摄入管线里，query 塔活在在线请求路径里。</strong>两条路径的模型版本必须严格一致（主文档 §4.3 事故清单："升级只升了一半" = 检索质量静默崩塌）。</li>
+  </ul>
+
+  <h3>B.4 你总结中完全正确、值得强化的两点</h3>
+  <ul>
+    <li><strong>"文档向量是推理出来的，不是训练出来的"</strong>——这是新手最大误区，你已经破除了。1000 万文档入库 = 权重冻结后的 1000 万次前向传播（embarrassingly parallel，可以多卡/多机批量跑），产出 <code>(doc_id, vector)</code> 写入向量库。训练发生在此之前，且只用几万~几百万<em>标注对</em>，与库的规模无关。</li>
+    <li><strong>"推理时只用一个塔，训练时为何要两个"</strong>——因为训练的本质是<strong>塑造一个共同的向量空间</strong>：损失函数 InfoNCE 强制 q 与 d⁺ 拉近、与 d⁻ 推远，梯度同时回传两塔。信息隔绝的环境逼迫 query 塔学会"只凭 query 自身语义做出高质量概括"（你的"特种兵"类比很准）。没有右塔提供的"锚点"，左塔的向量没有任何东西可以对齐。</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="cross">
+  <h2><span class="no">C</span>单塔 vs 双塔：为什么单塔不能召回（比"过拟合"更深一层）</h2>
+  <h3>C.1 对照表（在你的版本上精化）</h3>
+  <table>
+    <tr><th>维度</th><th>单塔 Cross-Encoder</th><th>双塔 Bi-Encoder</th></tr>
+    <tr><td>输入形式</td><td><code>[CLS] query [SEP] document [SEP]</code> 拼成一条序列</td><td>query、document 各自单独成序列</td></tr>
+    <tr><td>交互深度</td><td>每一层 attention 中 q 的每个 token 都能看 d 的每个 token（全量词级交互 × 12 层）</td><td>零词级交互，只有最终一次点积</td></tr>
+    <tr><td>能捕捉什么</td><td>否定（"不含糖" vs "含糖"）、条件、精确指代、词序敏感差异</td><td>整体语义方向；细粒度交互信号被 pooling 压缩丢失</td></tr>
+    <tr><td>可否预计算</td><td><strong>不可</strong>：分数依赖 (q,d) 成对输入，q 不来就没法算</td><td><strong>可</strong>：文档向量与 q 无关，全库离线算好</td></tr>
+    <tr><td>全库打分成本</td><td>O(N) 次完整 BERT 前向（N=千万 → 物理不可行）</td><td>1 次 query 前向 + ANN 检索（毫秒级）</td></tr>
+    <tr><td>正确岗位</td><td><strong>精排</strong>：对召回的 50-100 条候选深度打分</td><td><strong>召回</strong>：从千万级库中粗筛出候选</td></tr>
+  </table>
+
+  <h3>C.2 单塔不能召回的两层原因（你的总结点破了第二层，这里补全第一层）</h3>
+  <ul>
+    <li><strong>第一层：工程上不可行（这层就已经判死刑）。</strong>Cross-Encoder 的分数是 (q,d) 的联合函数，无法分解为两个独立向量的点积——所以<strong>没有任何东西可以离线预计算、可以建索引</strong>。1000 万文档意味着每来一个 query 就要跑 1000 万次 BERT 前向。注意这不是"慢"，是范式不兼容：ANN 索引加速的是"点积最近邻"，Cross-Encoder 连"向量"这个中间产物都不存在。</li>
+    <li><strong>第二层：即使你硬取它的 [CLS] 向量当单句表示，质量也很差（你总结的"结构性任务不匹配"）。</strong>单塔训练时的监督信号全部施加在"拼接后的联合表示 → 相关性分数"这条通路上，从未要求"单独一句话的向量落在语义空间的正确位置"。它学到的是<strong>打分函数</strong>，不是<strong>映射函数</strong>。再叠加 A 节的各向异性问题，其单句向量在空间中方向紊乱——你的"情侣/特种兵"类比描述的正是这个：单塔的知识以"关系"形式存在，无法拆解为"个体描述"。</li>
+  </ul>
+  <div class="callout deep">
+    <span class="tag">把三种架构放进一个光谱（面试加分）</span>
+    <p style="margin:0">双塔（1 个向量，交互=1 次点积）——<strong>ColBERT</strong>（每 token 1 个向量，交互=MaxSim 后期交互，精度接近单塔、文档侧仍可预计算，代价是存储 ×几十倍）——单塔（0 个独立向量，交互=全量 attention）。三者是"<strong>把交互放在管线的哪个位置</strong>"的连续光谱：越晚交互越快、越早交互越准。主文档 §5.3 与 §7.1 的内容在这个光谱上统一。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="training">
+  <h2><span class="no">D</span>训练技术：对比学习的完整配方</h2>
+  <h3>D.1 损失函数逐符号读</h3>
+  <div class="formula">InfoNCE:   L = -log ─────────exp(sim(q, d⁺)/τ)─────────
+                     exp(sim(q,d⁺)/τ) + Σ_j exp(sim(q,d_j⁻)/τ)
+
+直觉：这就是一个 (1+n) 分类的交叉熵——"在 1 个正例和 n 个负例里，把正例认出来"
+τ（温度）：越小分布越尖锐、对难负例的惩罚越狠；检索模型常用 0.01~0.05
+
+Triplet:   L = max(0,  sim(q,d⁻) − sim(q,d⁺) + margin)
+直觉：只要求"正例比负例近出一个边际"，不要求绝对分数——一次只看一个负例，
+      信号效率低于 InfoNCE，现代检索训练基本已被 InfoNCE 系取代</div>
+
+  <h3>D.2 负例工程：决定成败的部分</h3>
+  <p>你的总结已列出两大技巧，这里补齐机理、参数感觉与副作用：</p>
+  <table>
+    <tr><th>技巧</th><th>机理</th><th>补充细节</th></tr>
+    <tr><td><strong>In-batch negatives</strong></td><td>batch 内其他样本的 d⁺ 互为负例：B=64 时每条 query 免费获得 63 个负例，且这些 d 的编码计算被复用（一次前向服务全 batch 的损失计算）</td><td>负例数随 B 线性增长 → embedding 训练极度吃大 batch；多卡训练时用 <strong>cross-device negatives</strong>（gather 所有卡的向量共享负例），CLIP 的 32768 batch 也是同一逻辑</td></tr>
+    <tr><td><strong>难负例挖掘</strong></td><td>随机负例（"番茄炒蛋做法"）太易区分，损失迅速趋零、模型学不到细粒度边界。用 BM25 或上一版模型检索出"词面高度相似但不含答案"的段落（"如何办理<em>临时</em>身份证"），强迫模型学会"词面像 ≠ 语义相关"</td><td>DPR 消融实验：<strong>每条 query 加 1 条 BM25 难负例是单一改动中提升最大的</strong>。演进线：DPR（BM25 挖）→ ANCE（用训练中的模型自己挖，异步刷新）→ RocketQA/BGE（多轮迭代挖掘）</td></tr>
+    <tr><td><strong>假负例过滤</strong></td><td>难负例挖得越狠，越容易把"其实相关但没被标注"的段落当负例打压（false negative），教给模型错误的边界</td><td>标准解法（RocketQA）：用更强的 cross-encoder 给候选负例打分，分数过高的（可能是漏标正例）剔除。<strong>注意这个闭环：单塔在这里反过来当双塔的老师</strong>——两种架构不仅是召回/精排的分工，还是训练时的师生关系（同理：cross-encoder 蒸馏双塔也是标准做法）</td></tr>
+  </table>
+
+  <h3>D.3 现代 embedding 模型的完整训练流水线（BGE/E5 配方）</h3>
+  <div class="pipeline">
+    <span class="step">1 MLM 预训练底座<br/>(通用语言能力)</span><span class="arrow">→</span>
+    <span class="step">2 弱监督对比预训练<br/>(~亿级自然配对: 标题-正文、问-答)</span><span class="arrow">→</span>
+    <span class="step">3 高质量精调<br/>(标注数据 + 难负例 + 大batch)</span><span class="arrow">→</span>
+    <span class="step">4 (可选) 领域微调<br/>(你的自有数据)</span>
+  </div>
+  <p>你总结的"双塔训练"对应第 3 步。看清整条流水线的价值：<strong>面试问"如何为垂直领域优化检索"，标准答案就是复刻第 3-4 步</strong>——用 LLM 从自有文档合成 (query, chunk) 正例对 → BM25 挖难负例 → <code>sentence-transformers</code> + MultipleNegativesRankingLoss（就是 in-batch negatives 版 InfoNCE）精调。几千对数据往往就有可感知提升（主文档 §4.3）。</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="workflow">
+  <h2><span class="no">E</span>工业级四阶段闭环（修订版）</h2>
+  <p class="lead">在你总结的四阶段上做了两处修订：阶段二明确"文档塔长期服役于离线管线"；阶段四精排是<strong>在线</strong>请求路径的一部分（不是可选离线）。</p>
+  <table>
+    <tr><th>阶段</th><th>时机</th><th>用到的模型</th><th>做什么</th></tr>
+    <tr><td><strong>1 训练</strong></td><td>离线，一次性（+周期性迭代）</td><td>双塔（共享或独立）</td><td>对比学习塑造共同向量空间；产出编码器权重</td></tr>
+    <tr><td><strong>2 文档向量化入库</strong></td><td>离线，<strong>持续</strong>（新文档随到随编）</td><td>文档塔（推理模式）</td><td>千万级前向传播 → (id, vector) 入向量库建 ANN 索引。<em>换模型 = 全量重编重建</em></td></tr>
+    <tr><td><strong>3 召回</strong></td><td>在线，毫秒级</td><td>query 塔（1 次前向）</td><td>编码 query → ANN 取 top 50-100</td></tr>
+    <tr><td><strong>4 精排</strong></td><td>在线，几十毫秒</td><td>单塔 cross-encoder（50-100 次前向，但输入短、可 batch）</td><td>对候选深度打分 → top 5-10 给 LLM。rerank 分数还兼任"拒答阈值"（主文档 §7.2）</td></tr>
+  </table>
+  <div class="callout deep">
+    <span class="tag">设计哲学的一句话总结（可直接背）</span>
+    <p style="margin:0">"双塔用<strong>预计算</strong>换速度——把与 query 无关的计算全部提前做完存成索引；单塔用<strong>算力</strong>换精度——把全部计算留到 (q,d) 见面之后。级联架构让两者各司其职：<strong>召回负责'别漏'，精排负责'排对'</strong>。这与推荐系统的召回/粗排/精排完全同构，也是为什么 RAG 工程师和搜推工程师的技能高度互通。"</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="speak">
+  <h2><span class="no">F</span>自测清单</h2>
+  <ol>
+    <li>MLM 练出来的 BERT 直接取 [CLS] 做检索为什么很差？（关键词：各向异性；alignment/uniformity）</li>
+    <li>DPR 的两个塔共享权重吗？什么情况下应该共享、什么情况下独立？现代 BGE/E5 实际是哪种形态？</li>
+    <li>"训练完拆除文档塔"这个说法哪里不严谨？文档塔在系统上线后还在哪条管线里工作？</li>
+    <li>1000 万文档入库用了反向传播吗？入库的计算本质是什么？为什么换 embedding 模型必须全量重建？</li>
+    <li>单塔不能做召回的两层原因分别是什么？哪一层是"物理不可行"，哪一层是"向量质量差"？</li>
+    <li>InfoNCE 里的温度 τ 调小会发生什么？in-batch negatives 为什么让训练"吃大 batch"？</li>
+    <li>难负例挖得太狠会引入什么副作用？标准解法是什么？这个解法揭示了单塔与双塔之间除"召回/精排分工"外的什么关系？</li>
+    <li>把双塔、ColBERT、单塔放在同一个光谱上，光谱的坐标轴是什么？</li>
+  </ol>
+</section>
+
+<a class="backlink" href="../index.html#s4">← 返回主文档 §4</a>
+</main>
+</body>
+</html>

@@ -182,14 +182,16 @@ logs/
 
 ### Day 13：阅读 LLaVA 论文
 
-- [ ] 学习：阅读 LLaVA 的模型结构、训练流程和视觉指令数据构造。
-- [ ] 记录：总结 pretrain、instruction tuning 两阶段的区别。
-- [ ] 实践：对比 CLIP 与 LLaVA 的任务目标差异。
-- [ ] 产出：`papers/llava.md`。
-- [ ] 验收：能解释“视觉编码器 + 投影层 + LLM”的基本范式。
+- [x] 产出：`docs/day-13-llava-paper-reading/index.html` 作为 Day13 循序渐进 HTML 教学入口。
+- [x] 学习：阅读 LLaVA 的模型结构、训练流程和视觉指令数据构造。
+- [x] 记录：总结 pretrain、instruction tuning 两阶段的区别。
+- [x] 实践：对比 CLIP 与 LLaVA 的任务目标差异。
+- [x] 产出：`papers/llava.md`。
+- [x] 验收：能解释“视觉编码器 + 投影层 + LLM”的基本范式。
 
 ### Day 14：第二周复盘与 VLM 小助手设计
 
+- [x] 产出：`docs/day-14-week2-review-vlm-assistant/index.html` 作为 Day14 交互式教学入口。
 - [ ] 整理：合并本周笔记到 `notes/week-02-vlm.md`。
 - [ ] 设计：规划 `vlm-visual-assistant` 的输入、输出和模型选择。
 - [ ] 实践：整理 10 张测试图片，包含截图、图表、普通照片。

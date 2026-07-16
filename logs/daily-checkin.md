@@ -482,3 +482,51 @@
   - OCR 读对按钮 `RUN DEMO`，但把 status 误读成 footer。
   - 图表任务答对最高值 `Q4`，但没有回答最低值 `Q3`。
 - Day12 已收口。下一步进入 Day13：LLaVA 论文阅读。
+## Day 13 - LLaVA 论文阅读启动
+
+- 日期：2026-06-30
+- 今日目标：从 Day12 的 VLM 推理过渡到 LLaVA 的论文和训练主线。
+- 文档更新：
+  - 新增 Day13 HTML 教学入口：`docs/day-13-llava-paper-reading/index.html`
+  - 新增 Day13 状态笔记：`notes/day-13-llava-paper-reading.md`
+  - 新增 LLaVA 论文笔记入口：`papers/llava.md`
+- 当前学习重点：
+  - 区分 CLIP 图文匹配与 LLaVA 视觉指令跟随。
+  - 理解 LLaVA 三个组件：CLIP ViT-L/14、projection matrix、Vicuna。
+  - 先知道两阶段训练：feature alignment 与 visual instruction tuning。
+- 暂不推进：
+  - 暂不复现 LLaVA 训练。
+  - 暂不下载 LLaVA 大模型权重。
+
+## Day 13 - LLaVA 论文阅读收口
+
+- 日期：2026-07-13
+- 完成内容：
+  - 完成 LLaVA 论文定位、三组件架构和视觉指令数据学习。
+  - 详细理解 Stage 1 feature alignment 与 Stage 2 visual instruction tuning。
+  - 明确冻结模块仍参与前向计算，只是不更新参数。
+  - 对比 CLIP 的 embedding / similarity 目标与 LLaVA 的 answer token generation 目标。
+  - 完成 5 分钟论文复述主线与 Day13 验收总结。
+- 文档产出：
+  - `docs/day-13-llava-paper-reading/index.html`
+  - `notes/day-13-llava-paper-reading.md`
+  - `papers/llava.md`
+- Day13 已收口。下一步进入 Day14：Week2 复盘与 VLM 小助手方案设计。
+
+## Day 14 - Week2 复盘与 VLM 小助手设计启动
+
+- 日期：2026-07-13
+- 初始化内容：
+  - 创建 Day14 交互式 HTML 教学入口：`docs/day-14-week2-review-vlm-assistant/index.html`
+  - 创建 Day14 状态笔记：`notes/day-14-week2-review-vlm-assistant.md`
+  - 创建 VLM 小助手方案草稿：`demos/vlm-visual-assistant/design.md`
+- 当前阶段：Step 01，重建 Day8-Day13 的统一知识地图。
+- 学习原则：先理解系统和需求，再选择模型并进入实现。
+## Day 14 - Step 02 通用多模态 Demo 需求定义
+
+- 日期：2026-07-14
+- 用户目标：做一个用于学习验证的通用 VLM 小助手 Demo。
+- 第一版输入：单张图片路径 + 文本问题，可选任务模式。
+- 第一版任务：软件截图、基础图表、普通照片。
+- 第一版输出：自然语言回答 + 模型、设备、耗时等运行信息。
+- 明确暂不支持：多图对比、视频、音频、外部动作执行和专业领域可靠性承诺。
