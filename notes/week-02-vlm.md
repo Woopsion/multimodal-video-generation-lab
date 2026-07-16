@@ -2,8 +2,8 @@
 
 ## 当前阶段
 
-- 日期：2026-07-13
-- 学习状态：Day8-Day13 已收口；当前下一步为 Day14 Week2 复盘与 VLM 小助手设计。
+- 日期：2026-07-14
+- 学习状态：Day8-Day13 已收口；Day14 Step 01 已完成，当前进入 Step 02，定义通用多模态 Demo 的需求契约。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
@@ -194,3 +194,15 @@ Day13 已完成 `Visual Instruction Tuning` 的论文主线学习：
 - 产出 `docs/day-13-llava-paper-reading/index.html`、`notes/day-13-llava-paper-reading.md`、`papers/llava.md`。
 
 下一步进入 Day14：Week2 复盘与 VLM 小助手方案设计。
+
+## Day14 启动
+
+Day14 不直接开始写应用代码。先把 Day8-Day13 放回同一条系统主线，理解每一层解决的问题、输入输出和失败边界，再由需求反推模型与工程方案。
+
+已创建：
+
+- Day14 交互式教学入口：`docs/day-14-week2-review-vlm-assistant/index.html`
+- Day14 状态笔记：`notes/day-14-week2-review-vlm-assistant.md`
+- VLM 小助手方案草稿：`demos/vlm-visual-assistant/design.md`
+
+当前阶段：Step 01 Week2 知识地图。

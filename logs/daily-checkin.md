@@ -512,3 +512,21 @@
   - `notes/day-13-llava-paper-reading.md`
   - `papers/llava.md`
 - Day13 已收口。下一步进入 Day14：Week2 复盘与 VLM 小助手方案设计。
+
+## Day 14 - Week2 复盘与 VLM 小助手设计启动
+
+- 日期：2026-07-13
+- 初始化内容：
+  - 创建 Day14 交互式 HTML 教学入口：`docs/day-14-week2-review-vlm-assistant/index.html`
+  - 创建 Day14 状态笔记：`notes/day-14-week2-review-vlm-assistant.md`
+  - 创建 VLM 小助手方案草稿：`demos/vlm-visual-assistant/design.md`
+- 当前阶段：Step 01，重建 Day8-Day13 的统一知识地图。
+- 学习原则：先理解系统和需求，再选择模型并进入实现。
+## Day 14 - Step 02 通用多模态 Demo 需求定义
+
+- 日期：2026-07-14
+- 用户目标：做一个用于学习验证的通用 VLM 小助手 Demo。
+- 第一版输入：单张图片路径 + 文本问题，可选任务模式。
+- 第一版任务：软件截图、基础图表、普通照片。
+- 第一版输出：自然语言回答 + 模型、设备、耗时等运行信息。
+- 明确暂不支持：多图对比、视频、音频、外部动作执行和专业领域可靠性承诺。
