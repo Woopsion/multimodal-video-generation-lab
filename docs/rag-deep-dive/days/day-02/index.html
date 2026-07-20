@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Day 02 - 原始论文与朴素管道</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f1ea;
+      --surface: #fbfaf6;
+      --ink: #17201d;
+      --muted: #65706b;
+      --line: #c9cec8;
+      --teal: #087f75;
+      --teal-soft: #dbece8;
+      --orange: #c5532d;
+      --orange-soft: #f5e3da;
+      --yellow: #edc951;
+      --charcoal: #202927;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+    }
+
+    button, textarea { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; }
+    [hidden] { display: none !important; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 58px;
+      padding: 0 28px;
+      border-bottom: 1px solid #34403c;
+      background: var(--charcoal);
+      color: #f7f6f0;
+    }
+
+    .topbar a { color: #b8cec7; text-decoration: none; font-size: 13px; }
+    .topbar strong { justify-self: center; font-size: 14px; }
+    .top-progress { display: flex; align-items: center; gap: 10px; color: #b8cec7; font-size: 12px; }
+    .progress-track { width: 112px; height: 4px; background: #53615c; overflow: hidden; }
+    .progress-fill { width: 12%; height: 100%; background: var(--yellow); transition: width 180ms ease; }
+
+    .hero {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .hero-inner {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+      gap: 54px;
+      align-items: center;
+      padding: 54px 0 48px;
+    }
+
+    .eyebrow,
+    .section-label {
+      margin: 0 0 10px;
+      color: var(--orange);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+      letter-spacing: 0;
+    }
+
+    h1 { margin: 0; max-width: 680px; font-size: 48px; line-height: 1.15; }
+    h2 { margin: 0 0 14px; font-size: 34px; line-height: 1.24; }
+    h3 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 10px 0; }
+    .hero-copy { max-width: 660px; margin-top: 18px; color: var(--muted); font-size: 17px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .hero-meta span { padding: 5px 9px; border: 1px solid var(--line); background: var(--paper); font-size: 12px; }
+
+    .hero-map { position: relative; min-height: 310px; padding: 28px; border: 1px solid var(--ink); background: var(--paper); box-shadow: 10px 10px 0 #cfd7d2; }
+    .hero-map::before { content: "RAG / TWO-PHASE SYSTEM"; display: block; margin-bottom: 22px; color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 800; }
+    .mini-track { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 12px; align-items: center; margin: 18px 0; }
+    .mini-track > strong { color: var(--muted); font-size: 12px; }
+    .mini-flow { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .mini-node { flex: 1; min-width: 0; padding: 9px 7px; border: 1px solid var(--line); background: var(--surface); text-align: center; font-size: 11px; font-weight: 800; }
+    .mini-arrow { color: var(--orange); font-weight: 900; }
+    .map-bridge { margin: 22px 0 0 90px; padding: 10px 12px; border-left: 4px solid var(--yellow); background: #fff8d9; font-size: 12px; }
+
+    .workspace {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      gap: 42px;
+      align-items: start;
+      padding: 34px 0 90px;
+    }
+
+    .roadmap {
+      position: sticky;
+      top: 82px;
+      border-top: 4px solid var(--ink);
+      padding-top: 14px;
+    }
+
+    .roadmap-title { margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .stage-button {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      width: 100%;
+      min-height: 58px;
+      padding: 10px 8px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .stage-button:hover:not(:disabled), .stage-button.is-active { background: var(--teal-soft); }
+    .stage-button:disabled { color: #98a09c; cursor: not-allowed; }
+    .stage-no { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 900; }
+    .stage-copy strong, .stage-copy span { display: block; }
+    .stage-copy strong { font-size: 13px; }
+    .stage-copy span { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .roadmap-links { display: grid; gap: 7px; margin-top: 20px; font-size: 12px; }
+    .roadmap-links a { color: var(--teal); }
+
+    main { min-width: 0; }
+    .learning-section { animation: reveal 220ms ease both; }
+    @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .lead { color: var(--muted); font-size: 17px; }
+    .rule { height: 1px; margin: 28px 0; background: var(--line); }
+
+    .learning-contract { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--ink); margin: 24px 0 32px; }
+    .contract-cell { min-height: 128px; padding: 18px; border-right: 1px solid var(--ink); }
+    .contract-cell:last-child { border-right: 0; }
+    .contract-cell span { display: block; margin-bottom: 8px; color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .contract-cell strong { display: block; font-size: 15px; }
+    .contract-cell p { color: var(--muted); font-size: 12px; }
+
+    .architecture-band { margin: 32px 0; padding: 26px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .track-switch { display: inline-flex; border: 1px solid var(--ink); margin: 8px 0 22px; }
+    .track-switch button { min-width: 132px; padding: 9px 14px; border: 0; border-right: 1px solid var(--ink); background: var(--surface); cursor: pointer; }
+    .track-switch button:last-child { border-right: 0; }
+    .track-switch button.is-active { background: var(--ink); color: #fff; }
+    .architecture-flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .flow-node { position: relative; min-height: 118px; padding: 14px 12px; border: 1px solid var(--line); background: var(--surface); }
+    .flow-node::after { content: "→"; position: absolute; top: 43px; right: -12px; z-index: 2; color: var(--orange); font-weight: 900; }
+    .flow-node:last-child::after { content: ""; }
+    .flow-node span { display: block; color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .flow-node strong { display: block; margin-top: 7px; font-size: 14px; }
+    .flow-node p { color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .track-summary { margin: 14px 0 0; padding-left: 14px; border-left: 4px solid var(--teal); color: var(--muted); font-size: 13px; }
+
+    .phase-list { margin: 30px 0; border-top: 1px solid var(--line); }
+    .phase-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 70px; border-bottom: 1px solid var(--line); }
+    .phase-row > span:first-child { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-weight: 900; }
+    .phase-row strong { display: block; font-size: 14px; }
+    .phase-row p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .phase-status { padding: 4px 8px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; font-weight: 800; }
+    .phase-status.current { border-color: var(--orange); background: var(--orange-soft); color: var(--orange); }
+
+    .formula { margin: 26px 0; padding: 22px; border: 1px solid var(--ink); background: var(--charcoal); color: #f7f6f0; font-family: "Cascadia Mono", Consolas, monospace; font-size: 18px; overflow-x: auto; }
+    .formula em { color: var(--yellow); font-style: normal; }
+    .concept-callout { margin: 22px 0; padding: 18px 20px; border-left: 5px solid var(--teal); background: var(--teal-soft); }
+
+    .candidate-lab { margin: 28px 0; border: 1px solid var(--ink); background: var(--surface); }
+    .lab-head { padding: 18px 20px; border-bottom: 1px solid var(--ink); }
+    .lab-head span { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .lab-head p { margin-bottom: 0; font-size: 14px; }
+    .candidate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .candidate-button { min-height: 128px; padding: 16px; border: 0; border-right: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; }
+    .candidate-button:last-child { border-right: 0; }
+    .candidate-button.is-active { background: var(--orange-soft); }
+    .candidate-button span, .candidate-button strong { display: block; }
+    .candidate-button span { color: var(--muted); font-size: 11px; }
+    .candidate-button strong { margin: 6px 0; font-size: 14px; }
+    .probability { height: 5px; background: #d9ddd9; overflow: hidden; }
+    .probability i { display: block; height: 100%; background: var(--teal); }
+    .candidate-detail { min-height: 104px; padding: 18px 20px; border-top: 1px solid var(--line); }
+    .candidate-detail strong { color: var(--teal); }
+
+    .checkpoint { margin-top: 30px; padding: 22px; border: 1px solid var(--ink); background: #fffdf8; }
+    .checkpoint label { display: block; margin: 16px 0 7px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .checkpoint textarea { width: 100%; min-height: 130px; padding: 13px; resize: vertical; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+    .rating { display: inline-flex; border: 1px solid var(--line); }
+    .rating button { padding: 8px 12px; border: 0; border-right: 1px solid var(--line); background: transparent; cursor: pointer; }
+    .rating button:last-child { border-right: 0; }
+    .rating button.is-active { background: var(--teal); color: #fff; }
+    .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; }
+    .action { min-height: 42px; padding: 9px 15px; border: 1px solid var(--ink); background: transparent; cursor: pointer; font-weight: 800; }
+    .action.primary { background: var(--ink); color: #fff; }
+    .save-note { margin-top: 10px; color: var(--teal); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .topbar { grid-template-columns: 1fr auto; padding: 0 16px; }
+      .topbar strong { justify-self: start; }
+      .topbar > a { display: none; }
+      .progress-track { width: 70px; }
+      .hero-inner, .workspace { width: min(100% - 30px, 720px); }
+      .hero-inner { grid-template-columns: 1fr; gap: 32px; padding-top: 38px; }
+      h1 { font-size: 36px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+      .roadmap { position: static; min-width: 0; }
+      .roadmap > div:first-of-type { display: flex; min-width: 0; max-width: 100%; overflow-x: auto; }
+      .stage-button { flex: 0 0 180px; }
+      .roadmap-links { display: flex; flex-wrap: wrap; }
+      .learning-contract { grid-template-columns: 1fr; }
+      .contract-cell { border-right: 0; border-bottom: 1px solid var(--ink); }
+      .contract-cell:last-child { border-bottom: 0; }
+      .architecture-flow { grid-template-columns: 1fr; }
+      .flow-node { min-height: 0; }
+      .flow-node::after { content: "↓"; top: auto; right: 50%; bottom: -16px; }
+      .candidate-grid { grid-template-columns: 1fr; }
+      .candidate-button { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .candidate-button:last-child { border-bottom: 0; }
+      .phase-row { grid-template-columns: 42px minmax(0, 1fr); padding: 10px 0; }
+      .phase-status { grid-column: 2; justify-self: start; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="../day-01/index.html">← Day 01 最终复述</a>
+    <strong>Day 02 · 原始论文与朴素管道</strong>
+    <div class="top-progress"><span id="progressText">ARCH / 06</span><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">RAG · DAY 02 / 14</p>
+        <h1>从概率模型，走到一条可解释的 RAG 管道</h1>
+        <p class="hero-copy">今天不从框架 API 开始。先看清原始 RAG 中检索器与生成器如何共同定义答案概率，再把论文视角翻译为现代工程里的离线索引和在线问答两条流水线。</p>
+        <div class="hero-meta">
+          <span>建议时长 2.5-3 小时</span>
+          <span>产出：端到端流程图</span>
+          <span>产出：8 个决策点</span>
+        </div>
+      </div>
+      <div class="hero-map" role="img" aria-label="RAG 离线索引与在线问答两阶段架构缩略图">
+        <div class="mini-track"><strong>OFFLINE</strong><div class="mini-flow"><span class="mini-node">文档</span><span class="mini-arrow">→</span><span class="mini-node">编码</span><span class="mini-arrow">→</span><span class="mini-node">索引</span></div></div>
+        <div class="mini-track"><strong>ONLINE</strong><div class="mini-flow"><span class="mini-node">问题 x</span><span class="mini-arrow">→</span><span class="mini-node">证据 z</span><span class="mini-arrow">→</span><span class="mini-node">答案 y</span></div></div>
+        <p class="map-bridge">共同边界：在线检索只能从离线阶段已经写入索引的表示中寻找证据。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <aside class="roadmap">
+      <p class="roadmap-title">DAY 02 LEARNING MAP</p>
+      <div>
+        <button class="stage-button is-active" type="button" data-stage-target="0"><span class="stage-no">00</span><span class="stage-copy"><strong>架构导览</strong><span>已开放</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>文档是隐变量</strong><span>当前入口</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">02</span><span class="stage-copy"><strong>Sequence / Token</strong><span>等待讨论</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">03</span><span class="stage-copy"><strong>离线索引</strong><span>等待讨论</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">04</span><span class="stage-copy"><strong>在线检索与生成</strong><span>等待讨论</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">05</span><span class="stage-copy"><strong>决策点与复述</strong><span>等待讨论</span></span></button>
+      </div>
+      <div class="roadmap-links">
+        <a href="../../14-day-learning-plan.md">14 天总计划</a>
+        <a href="../../index.html">RAG 完整知识库</a>
+      </div>
+    </aside>
+
+    <main>
+      <section class="learning-section" data-stage="0">
+        <p class="section-label">00 · Orientation</p>
+        <h2>今天怎么学</h2>
+        <p class="lead">Day 02 的任务不是背出论文公式，也不是立刻写 LangChain。目标是建立一张能同时解释论文、代码和故障的端到端地图。</p>
+
+        <div class="learning-contract">
+          <div class="contract-cell"><span>LEARNING GOAL</span><strong>读懂检索器和生成器如何共同决定答案</strong><p>知道问题 x、文档 z、答案 y 分别处在哪个位置。</p></div>
+          <div class="contract-cell"><span>FINAL OUTPUT</span><strong>一张端到端流程图 + 8 个决策点</strong><p>后续每学完一个阶段，再逐项补齐，不提前抄答案。</p></div>
+          <div class="contract-cell"><span>ACCEPTANCE</span><strong>能从论文视角讲到冻结组件的现代管道</strong><p>并解释离线决策为什么会限制在线检索上限。</p></div>
+        </div>
+
+        <div class="architecture-band">
+          <p class="section-label">Basic architecture</p>
+          <h3>同一个系统，两条时间轴</h3>
+          <div class="track-switch" role="group" aria-label="RAG 架构时间轴">
+            <button class="is-active" type="button" data-track="offline">离线索引</button>
+            <button type="button" data-track="online">在线问答</button>
+          </div>
+
+          <div class="architecture-flow" id="architectureFlow" aria-live="polite"></div>
+          <p class="track-summary" id="trackSummary"></p>
+        </div>
+
+        <div class="phase-list" aria-label="Day 02 分阶段路线">
+          <div class="phase-row"><span>01</span><div><strong>文档 z 为什么是隐变量</strong><p>先建立原始论文的概率视角。</p></div><span class="phase-status current">当前</span></div>
+          <div class="phase-row"><span>02</span><div><strong>RAG-Sequence 与 RAG-Token</strong><p>看边际化发生在哪个粒度。</p></div><span class="phase-status">未开放</span></div>
+          <div class="phase-row"><span>03</span><div><strong>离线索引流水线</strong><p>找出不可逆的数据与表示决策。</p></div><span class="phase-status">未开放</span></div>
+          <div class="phase-row"><span>04</span><div><strong>在线检索与生成</strong><p>串起 query、top-k、context 和 answer。</p></div><span class="phase-status">未开放</span></div>
+          <div class="phase-row"><span>05</span><div><strong>8 个工程决策点</strong><p>把默认参数变成可解释的选择。</p></div><span class="phase-status">未开放</span></div>
+        </div>
+
+        <div class="actions">
+          <a class="action" href="../day-01/index.html">← 查看 Day 01 收口</a>
+          <button class="action primary" type="button" data-go-stage="1">开始 Step 01：文档是隐变量 →</button>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="1" hidden>
+        <p class="section-label">01 · Latent document</p>
+        <h2>检索文档 z，为什么叫“隐变量”？</h2>
+        <p class="lead">先只理解一个核心关系：用户给出问题 x，系统最后观察到答案 y，但哪一份文档 z 应该支撑这个答案，并不是用户直接标注给模型的输入，而是检索器需要推断的中间变量。</p>
+
+        <div class="formula">p(y | x) ≈ Σ<sub>z ∈ top-k</sub> <em>pη(z | x)</em> · pθ(y | x, z)</div>
+        <div class="concept-callout"><strong>暂时不用推导公式。</strong>先读它的结构：检索器给候选文档分配概率，生成器判断在问题与该文档条件下生成答案的概率，两者共同影响最终答案。</div>
+
+        <div class="candidate-lab">
+          <div class="lab-head"><span>DOCUMENT DISTRIBUTION</span><p>问题 x：电子产品已经拆封，还能申请退货吗？点击候选文档，观察检索器分配给 z 的权重。</p></div>
+          <div class="candidate-grid">
+            <button class="candidate-button is-active" type="button" data-document="return"><span>候选 z₁ · 0.62</span><strong>电子产品退货规则</strong><div class="probability"><i style="width:62%"></i></div></button>
+            <button class="candidate-button" type="button" data-document="shipping"><span>候选 z₂ · 0.25</span><strong>配送与签收说明</strong><div class="probability"><i style="width:25%"></i></div></button>
+            <button class="candidate-button" type="button" data-document="account"><span>候选 z₃ · 0.13</span><strong>账户与会员权益</strong><div class="probability"><i style="width:13%"></i></div></button>
+          </div>
+          <div class="candidate-detail" id="candidateDetail" aria-live="polite"></div>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">One discussion only</p>
+          <h3>当前只收口一个概念</h3>
+          <p>请用自己的话解释：为什么文档 z 不是已知输入，而是模型需要推断的隐变量？不需要公式，也暂时不用讨论 RAG-Sequence 和 RAG-Token。</p>
+          <label for="day02Notes">我的当前理解</label>
+          <textarea id="day02Notes" placeholder="先写一两句话即可。我们会根据你的表达继续补当前缺口。"></textarea>
+          <label>现在的掌握感觉</label>
+          <div class="rating" role="group" aria-label="当前概念掌握感觉">
+            <button type="button" data-rating="fuzzy">还模糊</button>
+            <button type="button" data-rating="forming">正在成形</button>
+            <button type="button" data-rating="clear">能讲清楚</button>
+          </div>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="0">← 回到架构导览</button>
+            <button class="action primary" type="button" id="saveCheckpoint">保存当前理解</button>
+          </div>
+          <p class="save-note" id="saveNote" hidden>已保存在当前浏览器。下一步回到对话，只讨论这一个概念。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const storageKey = "rag-14-day-day-02-v2";
+      const memoryStore = {};
+      const trackData = {
+        offline: {
+          nodes: [
+            ["SOURCE", "原始文档", "PDF、网页、数据库或内部资料"],
+            ["PARSE", "解析与分块", "决定可被检索的最小单元"],
+            ["ENCODE", "文档编码器", "把 chunk 映射到向量表示"],
+            ["STORE", "向量索引", "保存表示、正文与 metadata"],
+            ["READY", "可检索语料", "等待在线问题到来"]
+          ],
+          summary: "离线阶段没有用户问题。它提前决定“系统以后有机会找到什么”，解析丢失或索引未更新都无法靠在线 prompt 补救。"
+        },
+        online: {
+          nodes: [
+            ["INPUT", "问题 x", "用户当前真正要解决的问题"],
+            ["RETRIEVE", "检索 pη(z|x)", "从索引中给候选证据分配权重"],
+            ["SELECT", "Top-k 文档 z", "用有限候选近似完整文档空间"],
+            ["GENERATE", "生成 pθ(y|x,z)", "依据问题和证据组织答案"],
+            ["OUTPUT", "答案 y", "输出答案、引用或拒答"]
+          ],
+          summary: "在线阶段只能消费离线索引留下的表示。检索器先缩小证据空间，生成器再在问题与候选文档条件下产生答案。"
+        }
+      };
+      const documentData = {
+        return: ["z₁ 更可能成为有效证据", "它直接包含“电子产品、拆封、退货条件”等回答问题所需的信息，因此检索概率最高。但 0.62 不是“已被证明正确”，只是检索器当前的判断。"],
+        shipping: ["z₂ 是词面相关但证据不足", "它可能出现“电子产品”和“签收”，却没有解释拆封后的退货条件。若它被排在首位，生成器看到的证据质量会下降。"],
+        account: ["z₃ 与问题关系较弱", "它属于同一业务知识库，但不能支撑当前答案。候选文档不是预先给定的标准答案，而是一个带概率的分布。"]
+      };
+
+      let state = loadState();
+      const stageButtons = [...document.querySelectorAll("[data-stage-target]")];
+      const sections = [...document.querySelectorAll("[data-stage]")];
+      const notes = document.querySelector("#day02Notes");
+
+      document.querySelectorAll("[data-go-stage]").forEach(button => {
+        button.addEventListener("click", () => showStage(Number(button.dataset.goStage), true));
+      });
+      stageButtons.forEach(button => {
+        button.addEventListener("click", () => showStage(Number(button.dataset.stageTarget), true));
+      });
+      document.querySelectorAll("[data-track]").forEach(button => {
+        button.addEventListener("click", () => renderTrack(button.dataset.track));
+      });
+      document.querySelectorAll("[data-document]").forEach(button => {
+        button.addEventListener("click", () => renderDocument(button.dataset.document));
+      });
+      document.querySelectorAll("[data-rating]").forEach(button => {
+        button.addEventListener("click", () => {
+          state.rating = button.dataset.rating;
+          renderRating();
+          saveState();
+        });
+      });
+      notes.addEventListener("input", event => {
+        state.notes = event.target.value;
+        saveState();
+      });
+      document.querySelector("#saveCheckpoint").addEventListener("click", () => {
+        saveState();
+        document.querySelector("#saveNote").hidden = false;
+      });
+
+      notes.value = state.notes || "";
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 1), false);
+      renderTrack(state.track || "offline");
+      renderDocument(state.document || "return");
+      renderRating();
+
+      function showStage(stage, shouldScroll) {
+        state.stage = stage;
+        sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
+        stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
+        document.querySelector("#progressText").textContent = stage === 0 ? "ARCH / 06" : "01 / 06";
+        document.querySelector("#progressFill").style.width = stage === 0 ? "12%" : "24%";
+        saveState();
+        if (shouldScroll) window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 58, behavior: "smooth" });
+      }
+
+      function renderTrack(track) {
+        const data = trackData[track];
+        state.track = track;
+        document.querySelectorAll("[data-track]").forEach(button => button.classList.toggle("is-active", button.dataset.track === track));
+        document.querySelector("#architectureFlow").innerHTML = data.nodes.map(node =>
+          '<div class="flow-node"><span>' + node[0] + '</span><strong>' + node[1] + '</strong><p>' + node[2] + '</p></div>'
+        ).join("");
+        document.querySelector("#trackSummary").textContent = data.summary;
+        saveState();
+      }
+
+      function renderDocument(documentId) {
+        const data = documentData[documentId];
+        state.document = documentId;
+        document.querySelectorAll("[data-document]").forEach(button => button.classList.toggle("is-active", button.dataset.document === documentId));
+        document.querySelector("#candidateDetail").innerHTML = '<strong>' + data[0] + '</strong><p>' + data[1] + '</p>';
+        saveState();
+      }
+
+      function renderRating() {
+        document.querySelectorAll("[data-rating]").forEach(button => button.classList.toggle("is-active", button.dataset.rating === state.rating));
+      }
+
+      function defaultState() {
+        return { stage: 0, track: "offline", document: "return", notes: "", rating: "" };
+      }
+
+      function loadState() {
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          return saved ? { ...defaultState(), ...JSON.parse(saved) } : defaultState();
+        } catch (error) {
+          return { ...defaultState(), ...memoryStore };
+        }
+      }
+
+      function saveState() {
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (error) {
+          Object.assign(memoryStore, state);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
