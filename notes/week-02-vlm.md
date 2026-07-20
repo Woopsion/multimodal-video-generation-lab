@@ -2,8 +2,8 @@
 
 ## 当前阶段
 
-- 日期：2026-07-14
-- 学习状态：Day8-Day13 已收口；Day14 Step 01 已完成，当前进入 Step 02，定义通用多模态 Demo 的需求契约。
+- 日期：2026-07-20
+- 学习状态：Day8-Day14 已收口；下一步进入 Day15 扩散模型基本原理。
 - 主笔记：`docs/week-02-multimodal-understanding/index.html`
 - Day8 笔记：`docs/day-08-vit-patch-embedding/index.html`
 - Day9 笔记：`docs/day-09-clip-alignment/index.html`
@@ -205,4 +205,12 @@ Day14 不直接开始写应用代码。先把 Day8-Day13 放回同一条系统�
 - Day14 状态笔记：`notes/day-14-week2-review-vlm-assistant.md`
 - VLM 小助手方案草稿：`demos/vlm-visual-assistant/design.md`
 
-当前阶段：Step 01 Week2 知识地图。
+启动阶段：Step 01 Week2 知识地图（已完成）。
+## Day14 收口
+
+- 完成 Week2 知识地图和 VLM 系统主线复盘。
+- 完成通用多模态 Demo 的输入、输出和失败边界。
+- 选择 `HuggingFaceTB/SmolVLM-256M-Instruct` 作为最小 MVP 基线。
+- 完成模块边界、设备策略、结果记录和失败处理设计。
+- 10 张测试图片与真实 Demo 编码明确延期到后续实现阶段。
+- 下一步进入 Day15：扩散模型基本原理。

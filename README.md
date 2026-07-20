@@ -38,11 +38,11 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 13 final note: `docs/day-13-llava-paper-reading/index.html`
 - Day 13 status note: `notes/day-13-llava-paper-reading.md`
 - Day 13 paper note: `papers/llava.md`
-- Day 14 active note: `docs/day-14-week2-review-vlm-assistant/index.html`
+- Day 14 final note: `docs/day-14-week2-review-vlm-assistant/index.html`
 - Day 14 status note: `notes/day-14-week2-review-vlm-assistant.md`
-- Day 14 design draft: `demos/vlm-visual-assistant/design.md`
+- Day 14 MVP design: `demos/vlm-visual-assistant/design.md`
 - Status note: `notes/week-02-vlm.md`
-- Current task: Day 14 Step 02, defining the general multimodal demo contract for the VLM assistant.
+- Current task: Day 14 is complete at the minimum MVP design level; next is Day 15 diffusion model fundamentals.
 
 ## Repository Hygiene
 
