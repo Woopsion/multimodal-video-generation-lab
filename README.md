@@ -41,8 +41,10 @@ Week 2 has started. The learning format continues the HTML-first pattern: concep
 - Day 14 final note: `docs/day-14-week2-review-vlm-assistant/index.html`
 - Day 14 status note: `notes/day-14-week2-review-vlm-assistant.md`
 - Day 14 MVP design: `demos/vlm-visual-assistant/design.md`
+- Day 15 active note: `docs/day-15-diffusion-basics/index.html`
+- Week 3 status note: `notes/week-03-diffusion.md`
 - Status note: `notes/week-02-vlm.md`
-- Current task: Day 14 is complete at the minimum MVP design level; next is Day 15 diffusion model fundamentals.
+- Current task: Day 15 Step 03, understanding DDPM reverse denoising and the division of work between the noise predictor and scheduler.
 
 ## Repository Hygiene
 

@@ -537,3 +537,24 @@
 - 技术方案：`demos/vlm-visual-assistant/design.md`。
 - 明确延期：真实 Demo 编码、10 张测试图片和完整评测。
 - Day14 已收口。下一步进入 Day15：扩散模型基本原理。
+## Day 15 - Diffusion 扩散模型基本原理启动
+
+- 日期：2026-07-20
+- 创建 Day15 交互式教学入口：`docs/day-15-diffusion-basics/index.html`。
+- 创建 Week3 状态笔记：`notes/week-03-diffusion.md`。
+- 当前阶段：Step 01 前向加噪，先掌握 `x_0`、`x_t`、时间步、信号系数和噪声系数。
+- 学习原则：先彻底理解训练与推理的因果链路，再进入 Stable Diffusion 组件。
+## Day 15 - Step 01 补充与 Step 02 启动
+
+- 日期：2026-07-20
+- 补充现代扩散模型来源、前向加噪动机和高斯噪声选择原因。
+- 补充正态分布的均值、方差、标准差和 68-95-99.7 规律。
+- 明确 `epsilon` 是与图片同形状的标准高斯噪声张量。
+- 进入 Step 02：输入 `x_t` 与 `t`，训练网络预测实际加入的 `epsilon`。
+## Day 15 - DDPM 与 Step 03 反向去噪
+
+- 日期：2026-07-20
+- 理解 DDPM 全称及 Denoising、Diffusion、Probabilistic 的含义。
+- 区分前向分布 `q`、学习的反向分布 `p_theta` 和噪声预测网络。
+- 理解 `beta_t`、`alpha_t`、`alpha_bar_t` 与 scheduler 的职责。
+- 进入 Step 03：从 `x_t` 和预测噪声计算反向均值，再采样得到 `x_{t-1}`。
