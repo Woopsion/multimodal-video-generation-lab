@@ -197,6 +197,19 @@
     .candidate-detail { min-height: 104px; padding: 18px 20px; border-top: 1px solid var(--line); }
     .candidate-detail strong { color: var(--teal); }
 
+    .generation-lab { margin: 28px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 24px 0; }
+    .mode-switch { display: inline-flex; margin: 10px 0 22px; border: 1px solid var(--ink); }
+    .mode-switch button { min-width: 152px; padding: 9px 13px; border: 0; border-right: 1px solid var(--ink); background: var(--surface); cursor: pointer; }
+    .mode-switch button:last-child { border-right: 0; }
+    .mode-switch button.is-active { background: var(--ink); color: #fff; }
+    .generation-lane { display: flex; flex-wrap: wrap; gap: 8px; min-height: 92px; padding: 18px; border: 1px solid var(--line); background: var(--surface); }
+    .token-unit { display: grid; gap: 5px; min-width: 70px; padding: 9px 10px; border: 1px solid var(--line); text-align: center; }
+    .token-unit strong { font-family: "Noto Serif SC", "Songti SC", serif; font-size: 15px; }
+    .token-source { color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .token-source.alt { color: var(--orange); }
+    .mode-explanation { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+    .step-result { margin: 24px 0; padding: 18px 20px; border-left: 5px solid var(--yellow); background: #fff8d9; }
+
     .checkpoint { margin-top: 30px; padding: 22px; border: 1px solid var(--ink); background: #fffdf8; }
     .checkpoint label { display: block; margin: 16px 0 7px; color: var(--muted); font-size: 12px; font-weight: 800; }
     .checkpoint textarea { width: 100%; min-height: 130px; padding: 13px; resize: vertical; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
@@ -211,9 +224,13 @@
 
     @media (max-width: 900px) {
       .topbar { grid-template-columns: 1fr auto; padding: 0 16px; }
-      .topbar strong { justify-self: start; }
+      .topbar strong { justify-self: start; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .topbar > a { display: none; }
-      .progress-track { width: 70px; }
+      .top-progress { white-space: nowrap; }
+      .progress-track { width: 54px; }
+      .formula { padding: 16px; font-size: 14px; }
+      .mode-switch { display: flex; width: 100%; }
+      .mode-switch button { flex: 1; min-width: 0; }
       .hero-inner, .workspace { width: min(100% - 30px, 720px); }
       .hero-inner { grid-template-columns: 1fr; gap: 32px; padding-top: 38px; }
       h1 { font-size: 36px; }
@@ -274,8 +291,8 @@
       <p class="roadmap-title">DAY 02 LEARNING MAP</p>
       <div>
         <button class="stage-button is-active" type="button" data-stage-target="0"><span class="stage-no">00</span><span class="stage-copy"><strong>架构导览</strong><span>已开放</span></span></button>
-        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>文档是隐变量</strong><span>当前入口</span></span></button>
-        <button class="stage-button" type="button" disabled><span class="stage-no">02</span><span class="stage-copy"><strong>Sequence / Token</strong><span>等待讨论</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>文档是隐变量</strong><span>已完成</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="2"><span class="stage-no">02</span><span class="stage-copy"><strong>Sequence / Token</strong><span>当前入口</span></span></button>
         <button class="stage-button" type="button" disabled><span class="stage-no">03</span><span class="stage-copy"><strong>离线索引</strong><span>等待讨论</span></span></button>
         <button class="stage-button" type="button" disabled><span class="stage-no">04</span><span class="stage-copy"><strong>在线检索与生成</strong><span>等待讨论</span></span></button>
         <button class="stage-button" type="button" disabled><span class="stage-no">05</span><span class="stage-copy"><strong>决策点与复述</strong><span>等待讨论</span></span></button>
@@ -311,8 +328,8 @@
         </div>
 
         <div class="phase-list" aria-label="Day 02 分阶段路线">
-          <div class="phase-row"><span>01</span><div><strong>文档 z 为什么是隐变量</strong><p>先建立原始论文的概率视角。</p></div><span class="phase-status current">当前</span></div>
-          <div class="phase-row"><span>02</span><div><strong>RAG-Sequence 与 RAG-Token</strong><p>看边际化发生在哪个粒度。</p></div><span class="phase-status">未开放</span></div>
+          <div class="phase-row"><span>01</span><div><strong>文档 z 为什么是隐变量</strong><p>已形成“检索概率决定证据能否贡献”的认识。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>02</span><div><strong>RAG-Sequence 与 RAG-Token</strong><p>看边际化发生在哪个粒度。</p></div><span class="phase-status current">当前</span></div>
           <div class="phase-row"><span>03</span><div><strong>离线索引流水线</strong><p>找出不可逆的数据与表示决策。</p></div><span class="phase-status">未开放</span></div>
           <div class="phase-row"><span>04</span><div><strong>在线检索与生成</strong><p>串起 query、top-k、context 和 answer。</p></div><span class="phase-status">未开放</span></div>
           <div class="phase-row"><span>05</span><div><strong>8 个工程决策点</strong><p>把默认参数变成可解释的选择。</p></div><span class="phase-status">未开放</span></div>
@@ -342,10 +359,15 @@
           <div class="candidate-detail" id="candidateDetail" aria-live="polite"></div>
         </div>
 
+        <div class="step-result">
+          <strong>Step 01 最终结论</strong>
+          <p>文档 z 不是用户直接提供的已知输入，而是检索器根据问题 x 从文档空间中推断的概率分布。正确文档概率过低时，它可能掉出 top-k 或贡献过小；生成模型再强，也只能围绕错误或不足的证据回答，结果往往“看起来合理但没有回答到点子上”。</p>
+        </div>
+
         <div class="checkpoint">
-          <p class="section-label">One discussion only</p>
-          <h3>当前只收口一个概念</h3>
-          <p>请用自己的话解释：为什么文档 z 不是已知输入，而是模型需要推断的隐变量？不需要公式，也暂时不用讨论 RAG-Sequence 和 RAG-Token。</p>
+          <p class="section-label">Completed checkpoint</p>
+          <h3>你的理解已经进入正确边界</h3>
+          <p>保留你在下方写下的原始表达，后续复习时重点检查自己是否先想到“证据有没有进入 top-k”，而不是先更换生成模型。</p>
           <label for="day02Notes">我的当前理解</label>
           <textarea id="day02Notes" placeholder="先写一两句话即可。我们会根据你的表达继续补当前缺口。"></textarea>
           <label>现在的掌握感觉</label>
@@ -356,9 +378,53 @@
           </div>
           <div class="actions">
             <button class="action" type="button" data-go-stage="0">← 回到架构导览</button>
-            <button class="action primary" type="button" id="saveCheckpoint">保存当前理解</button>
+            <button class="action" type="button" id="saveCheckpoint">保存原始表达</button>
+            <button class="action primary" type="button" data-go-stage="2">进入 Step 02 →</button>
           </div>
-          <p class="save-note" id="saveNote" hidden>已保存在当前浏览器。下一步回到对话，只讨论这一个概念。</p>
+          <p class="save-note" id="saveNote" hidden>Step 01 的原始表达已保存在当前浏览器，可以进入 Step 02。</p>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="2" hidden>
+        <p class="section-label">02 · Marginalization granularity</p>
+        <h2>RAG-Sequence 与 RAG-Token，差异不在“检索几次”</h2>
+        <p class="lead">两者都把候选文档 z 当作隐变量。真正的差异是：对 z 的求和发生在整段答案概率之外，还是发生在每个 token 的生成概率之内。</p>
+
+        <div class="formula">RAG-Sequence: p(y | x) ≈ Σ<sub>z</sub> pη(z | x) · ∏<sub>i</sub> pθ(y<sub>i</sub> | x, z, y&lt;i)</div>
+        <div class="formula">RAG-Token: p(y | x) ≈ ∏<sub>i</sub> Σ<sub>z</sub> pη(z | x) · pθ(y<sub>i</sub> | x, z, y&lt;i)</div>
+
+        <div class="generation-lab">
+          <p class="section-label">Generation timeline</p>
+          <h3>观察文档贡献在生成过程中的位置</h3>
+          <div class="mode-switch" role="group" aria-label="RAG 边际化粒度">
+            <button class="is-active" type="button" data-generation-mode="sequence">RAG-Sequence</button>
+            <button type="button" data-generation-mode="token">RAG-Token</button>
+          </div>
+          <div class="generation-lane" id="generationLane" aria-live="polite"></div>
+          <p class="mode-explanation" id="generationExplanation"></p>
+        </div>
+
+        <div class="concept-callout">
+          <strong>先抓住括号位置。</strong>Sequence 是“每个候选文档分别解释完整答案，再对完整答案概率求和”；Token 是“每生成一个 token，都先对候选文档的贡献求和”。后者更灵活，但计算与解释都更复杂，也更容易在长答案中混合不同证据路径。
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">One discussion only</p>
+          <h3>当前只比较灵活性</h3>
+          <p>假设一段答案既要引用“退货规则”z₁，又要引用“会员补贴规则”z₂。RAG-Sequence 和 RAG-Token 中，哪一个更容易让不同部分受到不同文档影响？为什么？</p>
+          <label for="day02Step2Notes">我的当前判断</label>
+          <textarea id="day02Step2Notes" placeholder="只回答哪一个更灵活，以及你的理由。"></textarea>
+          <label>现在的掌握感觉</label>
+          <div class="rating" role="group" aria-label="Sequence 与 Token 掌握感觉">
+            <button type="button" data-step2-rating="fuzzy">还模糊</button>
+            <button type="button" data-step2-rating="forming">正在成形</button>
+            <button type="button" data-step2-rating="clear">能讲清楚</button>
+          </div>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="1">← 回到隐变量</button>
+            <button class="action primary" type="button" id="saveStep2">保存当前判断</button>
+          </div>
+          <p class="save-note" id="step2SaveNote" hidden>已保存。下一轮讨论只纠正 Sequence 与 Token 的粒度差异。</p>
         </div>
       </section>
     </main>
@@ -397,11 +463,22 @@
         shipping: ["z₂ 是词面相关但证据不足", "它可能出现“电子产品”和“签收”，却没有解释拆封后的退货条件。若它被排在首位，生成器看到的证据质量会下降。"],
         account: ["z₃ 与问题关系较弱", "它属于同一业务知识库，但不能支撑当前答案。候选文档不是预先给定的标准答案，而是一个带概率的分布。"]
       };
+      const generationData = {
+        sequence: {
+          tokens: [["可以", "z₁"], ["退货", "z₁"], ["，但", "z₁"], ["拆封后", "z₁"], ["需保持", "z₁"], ["商品完好", "z₁"]],
+          explanation: "在每一个候选文档路径中，同一个 z 负责解释完整答案的全部 token；最后再对这些完整序列概率求和。"
+        },
+        token: {
+          tokens: [["可以", "z₁"], ["退货", "z₁"], ["，会员", "z₂"], ["还可", "z₂"], ["获得", "z₂"], ["运费补贴", "z₂"]],
+          explanation: "每个 token 的概率都先对候选文档求和，因此答案的不同位置可以受到不同文档贡献，灵活性更高。"
+        }
+      };
 
       let state = loadState();
       const stageButtons = [...document.querySelectorAll("[data-stage-target]")];
       const sections = [...document.querySelectorAll("[data-stage]")];
       const notes = document.querySelector("#day02Notes");
+      const step2Notes = document.querySelector("#day02Step2Notes");
 
       document.querySelectorAll("[data-go-stage]").forEach(button => {
         button.addEventListener("click", () => showStage(Number(button.dataset.goStage), true));
@@ -415,6 +492,9 @@
       document.querySelectorAll("[data-document]").forEach(button => {
         button.addEventListener("click", () => renderDocument(button.dataset.document));
       });
+      document.querySelectorAll("[data-generation-mode]").forEach(button => {
+        button.addEventListener("click", () => renderGeneration(button.dataset.generationMode));
+      });
       document.querySelectorAll("[data-rating]").forEach(button => {
         button.addEventListener("click", () => {
           state.rating = button.dataset.rating;
@@ -422,27 +502,45 @@
           saveState();
         });
       });
+      document.querySelectorAll("[data-step2-rating]").forEach(button => {
+        button.addEventListener("click", () => {
+          state.step2Rating = button.dataset.step2Rating;
+          renderStep2Rating();
+          saveState();
+        });
+      });
       notes.addEventListener("input", event => {
         state.notes = event.target.value;
+        saveState();
+      });
+      step2Notes.addEventListener("input", event => {
+        state.step2Notes = event.target.value;
         saveState();
       });
       document.querySelector("#saveCheckpoint").addEventListener("click", () => {
         saveState();
         document.querySelector("#saveNote").hidden = false;
       });
+      document.querySelector("#saveStep2").addEventListener("click", () => {
+        saveState();
+        document.querySelector("#step2SaveNote").hidden = false;
+      });
 
       notes.value = state.notes || "";
-      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 1), false);
+      step2Notes.value = state.step2Notes || "";
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 2), false);
       renderTrack(state.track || "offline");
       renderDocument(state.document || "return");
+      renderGeneration(state.generationMode || "sequence");
       renderRating();
+      renderStep2Rating();
 
       function showStage(stage, shouldScroll) {
         state.stage = stage;
         sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
         stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
-        document.querySelector("#progressText").textContent = stage === 0 ? "ARCH / 06" : "01 / 06";
-        document.querySelector("#progressFill").style.width = stage === 0 ? "12%" : "24%";
+        document.querySelector("#progressText").textContent = ["ARCH / 06", "01 / 06", "02 / 06"][stage];
+        document.querySelector("#progressFill").style.width = ["12%", "24%", "36%"][stage];
         saveState();
         if (shouldScroll) window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 58, behavior: "smooth" });
       }
@@ -466,12 +564,37 @@
         saveState();
       }
 
+      function renderGeneration(mode) {
+        const data = generationData[mode];
+        state.generationMode = mode;
+        document.querySelectorAll("[data-generation-mode]").forEach(button => button.classList.toggle("is-active", button.dataset.generationMode === mode));
+        document.querySelector("#generationLane").innerHTML = data.tokens.map(token => {
+          const sourceClass = token[1] === "z₂" ? "token-source alt" : "token-source";
+          return '<span class="token-unit"><strong>' + token[0] + '</strong><span class="' + sourceClass + '">' + token[1] + '</span></span>';
+        }).join("");
+        document.querySelector("#generationExplanation").textContent = data.explanation;
+        saveState();
+      }
+
       function renderRating() {
         document.querySelectorAll("[data-rating]").forEach(button => button.classList.toggle("is-active", button.dataset.rating === state.rating));
       }
 
+      function renderStep2Rating() {
+        document.querySelectorAll("[data-step2-rating]").forEach(button => button.classList.toggle("is-active", button.dataset.step2Rating === state.step2Rating));
+      }
+
       function defaultState() {
-        return { stage: 0, track: "offline", document: "return", notes: "", rating: "" };
+        return {
+          stage: 0,
+          track: "offline",
+          document: "return",
+          generationMode: "sequence",
+          notes: "",
+          rating: "",
+          step2Notes: "",
+          step2Rating: ""
+        };
       }
 
       function loadState() {
