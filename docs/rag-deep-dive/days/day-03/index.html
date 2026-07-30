@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Day 03 - 文档解析与分块</title>
+  <style>
+    :root { --paper:#f3f1e9; --surface:#fffdf7; --ink:#17211f; --muted:#65706c; --line:#c7cfca; --orange:#d24f2a; --orange-soft:#f8dfd4; --teal:#087f78; --teal-soft:#d9eeeb; --yellow:#f0c94d; --charcoal:#202826; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Microsoft YaHei","Noto Sans SC",sans-serif; line-height:1.7; }
+    button,textarea { font:inherit; }
+    a { color:inherit; }
+    .topbar { position:sticky; top:0; z-index:20; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:58px; padding:0 28px; border-bottom:1px solid var(--ink); background:rgba(243,241,233,.96); }
+    .topbar>a { color:var(--teal); font-size:12px; font-weight:800; }
+    .topbar strong { font-size:13px; }
+    .top-progress { display:flex; justify-content:flex-end; align-items:center; gap:10px; color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .progress-track { width:92px; height:5px; background:#d8ddd9; }
+    .progress-fill { width:14%; height:100%; background:var(--orange); transition:width 180ms ease; }
+    .hero { min-height:430px; border-bottom:1px solid var(--ink); background:var(--surface); }
+    .hero-inner { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr); gap:56px; align-items:center; width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:54px 0 48px; }
+    .eyebrow,.section-label { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:11px; font-weight:900; text-transform:uppercase; }
+    h1,h2,h3,h4 { font-family:"Noto Serif SC","Songti SC",serif; }
+    h1 { max-width:780px; margin:10px 0 20px; font-size:47px; line-height:1.16; letter-spacing:0; }
+    h2 { margin:8px 0 18px; font-size:31px; line-height:1.3; }
+    h3 { margin:8px 0 14px; font-size:21px; }
+    .hero-copy,.lead { color:var(--muted); font-size:15px; }
+    .hero-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+    .hero-meta span { padding:5px 9px; border:1px solid var(--line); color:var(--muted); font-size:10px; font-weight:800; }
+    .hero-specimen { display:grid; grid-template-columns:54px minmax(0,1fr); min-height:292px; border:1px solid var(--ink); background:var(--paper); box-shadow:12px 12px 0 var(--teal-soft); }
+    .specimen-index { padding:16px 10px; border-right:1px solid var(--ink); background:var(--charcoal); color:#fff; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; writing-mode:vertical-rl; }
+    .specimen-page { margin:22px; padding:20px; border:1px solid var(--line); background:#fff; }
+    .specimen-page b { display:block; margin-bottom:12px; font-family:"Noto Serif SC","Songti SC",serif; font-size:18px; }
+    .specimen-columns { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .specimen-columns span { display:block; height:6px; margin:8px 0; background:#cfd6d1; }
+    .specimen-columns span:nth-child(2n) { width:72%; }
+    .specimen-table { display:grid; grid-template-columns:70px 1fr; margin-top:18px; border-top:1px solid var(--ink); border-left:1px solid var(--ink); }
+    .specimen-table span { padding:5px; border-right:1px solid var(--ink); border-bottom:1px solid var(--ink); font-size:9px; }
+    .specimen-caption { margin:12px 0 0; color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .workspace { display:grid; grid-template-columns:230px minmax(0,1fr); gap:48px; width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:48px 0 80px; }
+    .roadmap { position:sticky; top:84px; align-self:start; }
+    .roadmap-title { margin:0 0 10px; color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .stage-button { display:grid; grid-template-columns:36px minmax(0,1fr); width:100%; min-height:66px; padding:11px 10px; border:0; border-top:1px solid var(--line); background:transparent; color:var(--muted); text-align:left; cursor:pointer; }
+    .stage-button:last-child { border-bottom:1px solid var(--line); }
+    .stage-button.is-active { background:var(--teal-soft); color:var(--ink); }
+    .stage-button:disabled { cursor:not-allowed; opacity:.58; }
+    .stage-no { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:11px; font-weight:900; }
+    .stage-copy strong,.stage-copy span { display:block; }
+    .stage-copy strong { font-size:13px; }
+    .stage-copy span { margin-top:2px; font-size:10px; }
+    .roadmap-links { display:grid; gap:6px; margin-top:18px; }
+    .roadmap-links a { color:var(--teal); font-size:11px; font-weight:800; }
+    main { min-width:0; }
+    .learning-section[hidden] { display:none; }
+    .learning-contract { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:24px 0 32px; border:1px solid var(--ink); }
+    .contract-cell { min-height:126px; padding:17px; border-right:1px solid var(--ink); }
+    .contract-cell:last-child { border-right:0; }
+    .contract-cell span { display:block; margin-bottom:8px; color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .contract-cell strong { display:block; font-size:14px; }
+    .contract-cell p { margin-bottom:0; color:var(--muted); font-size:11px; }
+    .pipeline-band { margin:30px 0; padding:24px 0; border-top:1px solid var(--ink); border-bottom:1px solid var(--ink); }
+    .pipeline { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+    .pipeline-node { position:relative; min-height:116px; padding:14px 12px; border:1px solid var(--line); background:var(--surface); }
+    .pipeline-node::after { content:"→"; position:absolute; top:42px; right:-12px; z-index:2; color:var(--orange); font-weight:900; }
+    .pipeline-node:last-child::after { content:""; }
+    .pipeline-node span { color:var(--teal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .pipeline-node strong { display:block; margin:7px 0; font-size:13px; }
+    .pipeline-node p { margin:0; color:var(--muted); font-size:10px; line-height:1.55; }
+    .phase-list { margin:30px 0; border-top:1px solid var(--line); }
+    .phase-row { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:14px; align-items:center; min-height:68px; border-bottom:1px solid var(--line); }
+    .phase-row>span:first-child { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-weight:900; }
+    .phase-row strong { display:block; font-size:13px; }
+    .phase-row p { margin:2px 0 0; color:var(--muted); font-size:11px; }
+    .phase-status { padding:4px 8px; border:1px solid var(--line); color:var(--muted); font-size:9px; font-weight:900; }
+    .phase-status.current { border-color:var(--orange); background:var(--orange-soft); color:var(--orange); }
+    .concept-callout { margin:22px 0; padding:18px 20px; border-left:5px solid var(--teal); background:var(--teal-soft); }
+    .inspection-lab { margin:28px 0; border:1px solid var(--ink); background:var(--surface); }
+    .lab-head { padding:18px 20px; border-bottom:1px solid var(--ink); }
+    .view-switch { display:inline-flex; margin-top:10px; border:1px solid var(--ink); }
+    .view-switch button { min-width:142px; padding:9px 12px; border:0; border-right:1px solid var(--ink); background:transparent; cursor:pointer; }
+    .view-switch button:last-child { border-right:0; }
+    .view-switch button.is-active { background:var(--ink); color:#fff; }
+    .inspection-canvas { min-height:360px; padding:24px; background:#e6e8e2; }
+    .inspection-note { margin:0; padding:14px 20px; border-top:1px solid var(--ink); color:var(--muted); font-size:12px; }
+    .layout-page { width:min(610px,100%); margin:0 auto; padding:28px; border:1px solid var(--line); background:#fff; box-shadow:8px 8px 0 #cbd3ce; }
+    .layout-page h4 { margin:0 0 18px; font-size:22px; }
+    .layout-columns { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    .manual-block { padding-top:10px; border-top:3px solid var(--teal); }
+    .manual-block span { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .manual-block p { margin:7px 0; font-size:12px; }
+    .manual-table { display:grid; grid-template-columns:90px 1fr; margin-top:20px; border-top:1px solid var(--ink); border-left:1px solid var(--ink); }
+    .manual-table div { padding:7px; border-right:1px solid var(--ink); border-bottom:1px solid var(--ink); font-size:11px; }
+    .manual-table .head { background:var(--charcoal); color:#fff; font-weight:900; }
+    .text-stream { display:grid; gap:9px; width:min(680px,100%); margin:0 auto; }
+    .stream-line { display:grid; grid-template-columns:52px minmax(0,1fr); border:1px solid var(--line); background:#fff; }
+    .stream-line span { padding:9px; border-right:1px solid var(--line); color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .stream-line p { margin:0; padding:9px 12px; font-family:"Cascadia Mono",Consolas,monospace; font-size:11px; }
+    .stream-line.is-broken { border-color:var(--orange); background:var(--orange-soft); }
+    .scan-page { display:grid; place-items:center; width:min(610px,100%); min-height:300px; margin:0 auto; border:1px solid var(--line); background:#d3d5d0; }
+    .scan-panel { width:min(420px,calc(100% - 34px)); padding:22px; border:1px solid var(--ink); background:#f8f8f3; }
+    .scan-panel strong { display:block; font-family:"Cascadia Mono",Consolas,monospace; }
+    .confidence-row { display:grid; grid-template-columns:80px 1fr 40px; gap:8px; align-items:center; margin-top:12px; font-size:10px; }
+    .confidence-track { height:6px; background:#d6d8d4; }
+    .confidence-track i { display:block; height:100%; background:var(--teal); }
+    .confidence-row.low .confidence-track i { background:var(--orange); }
+    .step-result { margin:24px 0; padding:18px 20px; border-left:5px solid var(--yellow); background:#fff7d5; }
+    .answer-review { margin-top:16px; padding-top:14px; border-top:1px solid rgba(23,33,31,.22); }
+    .answer-review>span { display:block; margin-bottom:5px; color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; text-transform:uppercase; }
+    .answer-review p { margin:0; }
+    .structure-scene { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:18px; width:min(760px,100%); margin:0 auto; }
+    .source-fragment,.object-map { min-height:270px; padding:18px; border:1px solid var(--ink); background:#fff; }
+    .source-fragment { background:var(--charcoal); color:#fff; }
+    .source-fragment>span,.object-map>span { display:block; margin-bottom:14px; color:var(--yellow); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .object-map>span { color:var(--teal); }
+    .source-fragment strong { display:block; margin:14px 0 4px; font-family:"Noto Serif SC","Songti SC",serif; }
+    .source-fragment p { margin:5px 0; color:#dce4df; font-size:11px; }
+    .object-row { display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:11px; }
+    .object-row:last-child { border-bottom:0; }
+    .object-row code { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .relation-strip { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+    .relation-strip b { padding:4px 7px; border:1px solid var(--teal); color:var(--teal); font-size:9px; }
+    .checkpoint { margin-top:30px; padding:22px; border:1px solid var(--ink); background:var(--surface); }
+    .granularity-scene { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr); gap:18px; width:min(780px,100%); margin:0 auto; }
+    .document-stack,.lens-panel { min-height:292px; padding:18px; border:1px solid var(--ink); background:#fff; }
+    .document-stack>span,.lens-panel>span { display:block; margin-bottom:13px; color:var(--teal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .document-line { margin:8px 0; padding:8px 10px; border-left:3px solid var(--line); background:var(--paper); font-size:11px; }
+    .document-line.is-focus { border-left-color:var(--orange); background:var(--orange-soft); }
+    .lens-panel { background:var(--charcoal); color:#fff; }
+    .lens-panel>span { color:var(--yellow); }
+    .lens-panel strong { display:block; margin:10px 0; font-family:"Noto Serif SC","Songti SC",serif; font-size:18px; }
+    .lens-panel p { color:#dce4df; font-size:11px; }
+    .lens-metric { display:grid; grid-template-columns:1fr auto; gap:8px; padding:8px 0; border-top:1px solid #59625f; font-size:10px; }
+    .granularity-equation { margin:22px 0; padding:15px 18px; border:1px solid var(--ink); background:var(--surface); font-family:"Cascadia Mono",Consolas,monospace; font-size:12px; font-weight:900; text-align:center; }
+    .chunk-controls { padding:18px 20px; border-bottom:1px solid var(--ink); }
+    .range-row { display:grid; grid-template-columns:130px minmax(0,1fr) 90px; gap:16px; align-items:center; margin-top:18px; }
+    .range-row label { color:var(--muted); font-size:11px; font-weight:900; }
+    .range-row input { width:100%; accent-color:var(--orange); }
+    .range-value { padding:6px 8px; border:1px solid var(--ink); background:#fff; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; text-align:center; }
+    .chunk-dashboard { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr); gap:18px; padding:20px; background:#e6e8e2; }
+    .chunk-preview,.metric-stack { min-height:270px; padding:18px; border:1px solid var(--ink); background:#fff; }
+    .chunk-preview>span,.metric-stack>span { display:block; margin-bottom:14px; color:var(--teal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .chunk-track { display:flex; gap:5px; min-height:116px; align-items:stretch; padding:12px 0; overflow:hidden; }
+    .chunk-unit { display:grid; place-items:center; min-width:42px; border:1px solid var(--teal); background:var(--teal-soft); color:var(--teal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .chunk-unit.is-partial { border-color:var(--orange); background:var(--orange-soft); color:var(--orange); }
+    .chunk-caption { color:var(--muted); font-size:11px; }
+    .metric-row { display:grid; grid-template-columns:90px minmax(0,1fr) 48px; gap:9px; align-items:center; margin:15px 0; font-size:10px; }
+    .metric-track { height:7px; background:#d6d8d4; }
+    .metric-track i { display:block; height:100%; background:var(--teal); transition:width 160ms ease; }
+    .metric-row.cost .metric-track i { background:var(--orange); }
+    .experiment-table { width:100%; margin:20px 0; border-collapse:collapse; font-size:11px; }
+    .experiment-table th,.experiment-table td { padding:9px 10px; border:1px solid var(--line); text-align:left; }
+    .experiment-table th { background:var(--charcoal); color:#fff; }
+    .adaptive-pipeline { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:7px; margin:20px 0; }
+    .adaptive-node { position:relative; min-height:128px; padding:13px; border:1px solid var(--ink); background:#fff; }
+    .adaptive-node::after { content:"→"; position:absolute; top:48px; right:-11px; z-index:2; color:var(--orange); font-weight:900; }
+    .adaptive-node:last-child::after { content:""; }
+    .adaptive-node span { color:var(--teal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .adaptive-node strong { display:block; margin:7px 0; font-size:12px; }
+    .adaptive-node p { margin:0; color:var(--muted); font-size:10px; line-height:1.5; }
+    .scope-warning { margin:18px 0; padding:16px 18px; border:1px solid var(--orange); background:var(--orange-soft); }
+    .failure-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin:24px 0 12px; }
+    .failure-count { color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .table-scroll { max-width:100%; overflow-x:auto; border:1px solid var(--ink); }
+    .failure-matrix { width:100%; min-width:860px; border-collapse:collapse; background:#fff; font-size:10px; }
+    .failure-matrix th,.failure-matrix td { padding:10px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    .failure-matrix th { background:var(--charcoal); color:#fff; }
+    .failure-matrix tr:last-child td { border-bottom:0; }
+    .failure-matrix td:first-child { color:var(--orange); font-family:"Cascadia Mono",Consolas,monospace; font-weight:900; }
+    .failure-tag { display:inline-block; padding:2px 6px; border:1px solid var(--teal); color:var(--teal); font-size:9px; font-weight:900; }
+    .checkpoint label { display:block; margin:16px 0 7px; color:var(--muted); font-size:11px; font-weight:900; }
+    .checkpoint textarea { width:100%; min-height:128px; padding:13px; resize:vertical; border:1px solid var(--line); background:#fff; color:var(--ink); }
+    .actions { display:flex; justify-content:space-between; gap:12px; margin-top:22px; }
+    .action { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:9px 15px; border:1px solid var(--ink); background:transparent; color:var(--ink); cursor:pointer; font-weight:900; text-decoration:none; }
+    .action.primary { background:var(--ink); color:#fff; }
+    .save-note { margin-top:10px; color:var(--teal); font-size:11px; }
+    @media (max-width:900px) {
+      .topbar { grid-template-columns:1fr auto; padding:0 16px; }
+      .topbar>a { display:none; }
+      .topbar strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .progress-track { width:54px; }
+      .hero-inner,.workspace { width:min(100% - 30px,720px); }
+      .hero-inner { grid-template-columns:1fr; gap:30px; padding-top:38px; }
+      h1 { font-size:36px; }
+      .workspace { grid-template-columns:minmax(0,1fr); gap:28px; }
+      .roadmap { position:static; min-width:0; }
+      .roadmap>div:first-of-type { display:flex; max-width:100%; overflow-x:auto; }
+      .stage-button { flex:0 0 174px; }
+      .learning-contract { grid-template-columns:1fr; }
+      .contract-cell { border-right:0; border-bottom:1px solid var(--ink); }
+      .contract-cell:last-child { border-bottom:0; }
+      .pipeline { grid-template-columns:1fr; }
+      .pipeline-node { min-height:0; }
+      .pipeline-node::after { content:"↓"; top:auto; right:50%; bottom:-16px; }
+      .phase-row { grid-template-columns:42px minmax(0,1fr); padding:10px 0; }
+      .phase-status { grid-column:2; justify-self:start; }
+      .view-switch { display:flex; width:100%; }
+      .view-switch button { flex:1; min-width:0; }
+      .inspection-canvas { padding:16px; }
+      .layout-columns { grid-template-columns:1fr; }
+      .structure-scene { grid-template-columns:1fr; }
+      .actions { display:grid; grid-template-columns:1fr; }
+      .granularity-scene { grid-template-columns:1fr; }
+      .range-row,.chunk-dashboard { grid-template-columns:1fr; }
+      .adaptive-pipeline { grid-template-columns:1fr; }
+      .adaptive-node { min-height:0; }
+      .adaptive-node::after { content:"↓"; top:auto; right:50%; bottom:-15px; }
+      .failure-toolbar { display:block; }
+      .failure-toolbar .view-switch { margin-bottom:10px; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="../day-02/index.html">← Day 02 最终复述</a>
+    <strong>Day 03 · 文档解析与分块</strong>
+    <div class="top-progress"><span id="progressText">ARCH / 07</span><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+  </header>
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">RAG · DAY 03 / 14</p>
+        <h1>检索质量的上限，往往在 embedding 之前就被决定</h1>
+        <p class="hero-copy">今天关注知识如何从复杂文档中被可靠地恢复，并被切成既可召回、又能支撑回答的证据单元。解析与分块不是清洗步骤，而是证据工程。</p>
+        <div class="hero-meta"><span>建议时长 2.5-3 小时</span><span>产出：策略矩阵</span><span>产出：5 个失败样例</span></div>
+      </div>
+      <div class="hero-specimen" role="img" aria-label="包含双栏、表格与阅读顺序的技术文档页面示意">
+        <div class="specimen-index">PAGE OBJECTS / READING ORDER</div>
+        <div class="specimen-page"><b>设备异常处理手册</b><div class="specimen-columns"><div><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span></div></div><div class="specimen-table"><span>CODE</span><span>ACTION</span><span>E42</span><span>RESET MODULE</span></div><p class="specimen-caption">视觉上是一页，语义上是标题、双栏、表格和注释。</p></div>
+      </div>
+    </div>
+  </section>
+  <div class="workspace">
+    <aside class="roadmap">
+      <p class="roadmap-title">DAY 03 LEARNING MAP</p>
+      <div>
+        <button class="stage-button is-active" type="button" data-stage-target="0"><span class="stage-no">00</span><span class="stage-copy"><strong>任务导览</strong><span>已开放</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>PDF 不是文本</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="2"><span class="stage-no">02</span><span class="stage-copy"><strong>结构恢复</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="3"><span class="stage-no">03</span><span class="stage-copy"><strong>三种粒度冲突</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="4"><span class="stage-no">04</span><span class="stage-copy"><strong>Chunk Size 实验</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="5"><span class="stage-no">05</span><span class="stage-copy"><strong>失败样例矩阵</strong><span>当前入口</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">06</span><span class="stage-copy"><strong>复述与验收</strong><span>等待讨论</span></span></button>
+      </div>
+      <div class="roadmap-links"><a href="../../14-day-learning-plan.md">14 天总计划</a><a href="../../index.html">RAG 完整知识库</a></div>
+    </aside>
+    <main>
+      <section class="learning-section" data-stage="0">
+        <p class="section-label">00 · Orientation</p>
+        <h2>今天不是学习一个万能 chunk size</h2>
+        <p class="lead">Day 03 的目标是学会根据文档形态、问题分布和失败样例做选择。固定字符数只是实现参数，真正需要保护的是阅读顺序、语义边界与可追溯结构。</p>
+        <div class="learning-contract">
+          <div class="contract-cell"><span>LEARNING GOAL</span><strong>把解析与分块视为检索上限</strong><p>区分页面视觉结构、抽取文本和最终证据单元。</p></div>
+          <div class="contract-cell"><span>FINAL OUTPUT</span><strong>策略矩阵 + 5 个失败样例</strong><p>针对技术文档、表格、扫描页和多级标题分别归因。</p></div>
+          <div class="contract-cell"><span>ACCEPTANCE</span><strong>用数据选择策略</strong><p>能说明为什么某种文档不能沿用另一种文档的默认参数。</p></div>
+        </div>
+        <div class="pipeline-band">
+          <p class="section-label">Evidence construction</p>
+          <h3>从文件到可检索证据的五次形态变化</h3>
+          <div class="pipeline">
+            <div class="pipeline-node"><span>01 / SOURCE</span><strong>原始文件</strong><p>PDF、扫描件、网页或 Office 文档。</p></div>
+            <div class="pipeline-node"><span>02 / PARSE</span><strong>页面元素</strong><p>字符、坐标、图像、线条与表格区域。</p></div>
+            <div class="pipeline-node"><span>03 / STRUCTURE</span><strong>语义块</strong><p>标题层级、段落、列表、表格与注释。</p></div>
+            <div class="pipeline-node"><span>04 / CHUNK</span><strong>证据单元</strong><p>按检索与生成需要组织的片段。</p></div>
+            <div class="pipeline-node"><span>05 / INDEX</span><strong>可检索记录</strong><p>正文、向量、metadata 与来源定位。</p></div>
+          </div>
+        </div>
+        <div class="phase-list" aria-label="Day 03 分阶段路线">
+          <div class="phase-row"><span>01</span><div><strong>PDF 为什么不是文本文件</strong><p>已区分页面可见内容与解析后的语义结构。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>02</span><div><strong>解析器要恢复什么结构</strong><p>已形成可供分块器消费的最小结构合同。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>03</span><div><strong>三种粒度为什么冲突</strong><p>已区分召回单元、完整证据与最终上下文。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>04</span><div><strong>如何用数据选择 chunk size</strong><p>已明确参数基线、代价与自适应检索边界。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>05</span><div><strong>失败样例与策略矩阵</strong><p>让解析和切分策略能够被验证与回归测试。</p></div><span class="phase-status current">当前</span></div>
+        </div>
+        <div class="actions"><a class="action" href="../day-02/index.html">← 查看 Day 02 收口</a><button class="action primary" type="button" data-go-stage="1">开始 Step 01：PDF 不是文本 →</button></div>
+      </section>
+      <section class="learning-section" data-stage="1" hidden>
+        <p class="section-label">01 · PDF is a drawing program</p>
+        <h2>人看见“页面结构”，解析器首先看见坐标与绘制对象</h2>
+        <p class="lead">文本型 PDF 通常保存字符及其页面坐标，但不一定保存标题、段落、双栏阅读顺序或表格单元格等语义结构；扫描型 PDF 甚至可能只有页面图像。</p>
+        <div class="concept-callout"><strong>关键边界：</strong>“页面上能看见正确内容”不代表“抽取结果保留了正确语义”。如果阅读顺序、表格关系或字符本身在解析时丢失，后面的 chunk、embedding 和生成模型只能处理被破坏后的证据。</div>
+        <div class="inspection-lab">
+          <div class="lab-head"><p class="section-label">Same page / three representations</p><h3>同一页技术手册，进入系统后可能变成什么</h3><div class="view-switch" role="group" aria-label="PDF 页面观察视角"><button class="is-active" type="button" data-pdf-view="layout">视觉版面</button><button type="button" data-pdf-view="text">朴素文本流</button><button type="button" data-pdf-view="scan">扫描页 OCR</button></div></div>
+          <div class="inspection-canvas" id="inspectionCanvas" aria-live="polite"></div>
+          <p class="inspection-note" id="inspectionNote"></p>
+        </div>
+        <div class="step-result"><strong>这一轮只记住一句话</strong><p>解析不是把 PDF “另存为文本”，而是从字符坐标、绘制对象或页面图像中重建阅读顺序和语义结构。解析错误是上游证据损坏，不应先归因给向量模型。</p></div>
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 01 已收口：先定位证据在哪一层被破坏</h3>
+          <p>一页设备手册左栏写“故障原因”，右栏写“处理动作”，下方表格把错误码 E42 对应到“重启模块”。朴素抽取后双栏内容交错，表格又变成连续字符串。此时最先损坏的是什么信息？这首先是解析失败、检索失败，还是生成失败？</p>
+          <label for="day03Step1Notes">我的原始判断（已保留）</label>
+          <textarea id="day03Step1Notes" readonly></textarea>
+          <div class="answer-review"><span>纠正与补全</span><p>最先丢失的是双栏的阅读顺序、栏位归属，以及表格中“错误码 → 处理动作”的单元格关系。字符可能仍然全部存在，但证据之间的关系已经错误，因此第一处失败属于<strong>解析失败</strong>。检索不准或生成答错可以成为它的下游结果，却不是这条链路最早的根因。</p></div>
+          <div class="answer-review"><span>面试表达</span><p>我会先检查解析产物，而不是先换 embedding。只要阅读顺序或表格关系在索引前已经损坏，后续检索器只能召回错误组织的 chunk，再强的生成模型也无法稳定恢复原始证据关系。</p></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="0">← 回到任务导览</button><button class="action primary" type="button" data-go-stage="2">进入 Step 02：结构恢复 →</button></div>
+        </div>
+      </section>
+      <section class="learning-section" data-stage="2" hidden>
+        <p class="section-label">02 · Structure recovery</p>
+        <h2>解析器的交付物不应只是一串字符，而应是一组带关系的文档对象</h2>
+        <p class="lead">结构恢复的目标不是复刻页面样式，而是保存那些会影响检索、分块、引用和权限判断的语义关系。后续 chunker 应消费结构化 block tree，而不是已经被压平的全文字符串。</p>
+        <div class="concept-callout"><strong>最小结构合同：</strong>每个内容块至少要回答“我是什么类型、我属于哪个章节、我和谁存在关系、我来自哪里”。阅读顺序决定内容如何串联，标题层级决定语境，表格与图注关系决定事实含义，页码和坐标保证答案可追溯。</div>
+        <div class="inspection-lab">
+          <div class="lab-head"><p class="section-label">Structure inspector</p><h3>同一页内容，解析器需要恢复四类信息</h3><div class="view-switch" role="group" aria-label="结构恢复观察维度"><button class="is-active" type="button" data-structure-view="order">阅读顺序</button><button type="button" data-structure-view="hierarchy">标题层级</button><button type="button" data-structure-view="relations">表格关系</button><button type="button" data-structure-view="provenance">来源定位</button></div></div>
+          <div class="inspection-canvas" id="structureCanvas" aria-live="polite"></div>
+          <p class="inspection-note" id="structureNote"></p>
+        </div>
+        <div class="step-result"><strong>结构恢复与分块的边界</strong><p>解析器负责把页面恢复成有类型、有顺序、有父子关系和来源坐标的 blocks；分块器再依据问题与检索需求，把这些 blocks 组合成证据单元。若先压平再切分，chunk size 调得再精细也无法重建已经消失的关系。</p></div>
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 02 已收口：让解析结果成为可验证的结构合同</h3>
+          <p>技术手册中，标题路径是“故障处理 &gt; 通信模块”，表格一行是“E42｜通信异常｜重启模块”，它位于第 7 页。若后续系统需要准确检索并引用这条处理规则，解析器至少应保留哪些结构或关系？</p>
+          <label for="day03Step2Notes">我的原始判断（已保留）</label>
+          <textarea id="day03Step2Notes" readonly></textarea>
+          <div class="answer-review"><span>解析器最小结构合同</span><p>内容层保留 <code>block_type</code>、<code>text</code> 与 <code>reading_order</code>；上下文层保留 <code>section_path</code> 或父子 block；关系层保留表头、行列、单元格角色和同一行关联；来源层保留 <code>source_id</code>、版本、页码与 <code>bbox</code>。表格还应序列化为“错误码 E42，原因是通信异常，处理动作为重启模块”这样的自包含证据，不能只保存三个相邻字符串。</p></div>
+          <div class="answer-review"><span>面试表达</span><p>解析器的输出应该是一棵带来源坐标的 block tree，而不是纯文本。结构路径帮助短 chunk 保留主题，关系信息保护表格与图注含义，来源字段支撑引用、权限、增量更新和解析回归测试。</p></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="1">← 回看 Step 01</button><button class="action primary" type="button" data-go-stage="3">进入 Step 03：三种粒度冲突 →</button></div>
+        </div>
+      </section>
+      <section class="learning-section" data-stage="3" hidden>
+        <p class="section-label">03 · Three granularities</p>
+        <h2>最容易被召回的片段，不一定是完整证据；完整证据也不等于最终上下文</h2>
+        <p class="lead">一个固定 chunk 同时承担向量匹配、事实表达和生成上下文，往往会让三个目标互相牺牲。成熟系统会把索引单元、证据边界与上下文扩展分开设计。</p>
+        <div class="granularity-equation">检索单元 ≠ 原子证据 ≠ 最终生成上下文</div>
+        <div class="concept-callout"><strong>关键设计：</strong>可以用较小的 child chunk 做精准召回，但命中后沿 <code>parent_id</code>、标题路径或相邻关系扩展出完整证据，再由上下文构造器在 token 预算内组合最终输入。这通常被称为 small-to-big 或 parent-child retrieval。</div>
+        <div class="inspection-lab">
+          <div class="lab-head"><p class="section-label">One source / three lenses</p><h3>同一条退货规则，在链路中需要三种范围</h3><div class="view-switch" role="group" aria-label="分块粒度观察维度"><button class="is-active" type="button" data-granularity-view="retrieval">检索单元</button><button type="button" data-granularity-view="evidence">完整证据</button><button type="button" data-granularity-view="generation">生成上下文</button></div></div>
+          <div class="inspection-canvas" id="granularityCanvas" aria-live="polite"></div>
+          <p class="inspection-note" id="granularityNote"></p>
+        </div>
+        <div class="step-result"><strong>不要把“切多大”当成孤立问题</strong><p>粒度选择同时受查询分布、事实跨度、文档结构和生成预算影响。小块提高局部匹配的辨识度，大块保留更多条件与上下文；把召回和扩展分成两步，才能避免二选一。</p></div>
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 03 已收口：让不同范围承担不同职责</h3>
+          <p>用户问“已拆封的定制商品能否退货？”检索器命中了 child chunk“已拆封商品可以退货”，但同一父章节的相邻证据写着“仅限签收后 7 天内，定制商品除外”。你会让索引/召回单元和最终生成上下文分别包含什么？为什么不直接把所有 chunk 统一调大？</p>
+          <label for="day03Step3Notes">我的原始判断（已保留）</label>
+          <textarea id="day03Step3Notes" readonly></textarea>
+          <div class="answer-review"><span>纠正与补全</span><p>索引侧可以保留聚焦的 child chunk，提高“拆封 + 退货”的局部匹配能力；命中后必须沿 <code>parent_id</code> 或相邻关系扩展，把“7 天限制”和“定制商品除外”纳入完整证据；最终上下文只组合这组充分证据和来源信息，不必带入退款到账等无关段落。统一放大所有 chunk 会稀释向量主题、增加近似候选和 token 成本，也无法适配不同事实跨度。</p></div>
+          <div class="answer-review"><span>与 GraphRAG 的边界</span><p>这里遍历的是父子块、标题路径和相邻块，属于 hierarchical RAG 或 small-to-big retrieval。它确实具有图结构，但边来自文档结构；GraphRAG 通常进一步抽取实体与语义关系，并进行多跳子图或社区级检索。</p></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="2">← 回看 Step 02</button><button class="action primary" type="button" data-go-stage="4">进入 Step 04：Chunk Size 实验 →</button></div>
+        </div>
+      </section>
+      <section class="learning-section" data-stage="4" hidden>
+        <p class="section-label">04 · Chunk size experiment</p>
+        <h2>Chunk size 不是经验常数，而是需要在你的问题与证据分布上验证的参数</h2>
+        <p class="lead">这一轮把“切多大”变成可观测实验：先改变事实跨度和 chunk size，观察完整性、聚焦度与 top-k 上下文成本的方向性变化；再用固定评测集选择基线。</p>
+        <div class="concept-callout"><strong>模拟器边界：</strong>下方指标是教学用近似关系，不代表任何真实 embedding 模型或语料库。真实结论必须来自同一评测集上的解析版本、chunk 策略、检索参数和生成配置对照。</div>
+        <div class="inspection-lab">
+          <div class="chunk-controls"><p class="section-label">Interactive toy model</p><h3>先选择事实跨度，再拖动 chunk size</h3><div class="view-switch" role="group" aria-label="证据跨度场景"><button class="is-active" type="button" data-chunk-scenario="fact">短事实</button><button type="button" data-chunk-scenario="rule">条件规则</button><button type="button" data-chunk-scenario="procedure">多步流程</button></div><div class="range-row"><label for="chunkSizeInput">CHUNK SIZE</label><input id="chunkSizeInput" type="range" min="80" max="800" step="40" value="240"><output class="range-value" id="chunkSizeValue" for="chunkSizeInput">240 tokens</output></div></div>
+          <div class="chunk-dashboard">
+            <div class="chunk-preview"><span id="chunkScenarioLabel">CONDITIONAL RULE / 220 TOKENS</span><div class="chunk-track" id="chunkTrack" aria-label="证据跨 chunk 分布示意"></div><p class="chunk-caption" id="chunkCaption"></p></div>
+            <div class="metric-stack"><span>TOY INDICATORS / NOT A BENCHMARK</span><div class="metric-row"><b>证据完整性</b><div class="metric-track"><i id="completenessBar"></i></div><strong id="completenessValue"></strong></div><div class="metric-row"><b>语义聚焦度</b><div class="metric-track"><i id="focusBar"></i></div><strong id="focusValue"></strong></div><div class="metric-row cost"><b>Top-5 成本</b><div class="metric-track"><i id="costBar"></i></div><strong id="costValue"></strong></div></div>
+          </div>
+          <p class="inspection-note" id="chunkExperimentNote"></p>
+        </div>
+        <div class="step-result"><strong>真实实验至少固定四件事</strong><p>固定评测问题、正确证据标注、embedding/检索配置和生成配置，只改变 chunk 策略；同时观察 evidence Recall@k、条件是否完整进入 final context、答案正确或忠实度，以及延迟和 token 成本。</p></div>
+        <table class="experiment-table" aria-label="客服政策语料的示例离线评测结果">
+          <thead><tr><th>Chunk size</th><th>Evidence Recall@5</th><th>条件题正确率</th><th>Top-5 正文 tokens</th></tr></thead>
+          <tbody><tr><td>160</td><td>0.88</td><td>0.70</td><td>约 800</td></tr><tr><td>320</td><td>0.85</td><td>0.87</td><td>约 1,600</td></tr><tr><td>640</td><td>0.75</td><td>0.89</td><td>约 3,200</td></tr></tbody>
+        </table>
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 04 已收口：基线参数只是系统决策的一部分</h3>
+          <p>上表来自同一客服政策评测集。你会选择哪个 chunk size 作为第一版基线？如何处理少数证据跨度超过该基线的长尾问题？请说明你接受了什么代价，而不是只回答一个数字。</p>
+          <label for="day03Step4Notes">我的原始判断（已保留）</label>
+          <textarea id="day03Step4Notes" readonly></textarea>
+          <div class="answer-review"><span>基线与代价</span><p>320 tokens 是这个示例数据上的合理第一版基线，不是普适常数。相对 160，它接受 Recall@5 下降 0.03、Top-5 正文成本翻倍，以换取条件题正确率从 0.70 提升到 0.87；相对 640，它接受正确率下降 0.02，以换取 Recall@5 提升 0.10 且上下文成本减半。</p></div>
+          <div class="scope-warning"><strong>必须修正的边界：</strong>系统不能只看 query 就准确预知答案跨几个 chunk。固定扩展、条件扩展和 parent-child 都只是局部证据补全策略；当证据跨章节、跨文档或需要多跳关系时，它们不是完整解决方案，更不能被包装成“自动解决长尾证据”。</div>
+          <p class="section-label">From local tactic to adaptive retrieval</p>
+          <div class="adaptive-pipeline">
+            <div class="adaptive-node"><span>01 / PLAN</span><strong>拆解信息需求</strong><p>识别局部事实、条件例外、比较、多跳和时间版本问题。</p></div>
+            <div class="adaptive-node"><span>02 / RECALL</span><strong>多粒度混合召回</strong><p>联合 BM25、dense passage、章节、表格和实体索引生成候选。</p></div>
+            <div class="adaptive-node"><span>03 / WORKSPACE</span><strong>证据工作区</strong><p>重排、去重并记录每个子问题已经获得的支持证据。</p></div>
+            <div class="adaptive-node"><span>04 / CHECK</span><strong>充分性检查</strong><p>找出仍未被支持的条件、比较项或关系，而非盲目扩大邻居。</p></div>
+            <div class="adaptive-node"><span>05 / LOOP</span><strong>有界重试或拒答</strong><p>针对缺口再检索 1-2 轮；仍不足时明确缺失信息并拒答。</p></div>
+          </div>
+          <div class="answer-review"><span>工程结论</span><p>Parent-child 应作为候选召回内部的一个算子，而不是整个系统的智能来源。跨文档隐式关系可进一步使用实体/关系索引、GraphRAG 或迭代检索；这些方案仍有规划错误、延迟、成本和充分性误判，因此必须限制轮数、保留中间产物并支持拒答。</p></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="3">← 回看 Step 03</button><button class="action primary" type="button" data-go-stage="5">进入 Step 05：失败样例矩阵 →</button></div>
+        </div>
+      </section>
+      <section class="learning-section" data-stage="5" hidden>
+        <p class="section-label">05 · Failure matrix</p>
+        <h2>失败样例必须定位到第一处损坏的中间产物，才能变成回归测试</h2>
+        <p class="lead">“答案错了”不是可执行诊断。每个失败样例都应记录文档形态、可见症状、第一处错误产物、责任层、修复策略和能够自动判定是否复发的断言。</p>
+        <div class="concept-callout"><strong>诊断原则：</strong>沿 source → parsed blocks → structured blocks → indexed records → retrieved candidates → final context 顺序检查。一旦找到第一处错误，后续错误都先视为传播结果。</div>
+        <div class="failure-toolbar">
+          <div class="view-switch" role="group" aria-label="失败样例类型筛选"><button class="is-active" type="button" data-failure-filter="all">全部</button><button type="button" data-failure-filter="parse">解析/结构</button><button type="button" data-failure-filter="chunk">分块</button><button type="button" data-failure-filter="architecture">检索架构</button></div>
+          <span class="failure-count" id="failureCount">6 / 6 CASES</span>
+        </div>
+        <div class="table-scroll">
+          <table class="failure-matrix" aria-label="Day 03 失败样例与回归策略矩阵">
+            <thead><tr><th>ID</th><th>症状</th><th>第一处错误产物</th><th>责任层</th><th>修复策略</th><th>回归断言</th></tr></thead>
+            <tbody>
+              <tr data-failure-type="parse"><td>F01</td><td>双栏原因与动作交错</td><td>parsed blocks 的 reading_order</td><td><span class="failure-tag">PARSE</span></td><td>先识别栏位区域，再在区域内排序</td><td>原因块必须先于对应动作块，栏位归属不可丢失</td></tr>
+              <tr data-failure-type="parse"><td>F02</td><td>扫描页把 E42 识别成 E4Z</td><td>OCR 字符层与置信度</td><td><span class="failure-tag">OCR</span></td><td>图像校正、领域词表、低置信度路由人工复核</td><td>关键错误码字符准确，低于阈值时不得静默入库</td></tr>
+              <tr data-failure-type="parse"><td>F03</td><td>表格压平后错误码与动作错配</td><td>structured table rows/cells</td><td><span class="failure-tag">STRUCTURE</span></td><td>恢复表头、行列和跨单元格关系，并序列化自包含事实</td><td>E42、通信异常、重启模块必须保持同一行关系</td></tr>
+              <tr data-failure-type="parse"><td>F04</td><td>短 chunk 不知道自己属于哪个产品章节</td><td>block metadata 的 section_path</td><td><span class="failure-tag">HIERARCHY</span></td><td>恢复标题树并向 child chunk 传播路径与 parent_id</td><td>每个正文块必须拥有正确且可追溯的标题路径</td></tr>
+              <tr data-failure-type="chunk"><td>F05</td><td>主规则召回，7 天限制和例外未进入上下文</td><td>indexed records / final evidence coverage</td><td><span class="failure-tag">CHUNK</span></td><td>结构感知切分、评估 overlap，并将局部层次扩展作为召回算子</td><td>标注的条件与例外必须共同出现在 retrieved evidence 或 final context</td></tr>
+              <tr data-failure-type="architecture"><td>F06</td><td>答案需要两个文档，却只扩展命中文档邻居</td><td>candidate set / evidence workspace</td><td><span class="failure-tag">ARCH</span></td><td>查询分解、多索引混合召回、有界迭代充分性检查，必要时 GraphRAG</td><td>所有 gold documents 均被支持；轮数耗尽仍缺证据时必须拒答</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="step-result"><strong>失败样例的最小测试格式</strong><p><code>input document + query → expected intermediate artifact → expected evidence set → expected answer behavior</code>。解析测试不必等待生成模型，分块测试也不应只看最终答案。</p></div>
+        <div class="checkpoint">
+          <p class="section-label">One discussion only</p>
+          <h3>把一个真实问题改写成可回归的失败样例</h3>
+          <p>从扫描 PDF、双栏、表格、多级标题、条件被切散或跨文档证据中选择一种，写出：可见症状、第一处错误的中间产物、你准备修改的策略，以及一条机器可以判断通过或失败的回归断言。</p>
+          <label for="day03Step5Notes">我的失败样例</label>
+          <textarea id="day03Step5Notes" placeholder="建议使用：症状 → 第一处错误产物 → 修复策略 → 回归断言。"></textarea>
+          <div class="actions"><button class="action" type="button" data-go-stage="4">← 回看 Step 04</button><button class="action primary" type="button" id="saveStep5">保存失败样例</button></div>
+          <p class="save-note" id="step5SaveNote" hidden>已保存。下一轮会检查它是否真正可测试，并进入 Day 03 的最终复述与验收。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const storageKey = "rag-14-day-day-03-v1";
+      const memoryStore = {};
+      const viewData = {
+        layout: { html:'<article class="layout-page"><h4>设备异常处理手册</h4><div class="layout-columns"><section class="manual-block"><span>LEFT / 原因</span><p>E42 通常由通信模块状态异常触发。</p><p>检查电源与连接状态。</p></section><section class="manual-block"><span>RIGHT / 动作</span><p>保存当前任务后重启通信模块。</p><p>若仍失败，提交诊断日志。</p></section></div><div class="manual-table"><div class="head">错误码</div><div class="head">处理动作</div><div>E42</div><div>重启通信模块</div></div></article>', note:'人类借助位置、栏位和表格线，能自然恢复“原因 → 动作”和“错误码 → 处理动作”的关系。' },
+        text: { html:'<div class="text-stream"><div class="stream-line"><span>001</span><p>设备异常处理手册</p></div><div class="stream-line is-broken"><span>002</span><p>E42 通常由通信模块状态异常触发。保存当前任务后重启通信模块。</p></div><div class="stream-line is-broken"><span>003</span><p>检查电源与连接状态。若仍失败，提交诊断日志。</p></div><div class="stream-line is-broken"><span>004</span><p>错误码 处理动作 E42 重启通信模块</p></div></div>', note:'字符还在，但双栏阅读顺序与表格单元格关系已经被压平。后续模型看到的是错误组织过的证据。' },
+        scan: { html:'<div class="scan-page"><div class="scan-panel"><strong>OCR CONFIDENCE / PAGE 07</strong><div class="confidence-row"><span>正文</span><div class="confidence-track"><i style="width:96%"></i></div><b>0.96</b></div><div class="confidence-row low"><span>错误码 E42</span><div class="confidence-track"><i style="width:61%"></i></div><b>0.61</b></div><div class="confidence-row low"><span>表格关系</span><div class="confidence-track"><i style="width:38%"></i></div><b>0.38</b></div></div></div>', note:'扫描页没有可直接读取的字符层，必须先经过 OCR；字符识别置信度与版面结构恢复是两个不同问题。' }
+      };
+      let state = loadState();
+      const structureData = {
+        order: { html:'<div class="structure-scene"><div class="source-fragment"><span>VISUAL PAGE / 07</span><strong>左栏 · 故障原因</strong><p>E42 由通信模块异常触发。</p><strong>右栏 · 处理动作</strong><p>保存任务并重启模块。</p></div><div class="object-map"><span>RECOVERED BLOCK ORDER</span><div class="object-row"><code>ORDER 01</code><b>标题：通信模块</b></div><div class="object-row"><code>ORDER 02</code><b>原因：E42 通信异常</b></div><div class="object-row"><code>ORDER 03</code><b>动作：重启模块</b></div><div class="relation-strip"><b>column:left</b><b>column:right</b><b>follows</b></div></div></div>', note:'阅读顺序不是字符坐标的简单排序；双栏页面需要先识别区域，再在区域内排序。' },
+        hierarchy: { html:'<div class="structure-scene"><div class="source-fragment"><span>VISIBLE HEADINGS</span><strong>3 故障处理</strong><p>3.2 通信模块</p><p>3.2.1 E42 异常</p></div><div class="object-map"><span>SECTION PATH</span><div class="object-row"><code>H1</code><b>故障处理</b></div><div class="object-row"><code>H2</code><b>通信模块</b></div><div class="object-row"><code>H3</code><b>E42 异常</b></div><div class="relation-strip"><b>parent_of</b><b>section_path</b><b>inherits_context</b></div></div></div>', note:'标题路径可以随 chunk 一起进入 metadata，让短证据仍保留“它属于哪个主题”的语境。' },
+        relations: { html:'<div class="structure-scene"><div class="source-fragment"><span>TABLE / ROW 04</span><strong>E42 ｜ 通信异常 ｜ 重启模块</strong><p>视觉上的列位置表达字段含义。</p></div><div class="object-map"><span>RELATIONAL CELLS</span><div class="object-row"><code>error_code</code><b>E42</b></div><div class="object-row"><code>cause</code><b>通信异常</b></div><div class="object-row"><code>action</code><b>重启模块</b></div><div class="relation-strip"><b>same_row</b><b>header_of</b><b>cell_role</b></div></div></div>', note:'表格不是带空格的句子。行、列、表头和跨单元格关系共同决定每个值的含义。' },
+        provenance: { html:'<div class="structure-scene"><div class="source-fragment"><span>SOURCE DOCUMENT</span><strong>设备异常处理手册</strong><p>版本 v4.2 · 第 7 页</p><p>表格区域位于页面下半部。</p></div><div class="object-map"><span>PROVENANCE FIELDS</span><div class="object-row"><code>source_id</code><b>manual-v4.2.pdf</b></div><div class="object-row"><code>page</code><b>7</b></div><div class="object-row"><code>bbox</code><b>[82, 416, 521, 688]</b></div><div class="relation-strip"><b>version</b><b>page</b><b>bounding_box</b></div></div></div>', note:'来源定位既用于引用，也用于回看原页面、权限判断、解析调试和版本更新后的增量重建。' }
+      };
+      const granularityData = {
+        retrieval: { html:'<div class="granularity-scene"><div class="document-stack"><span>SOURCE SECTION / RETURN POLICY</span><div class="document-line is-focus">已拆封商品可以退货。</div><div class="document-line">仅限签收后 7 天内。</div><div class="document-line">定制商品除外。</div><div class="document-line">退款将在审核后原路返回。</div></div><div class="lens-panel"><span>RETRIEVAL UNIT</span><strong>先用高辨识度的小块命中主题</strong><p>child chunk 聚焦“拆封 + 退货”，与查询的局部语义非常接近，但还不是足以作答的完整证据。</p><div class="lens-metric"><span>局部匹配</span><b>高</b></div><div class="lens-metric"><span>条件完整</span><b>低</b></div></div></div>', note:'索引单元首先服务候选发现。它可以短而聚焦，但必须保留 parent_id、section_path 等扩展线索。' },
+        evidence: { html:'<div class="granularity-scene"><div class="document-stack"><span>ATOMIC EVIDENCE</span><div class="document-line is-focus">已拆封商品可以退货。</div><div class="document-line is-focus">仅限签收后 7 天内。</div><div class="document-line is-focus">定制商品除外。</div><div class="document-line">退款将在审核后原路返回。</div></div><div class="lens-panel"><span>SUFFICIENT EVIDENCE</span><strong>规则、条件与例外必须一起成立</strong><p>原子证据不是最短句子，而是能够独立支持一个判断的最小充分范围。</p><div class="lens-metric"><span>事实完整</span><b>高</b></div><div class="lens-metric"><span>无关噪声</span><b>低</b></div></div></div>', note:'语义边界由事实跨度决定。限定条件和例外若被切走，即使主句成功召回，答案仍会得出错误结论。' },
+        generation: { html:'<div class="granularity-scene"><div class="document-stack"><span>ASSEMBLED CONTEXT</span><div class="document-line is-focus">问题：已拆封的定制商品能否退货？</div><div class="document-line is-focus">父章节：已拆封商品可退，但仅限 7 天，定制商品除外。</div><div class="document-line">来源：退货政策 v3 · 第 4 节</div><div class="document-line">其他候选：退款到账时间。</div></div><div class="lens-panel"><span>GENERATION CONTEXT</span><strong>围绕问题组装证据，而非复制整篇文档</strong><p>最终输入可以比召回单元更大，并组合来源信息；同时仍要受相关性与 token 预算约束。</p><div class="lens-metric"><span>回答充分性</span><b>高</b></div><div class="lens-metric"><span>上下文噪声</span><b>受控</b></div></div></div>', note:'生成上下文是在线组装结果，不必等同于数据库里某一个物理 chunk；它可以由父块、相邻块和多个候选共同构成。' }
+      };
+      const chunkScenarioData = {
+        fact: { label:"SHORT FACT / 80 TOKENS", span:80, name:"短事实" },
+        rule: { label:"CONDITIONAL RULE / 220 TOKENS", span:220, name:"条件规则" },
+        procedure: { label:"MULTI-STEP PROCEDURE / 480 TOKENS", span:480, name:"多步流程" }
+      };
+      const sections = [...document.querySelectorAll("[data-stage]")];
+      const stageButtons = [...document.querySelectorAll("[data-stage-target]")];
+      const notes = document.querySelector("#day03Step1Notes");
+      const step2Notes = document.querySelector("#day03Step2Notes");
+      const step3Notes = document.querySelector("#day03Step3Notes");
+      const step4Notes = document.querySelector("#day03Step4Notes");
+      const step5Notes = document.querySelector("#day03Step5Notes");
+      const chunkSizeInput = document.querySelector("#chunkSizeInput");
+      document.querySelectorAll("[data-go-stage]").forEach(button => button.addEventListener("click", () => showStage(Number(button.dataset.goStage), true)));
+      stageButtons.forEach(button => button.addEventListener("click", () => showStage(Number(button.dataset.stageTarget), true)));
+      document.querySelectorAll("[data-pdf-view]").forEach(button => button.addEventListener("click", () => renderView(button.dataset.pdfView)));
+      document.querySelectorAll("[data-structure-view]").forEach(button => button.addEventListener("click", () => renderStructure(button.dataset.structureView)));
+      document.querySelectorAll("[data-granularity-view]").forEach(button => button.addEventListener("click", () => renderGranularity(button.dataset.granularityView)));
+      document.querySelectorAll("[data-chunk-scenario]").forEach(button => button.addEventListener("click", () => { state.chunkScenario = button.dataset.chunkScenario; renderChunkExperiment(); }));
+      document.querySelectorAll("[data-failure-filter]").forEach(button => button.addEventListener("click", () => renderFailureFilter(button.dataset.failureFilter)));
+      chunkSizeInput.addEventListener("input", event => { state.chunkSize = Number(event.target.value); renderChunkExperiment(); });
+      step5Notes.addEventListener("input", event => { state.step5Notes = event.target.value; saveState(); });
+      document.querySelector("#saveStep5").addEventListener("click", () => { saveState(); document.querySelector("#step5SaveNote").hidden = false; });
+      notes.value = state.notes || "";
+      step2Notes.value = state.step2Notes || "";
+      step3Notes.value = state.step3Notes || "";
+      step4Notes.value = state.step4Notes || "";
+      step5Notes.value = state.step5Notes || "";
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 5), false);
+      renderView(state.pdfView || "layout");
+      renderStructure(state.structureView || "order");
+      renderGranularity(state.granularityView || "retrieval");
+      renderChunkExperiment();
+      renderFailureFilter(state.failureFilter || "all");
+      function showStage(stage, shouldScroll) {
+        state.stage = stage;
+        sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
+        stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
+        document.querySelector("#progressText").textContent = ["ARCH / 07", "01 / 07", "02 / 07", "03 / 07", "04 / 07", "05 / 07"][stage];
+        document.querySelector("#progressFill").style.width = ["14%", "28%", "43%", "57%", "71%", "86%"][stage];
+        saveState();
+        if (shouldScroll) window.scrollTo({ top:document.querySelector(".workspace").offsetTop - 58, behavior:"smooth" });
+      }
+      function renderView(view) {
+        const data = viewData[view];
+        state.pdfView = view;
+        document.querySelectorAll("[data-pdf-view]").forEach(button => button.classList.toggle("is-active", button.dataset.pdfView === view));
+        document.querySelector("#inspectionCanvas").innerHTML = data.html;
+        document.querySelector("#inspectionNote").textContent = data.note;
+        saveState();
+      }
+      function renderStructure(view) {
+        const data = structureData[view];
+        state.structureView = view;
+        document.querySelectorAll("[data-structure-view]").forEach(button => button.classList.toggle("is-active", button.dataset.structureView === view));
+        document.querySelector("#structureCanvas").innerHTML = data.html;
+        document.querySelector("#structureNote").textContent = data.note;
+        saveState();
+      }
+      function renderGranularity(view) {
+        const data = granularityData[view];
+        state.granularityView = view;
+        document.querySelectorAll("[data-granularity-view]").forEach(button => button.classList.toggle("is-active", button.dataset.granularityView === view));
+        document.querySelector("#granularityCanvas").innerHTML = data.html;
+        document.querySelector("#granularityNote").textContent = data.note;
+        saveState();
+      }
+      function renderChunkExperiment() {
+        const scenario = chunkScenarioData[state.chunkScenario] || chunkScenarioData.rule;
+        const size = Math.min(800, Math.max(80, Number(state.chunkSize) || 240));
+        const pieces = Math.ceil(scenario.span / size);
+        const completeness = Math.min(100, Math.round((size / scenario.span) * 100));
+        const focus = Math.max(28, Math.min(96, Math.round((scenario.span / Math.max(size, scenario.span)) * 96)));
+        const contextCost = size * 5;
+        const costPercent = Math.min(100, Math.round((contextCost / 4000) * 100));
+        const visiblePieces = Math.min(pieces, 6);
+        const units = Array.from({ length:visiblePieces }, (_, index) => {
+          const isPartial = index === visiblePieces - 1 && scenario.span % size !== 0;
+          const suffix = pieces > visiblePieces && index === visiblePieces - 1 ? "+" : "";
+          return '<div class="chunk-unit' + (isPartial ? ' is-partial' : '') + '">C' + (index + 1) + suffix + '</div>';
+        }).join("");
+        state.chunkSize = size;
+        document.querySelectorAll("[data-chunk-scenario]").forEach(button => button.classList.toggle("is-active", button.dataset.chunkScenario === state.chunkScenario));
+        chunkSizeInput.value = String(size);
+        document.querySelector("#chunkSizeValue").textContent = size + " tokens";
+        document.querySelector("#chunkScenarioLabel").textContent = scenario.label;
+        document.querySelector("#chunkTrack").innerHTML = units;
+        document.querySelector("#chunkCaption").textContent = pieces === 1 ? "当前事实可落入一个 chunk，但仍需检查真实边界位置。" : "完整事实至少跨越 " + pieces + " 个 chunk；只召回其中一个可能丢失条件。";
+        document.querySelector("#completenessBar").style.width = completeness + "%";
+        document.querySelector("#completenessValue").textContent = completeness + "%";
+        document.querySelector("#focusBar").style.width = focus + "%";
+        document.querySelector("#focusValue").textContent = focus + "%";
+        document.querySelector("#costBar").style.width = costPercent + "%";
+        document.querySelector("#costValue").textContent = contextCost + "t";
+        document.querySelector("#chunkExperimentNote").textContent = size < scenario.span ? "当前 chunk 小于事实跨度：局部匹配可能更聚焦，但需要 overlap、父块或相邻块扩展来恢复完整证据。" : size > scenario.span * 2 ? "当前 chunk 远大于事实跨度：完整性较高，但无关内容占比与 top-k 成本开始增加。" : "当前范围接近事实跨度：这是值得进入真实离线评测的候选点，不代表已经得到最优参数。";
+        saveState();
+      }
+      function defaultState() { return { stage:0, pdfView:"layout", structureView:"order", granularityView:"retrieval", chunkScenario:"rule", chunkSize:240, failureFilter:"all", notes:"", step2Notes:"", step3Notes:"", step4Notes:"", step5Notes:"" }; }
+      function renderFailureFilter(filter) {
+        const rows = [...document.querySelectorAll("[data-failure-type]")];
+        state.failureFilter = filter;
+        let visible = 0;
+        rows.forEach(row => {
+          const shouldShow = filter === "all" || row.dataset.failureType === filter;
+          row.hidden = !shouldShow;
+          if (shouldShow) visible += 1;
+        });
+        document.querySelectorAll("[data-failure-filter]").forEach(button => button.classList.toggle("is-active", button.dataset.failureFilter === filter));
+        document.querySelector("#failureCount").textContent = visible + " / " + rows.length + " CASES"; saveState();
+      }
+      function loadState() {
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          if (!saved) return defaultState();
+          const parsed = JSON.parse(saved);
+          const migrated = { ...defaultState(), ...parsed };
+          if (!Object.prototype.hasOwnProperty.call(parsed, "step2Notes") && String(parsed.notes || "").trim()) migrated.stage = 2;
+          if (!Object.prototype.hasOwnProperty.call(parsed, "step3Notes") && String(parsed.step2Notes || "").trim()) migrated.stage = 3;
+          if (!Object.prototype.hasOwnProperty.call(parsed, "step4Notes") && String(parsed.step3Notes || "").trim()) migrated.stage = 4;
+          if (!Object.prototype.hasOwnProperty.call(parsed, "step5Notes") && String(parsed.step4Notes || "").trim()) migrated.stage = 5;
+          return migrated;
+        } catch (error) { return { ...defaultState(), ...memoryStore }; }
+      }
+      function saveState() { try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch (error) { Object.assign(memoryStore, state); } }
+    })();
+  </script>
+</body>
+</html>
