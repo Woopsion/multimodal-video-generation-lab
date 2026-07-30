@@ -240,7 +240,7 @@
         <button class="stage-button" type="button" data-stage-target="3"><span class="stage-no">03</span><span class="stage-copy"><strong>三种粒度冲突</strong><span>已收口</span></span></button>
         <button class="stage-button" type="button" data-stage-target="4"><span class="stage-no">04</span><span class="stage-copy"><strong>Chunk Size 实验</strong><span>已收口</span></span></button>
         <button class="stage-button" type="button" data-stage-target="5"><span class="stage-no">05</span><span class="stage-copy"><strong>失败样例矩阵</strong><span>当前入口</span></span></button>
-        <button class="stage-button" type="button" disabled><span class="stage-no">06</span><span class="stage-copy"><strong>复述与验收</strong><span>等待讨论</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="6"><span class="stage-no">06</span><span class="stage-copy"><strong>复述与验收</strong><span>已收口</span></span></button>
       </div>
       <div class="roadmap-links"><a href="../../14-day-learning-plan.md">14 天总计划</a><a href="../../index.html">RAG 完整知识库</a></div>
     </aside>
@@ -270,7 +270,8 @@
           <div class="phase-row"><span>02</span><div><strong>解析器要恢复什么结构</strong><p>已形成可供分块器消费的最小结构合同。</p></div><span class="phase-status">已完成</span></div>
           <div class="phase-row"><span>03</span><div><strong>三种粒度为什么冲突</strong><p>已区分召回单元、完整证据与最终上下文。</p></div><span class="phase-status">已完成</span></div>
           <div class="phase-row"><span>04</span><div><strong>如何用数据选择 chunk size</strong><p>已明确参数基线、代价与自适应检索边界。</p></div><span class="phase-status">已完成</span></div>
-          <div class="phase-row"><span>05</span><div><strong>失败样例与策略矩阵</strong><p>让解析和切分策略能够被验证与回归测试。</p></div><span class="phase-status current">当前</span></div>
+          <div class="phase-row"><span>05</span><div><strong>失败样例与策略矩阵</strong><p>让解析和切分策略能够被验证与回归测试。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>06</span><div><strong>最终复述与验收</strong><p>把解析、分块、评测边界和回归契约收束为面试表达。</p></div><span class="phase-status">已完成</span></div>
         </div>
         <div class="actions"><a class="action" href="../day-02/index.html">← 查看 Day 02 收口</a><button class="action primary" type="button" data-go-stage="1">开始 Step 01：PDF 不是文本 →</button></div>
       </section>
@@ -411,8 +412,50 @@
           <div class="answer-review"><span>参考答案：什么才叫可测试</span><p>一个合格样例应写成 <code>input document + query → expected first broken artifact → expected evidence set / invariant → expected answer behavior</code>。例如扫描 PDF 中 <code>E42</code> 被 OCR 成 <code>E4Z</code>：第一处错误是带 <code>page</code>、<code>bbox</code> 与 <code>confidence</code> 的 OCR block，而不是 embedding；修复可包括图像校正、领域错误码词表/正则校验、低置信度复核，并保留原图与坐标；回归要同时断言错误码精确为 E42、低置信度不允许静默发布索引、查询 E42 能召回自包含的表格行。</p></div>
           <div class="answer-review"><span>分层断言</span><p>解析/结构缺陷断言 parsed blocks、结构化表格行或标题路径；分块缺陷断言标注证据是否完整覆盖，而不是只看最终答案；检索架构缺陷断言查询计划、gold evidence 覆盖、有界重试与拒答出口。每层都应该在生成模型之前暴露问题。</p></div>
           <div class="answer-review"><span>面试表达</span><p>我不会从最终错误答案倒推猜 embedding 或 prompt；我会沿 trace 找到第一处损坏的中间产物，并把它固化为回归测试。这样一次坏案例才会变成可验证的工程改进。</p></div>
-          <div class="actions"><button class="action" type="button" data-go-stage="4">← 回看 Step 04</button><span class="action primary" aria-disabled="true">Step 05 已完成</span></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="4">← 回看 Step 04</button><button class="action primary" type="button" data-go-stage="6">进入 Day 03 最终验收 →</button></div>
           <p class="save-note">说明：你的原答保存在此浏览器的本地学习记录中；本页只追加评审，不会覆盖它。</p>
+        </div>
+      </section>
+      <section class="learning-section" data-stage="6" hidden>
+        <p class="section-label">06 · Final review</p>
+        <h2>Day 03 最终复述与验收：解析、分块与检索上限</h2>
+        <p class="lead">这一页收束的不是一个默认 chunk size，而是一条可诊断、可评测、可回归的证据构造链路。答案质量的上限，首先取决于原始文档是否被恢复成足够可靠的结构与证据。</p>
+        <div class="learning-contract">
+          <div class="contract-cell"><span>01 / PARSE</span><strong>PDF/OCR 是视觉与结构问题</strong><p>先恢复阅读顺序、表格关系、标题层级与来源坐标，再谈 embedding。</p></div>
+          <div class="contract-cell"><span>02 / CHUNK</span><strong>三种粒度各司其职</strong><p>召回单元追求辨识度，完整证据保护条件与例外，最终上下文受 token 预算约束。</p></div>
+          <div class="contract-cell"><span>03 / RETRIEVAL</span><strong>局部扩展不是万能架构</strong><p>parent-child 只补局部证据；跨文档、多跳问题需要有界自适应检索或明确拒答。</p></div>
+        </div>
+        <div class="pipeline-band">
+          <p class="section-label">Diagnostic trace</p>
+          <h3>遇到坏答案时，沿中间产物找“第一处错误”</h3>
+          <div class="granularity-equation">source → parsed blocks → structured blocks → indexed records → retrieved candidates → final context → answer</div>
+          <p class="lead">不要从最终答案直接猜 embedding、prompt 或模型能力。每一层都应有独立的质量断言，最早被破坏的一层才是优先修复对象。</p>
+        </div>
+        <p class="section-label">Parser / chunk strategy matrix</p>
+        <div class="table-scroll">
+          <table class="failure-matrix" aria-label="Day 03 解析与分块策略矩阵">
+            <thead><tr><th>文档形态</th><th>解析策略</th><th>分块/检索策略</th><th>验证重点</th></tr></thead>
+            <tbody>
+              <tr><td>双栏技术 PDF</td><td>先做栏位/区域识别，再在区域内恢复阅读顺序与标题树</td><td>按章节和段落切 child，保留 <code>section_path</code> 与 <code>parent_id</code></td><td>F01：栏位顺序、动作归属和引用页码正确</td></tr>
+              <tr><td>扫描手册</td><td>OCR 输出字符、置信度、页码和 <code>bbox</code>；关键字段低置信度复核</td><td>不把未校验的关键码静默入库；按复核后的结构生成索引</td><td>F02：错误码精确、低置信度有路由、可回看原图</td></tr>
+              <tr><td>表格与规则表</td><td>恢复表头、行列、单元格角色与跨格关系，序列化自包含事实</td><td>优先以行/规则单元为证据，必要时携带表名与适用章节</td><td>F03：同一行的条件、动作和例外不被错配</td></tr>
+              <tr><td>多级标题文档</td><td>构建可追溯 block tree，并向正文块传播标题路径与版本信息</td><td>短 child 用于精准召回，按父块/标题路径补齐局部语境</td><td>F04/F05：主题路径正确，条件与例外共同进入 evidence set</td></tr>
+              <tr><td>跨文档、多跳问题</td><td>分别保留每份文档的来源与版本，不能伪造为相邻段落</td><td>查询分解、多索引召回、重排、充分性检查与 1–2 轮有界重试</td><td>F06：gold evidence/document set 覆盖；仍不足时明确拒答</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="step-result"><strong>策略选择原则</strong><p>先按文档形态选择解析合同，再按问题和证据跨度评测 chunk 策略。局部结构扩展是一个候选算子；它不能替代查询规划、多索引检索、充分性判断和失败出口。</p></div>
+        <div class="phase-list" aria-label="Day 03 验收清单">
+          <div class="phase-row"><span>✓</span><div><strong>按文档形态选策略</strong><p>能为技术 PDF、表格、扫描 PDF 和多级标题分别说明解析与分块方式。</p></div><span class="phase-status">通过</span></div>
+          <div class="phase-row"><span>✓</span><div><strong>用评测而非经验常数定基线</strong><p>能在固定评测集上同时比较证据召回、充分性、答案质量、延迟与 token 成本。</p></div><span class="phase-status">通过</span></div>
+          <div class="phase-row"><span>✓</span><div><strong>区分局部扩展与高级检索架构</strong><p>能说明 parent-child 的边界，并为跨文档/多跳情况选择有界自适应检索、GraphRAG 或拒答。</p></div><span class="phase-status">通过</span></div>
+          <div class="phase-row"><span>✓</span><div><strong>把坏案例变成回归</strong><p>已形成 6 个失败样例，并能按第一处损坏中间产物写断言。</p></div><span class="phase-status">通过</span></div>
+        </div>
+        <div class="checkpoint">
+          <p class="section-label">Day 03 closed</p>
+          <h3>面试式 60 秒复述</h3>
+          <p>文档解析与分块决定 RAG 的证据上限。PDF 和扫描件不是天然语义文本，解析器应交付带类型、顺序、层级、关系和来源的 block tree；检索 child、完整证据和最终上下文也不应由同一个固定 chunk 承担。chunk size 要在真实问题分布上用评测选择，而 parent-child 只适合补局部结构证据。面对跨文档或多跳问题，我会用查询规划、多索引召回、重排和充分性检查做有界迭代；证据仍不足时拒答。排障时沿 trace 找第一处错误，并把坏案例固化成回归测试。</p>
+          <div class="actions"><button class="action" type="button" data-go-stage="5">← 回看 Step 05</button><a class="action primary" href="../../14-day-learning-plan.md">返回 14 天总计划 →</a></div>
         </div>
       </section>
     </main>
@@ -465,7 +508,7 @@
       step3Notes.value = state.step3Notes || "";
       step4Notes.value = state.step4Notes || "";
       step5Notes.value = state.step5Notes || "";
-      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 5), false);
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 6), false);
       renderView(state.pdfView || "layout");
       renderStructure(state.structureView || "order");
       renderGranularity(state.granularityView || "retrieval");
@@ -475,8 +518,8 @@
         state.stage = stage;
         sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
         stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
-        document.querySelector("#progressText").textContent = ["ARCH / 07", "01 / 07", "02 / 07", "03 / 07", "04 / 07", "05 / 07"][stage];
-        document.querySelector("#progressFill").style.width = ["14%", "28%", "43%", "57%", "71%", "86%"][stage];
+        document.querySelector("#progressText").textContent = ["ARCH / 07", "01 / 07", "02 / 07", "03 / 07", "04 / 07", "05 / 07", "06 / 07"][stage];
+        document.querySelector("#progressFill").style.width = ["14%", "28%", "43%", "57%", "71%", "86%", "100%"][stage];
         saveState();
         if (shouldScroll) window.scrollTo({ top:document.querySelector(".workspace").offsetTop - 58, behavior:"smooth" });
       }
@@ -534,7 +577,7 @@
         document.querySelector("#chunkExperimentNote").textContent = size < scenario.span ? "当前 chunk 小于事实跨度：局部匹配可能更聚焦，但需要 overlap、父块或相邻块扩展来恢复完整证据。" : size > scenario.span * 2 ? "当前 chunk 远大于事实跨度：完整性较高，但无关内容占比与 top-k 成本开始增加。" : "当前范围接近事实跨度：这是值得进入真实离线评测的候选点，不代表已经得到最优参数。";
         saveState();
       }
-      function defaultState() { return { stage:0, pdfView:"layout", structureView:"order", granularityView:"retrieval", chunkScenario:"rule", chunkSize:240, failureFilter:"all", notes:"", step2Notes:"", step3Notes:"", step4Notes:"", step5Notes:"" }; }
+      function defaultState() { return { stage:0, pdfView:"layout", structureView:"order", granularityView:"retrieval", chunkScenario:"rule", chunkSize:240, failureFilter:"all", notes:"", step2Notes:"", step3Notes:"", step4Notes:"", step5Notes:"", step6Notes:"" }; }
       function renderFailureFilter(filter) {
         const rows = [...document.querySelectorAll("[data-failure-type]")];
         state.failureFilter = filter;
@@ -557,6 +600,7 @@
           if (!Object.prototype.hasOwnProperty.call(parsed, "step3Notes") && String(parsed.step2Notes || "").trim()) migrated.stage = 3;
           if (!Object.prototype.hasOwnProperty.call(parsed, "step4Notes") && String(parsed.step3Notes || "").trim()) migrated.stage = 4;
           if (!Object.prototype.hasOwnProperty.call(parsed, "step5Notes") && String(parsed.step4Notes || "").trim()) migrated.stage = 5;
+          if (!Object.prototype.hasOwnProperty.call(parsed, "step6Notes") && String(parsed.step5Notes || "").trim()) migrated.stage = 6;
           return migrated;
         } catch (error) { return { ...defaultState(), ...memoryStore }; }
       }
