@@ -396,20 +396,23 @@
               <tr data-failure-type="parse"><td>F02</td><td>扫描页把 E42 识别成 E4Z</td><td>OCR 字符层与置信度</td><td><span class="failure-tag">OCR</span></td><td>图像校正、领域词表、低置信度路由人工复核</td><td>关键错误码字符准确，低于阈值时不得静默入库</td></tr>
               <tr data-failure-type="parse"><td>F03</td><td>表格压平后错误码与动作错配</td><td>structured table rows/cells</td><td><span class="failure-tag">STRUCTURE</span></td><td>恢复表头、行列和跨单元格关系，并序列化自包含事实</td><td>E42、通信异常、重启模块必须保持同一行关系</td></tr>
               <tr data-failure-type="parse"><td>F04</td><td>短 chunk 不知道自己属于哪个产品章节</td><td>block metadata 的 section_path</td><td><span class="failure-tag">HIERARCHY</span></td><td>恢复标题树并向 child chunk 传播路径与 parent_id</td><td>每个正文块必须拥有正确且可追溯的标题路径</td></tr>
-              <tr data-failure-type="chunk"><td>F05</td><td>主规则召回，7 天限制和例外未进入上下文</td><td>indexed records / final evidence coverage</td><td><span class="failure-tag">CHUNK</span></td><td>结构感知切分、评估 overlap，并将局部层次扩展作为召回算子</td><td>标注的条件与例外必须共同出现在 retrieved evidence 或 final context</td></tr>
-              <tr data-failure-type="architecture"><td>F06</td><td>答案需要两个文档，却只扩展命中文档邻居</td><td>candidate set / evidence workspace</td><td><span class="failure-tag">ARCH</span></td><td>查询分解、多索引混合召回、有界迭代充分性检查，必要时 GraphRAG</td><td>所有 gold documents 均被支持；轮数耗尽仍缺证据时必须拒答</td></tr>
+              <tr data-failure-type="chunk"><td>F05</td><td>主规则召回，7 天限制和例外未进入上下文</td><td>indexed records / evidence coverage</td><td><span class="failure-tag">CHUNK</span></td><td>结构感知切分、评估 overlap，并将局部层次扩展作为召回算子</td><td>先断言条件与例外进入 evidence set；再单测 final context 含有充分证据</td></tr>
+              <tr data-failure-type="architecture"><td>F06</td><td>答案需要两个文档，却只扩展命中文档邻居</td><td>candidate set / evidence workspace</td><td><span class="failure-tag">ARCH</span></td><td>查询分解、多索引混合召回、有界迭代充分性检查，必要时 GraphRAG</td><td>gold evidence/document set 被召回；轮数耗尽仍不足时必须拒答</td></tr>
             </tbody>
           </table>
         </div>
         <div class="step-result"><strong>失败样例的最小测试格式</strong><p><code>input document + query → expected intermediate artifact → expected evidence set → expected answer behavior</code>。解析测试不必等待生成模型，分块测试也不应只看最终答案。</p></div>
         <div class="checkpoint">
-          <p class="section-label">One discussion only</p>
-          <h3>把一个真实问题改写成可回归的失败样例</h3>
-          <p>从扫描 PDF、双栏、表格、多级标题、条件被切散或跨文档证据中选择一种，写出：可见症状、第一处错误的中间产物、你准备修改的策略，以及一条机器可以判断通过或失败的回归断言。</p>
-          <label for="day03Step5Notes">我的失败样例</label>
-          <textarea id="day03Step5Notes" placeholder="建议使用：症状 → 第一处错误产物 → 修复策略 → 回归断言。"></textarea>
-          <div class="actions"><button class="action" type="button" data-go-stage="4">← 回看 Step 04</button><button class="action primary" type="button" id="saveStep5">保存失败样例</button></div>
-          <p class="save-note" id="step5SaveNote" hidden>已保存。下一轮会检查它是否真正可测试，并进入 Day 03 的最终复述与验收。</p>
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 05 已收口：把错误答案改写成可复现的工程契约</h3>
+          <p>你已经完成了一个失败样例的诊断。现在它不再只是“某次回答错了”，而是一个可反复执行的输入、断言与预期行为。</p>
+          <label for="day03Step5Notes">我的原始失败样例（已保留在本机浏览器）</label>
+          <textarea id="day03Step5Notes" readonly></textarea>
+          <div class="answer-review"><span>参考答案：什么才叫可测试</span><p>一个合格样例应写成 <code>input document + query → expected first broken artifact → expected evidence set / invariant → expected answer behavior</code>。例如扫描 PDF 中 <code>E42</code> 被 OCR 成 <code>E4Z</code>：第一处错误是带 <code>page</code>、<code>bbox</code> 与 <code>confidence</code> 的 OCR block，而不是 embedding；修复可包括图像校正、领域错误码词表/正则校验、低置信度复核，并保留原图与坐标；回归要同时断言错误码精确为 E42、低置信度不允许静默发布索引、查询 E42 能召回自包含的表格行。</p></div>
+          <div class="answer-review"><span>分层断言</span><p>解析/结构缺陷断言 parsed blocks、结构化表格行或标题路径；分块缺陷断言标注证据是否完整覆盖，而不是只看最终答案；检索架构缺陷断言查询计划、gold evidence 覆盖、有界重试与拒答出口。每层都应该在生成模型之前暴露问题。</p></div>
+          <div class="answer-review"><span>面试表达</span><p>我不会从最终错误答案倒推猜 embedding 或 prompt；我会沿 trace 找到第一处损坏的中间产物，并把它固化为回归测试。这样一次坏案例才会变成可验证的工程改进。</p></div>
+          <div class="actions"><button class="action" type="button" data-go-stage="4">← 回看 Step 04</button><span class="action primary" aria-disabled="true">Step 05 已完成</span></div>
+          <p class="save-note">说明：你的原答保存在此浏览器的本地学习记录中；本页只追加评审，不会覆盖它。</p>
         </div>
       </section>
     </main>
@@ -457,8 +460,6 @@
       document.querySelectorAll("[data-chunk-scenario]").forEach(button => button.addEventListener("click", () => { state.chunkScenario = button.dataset.chunkScenario; renderChunkExperiment(); }));
       document.querySelectorAll("[data-failure-filter]").forEach(button => button.addEventListener("click", () => renderFailureFilter(button.dataset.failureFilter)));
       chunkSizeInput.addEventListener("input", event => { state.chunkSize = Number(event.target.value); renderChunkExperiment(); });
-      step5Notes.addEventListener("input", event => { state.step5Notes = event.target.value; saveState(); });
-      document.querySelector("#saveStep5").addEventListener("click", () => { saveState(); document.querySelector("#step5SaveNote").hidden = false; });
       notes.value = state.notes || "";
       step2Notes.value = state.step2Notes || "";
       step3Notes.value = state.step3Notes || "";
