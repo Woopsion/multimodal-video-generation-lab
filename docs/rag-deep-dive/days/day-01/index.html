@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Day 01 - 边界与心智模型</title>
+  <link rel="stylesheet" href="../../assets/day-session.css" />
+</head>
+<body data-storage-key="rag-14-day-day-01-v3" data-day-label="Day 01" data-initial-step="3" data-initial-max-step="3" data-initial-confidence="understand" data-initial-done="true">
+  <header class="coursebar">
+    <a href="../../index.html">← RAG 学习入口</a>
+    <div class="coursebar-title">Day 01 · 边界与心智模型</div>
+    <div class="coursebar-progress">
+      <span id="courseProgressText">25%</span>
+      <div class="coursebar-track" aria-hidden="true"><div class="coursebar-fill" id="courseProgress"></div></div>
+    </div>
+  </header>
+
+  <div class="day-layout">
+    <aside class="day-rail">
+      <p class="day-label">RAG · DAY 01 / 14</p>
+      <h2>边界与心智模型</h2>
+      <p class="day-rail-copy">今天只建立判断框架，不急着进入向量库参数和框架代码。</p>
+
+      <nav class="day-step-nav" aria-label="Day 01 学习步骤">
+        <button class="day-step-button" type="button" data-step-target="0">
+          <span class="day-step-number">01</span><span class="day-step-title">建立信息流</span>
+        </button>
+        <button class="day-step-button" type="button" data-step-target="1">
+          <span class="day-step-number">02</span><span class="day-step-title">技术边界</span>
+        </button>
+        <button class="day-step-button" type="button" data-step-target="2">
+          <span class="day-step-number">03</span><span class="day-step-title">失败归因</span>
+        </button>
+        <button class="day-step-button" type="button" data-step-target="3">
+          <span class="day-step-number">04</span><span class="day-step-title">形成表达</span>
+        </button>
+      </nav>
+
+      <div class="rail-links">
+        <a href="../../14-day-learning-plan.md">14 天总维护计划</a>
+        <a href="../../index.html">RAG 完整知识库</a>
+      </div>
+    </aside>
+
+    <main class="day-main">
+      <header class="day-intro">
+        <p class="eyebrow">Discussion-driven learning session</p>
+        <h1>先知道 RAG 在解决什么，再学习它怎么实现</h1>
+        <p>Day 01 不追求记住所有组件。今天需要形成一套稳定的判断方式：什么问题值得使用 RAG、它和微调及长上下文如何分工、系统失败时从哪里开始定位。</p>
+        <div class="day-meta">
+          <span>建议时长 <strong>2-2.5 小时</strong></span>
+          <span>今日产出 <strong>决策图 + 3 分钟表达</strong></span>
+          <span>学习方式 <strong>讲解、探索、记录</strong></span>
+        </div>
+      </header>
+
+      <section class="day-step" data-step="0">
+        <p class="step-kicker">Step 01 · Mental Model</p>
+        <h2>RAG 不是“接一个向量库”</h2>
+        <p class="lead">先从最简单的信息流出发。用户提出问题后，系统需要从外部知识中找到足够回答问题的证据，再把证据交给模型组织答案。</p>
+
+        <div class="focus-statement">
+          RAG 的核心任务，是让最终上下文中的证据 z 尽可能成为回答问题 x 所需的最小充分证据集。
+        </div>
+
+        <div class="rag-pipeline" role="img" aria-label="RAG 从用户问题到答案的基本信息流">
+          <div class="pipeline-node"><span>INPUT</span><strong>用户问题 x</strong><p>用户真正想知道什么？</p></div>
+          <div class="pipeline-node"><span>SEARCH</span><strong>寻找候选证据</strong><p>从外部知识中缩小范围。</p></div>
+          <div class="pipeline-node"><span>SELECT</span><strong>形成证据 z</strong><p>保留相关且足够的内容。</p></div>
+          <div class="pipeline-node"><span>GENERATE</span><strong>模型组织答案</strong><p>依据问题与证据进行表达。</p></div>
+          <div class="pipeline-node"><span>OUTPUT</span><strong>答案 y</strong><p>附引用、边界或拒答。</p></div>
+        </div>
+
+        <p>没有 RAG 时，模型主要依靠训练阶段写入参数的知识生成答案。加入 RAG 后，回答条件从“问题”扩展为“问题 + 当前检索到的证据”。因此，知识可以在不重新训练模型的情况下更新、撤回、引用和做权限过滤。</p>
+
+        <details class="optional-depth">
+          <summary>选读：用概率形式描述这个变化</summary>
+          <div>
+            <div class="formula">p(y | x)  →  p(y | x, z)</div>
+            <p><code>x</code> 是问题，<code>z</code> 是检索证据，<code>y</code> 是答案。这个公式不是要求今天推导，而是提醒我们：RAG 的所有组件最终都在影响证据 <code>z</code> 的质量。</p>
+          </div>
+        </details>
+
+        <div class="step-actions">
+          <button class="step-action" type="button" data-previous-step disabled>← 上一步</button>
+          <button class="step-action primary" type="button" data-next-step>继续：理解技术边界 →</button>
+        </div>
+      </section>
+
+      <section class="day-step" data-step="1" hidden>
+        <p class="step-kicker">Step 02 · Decision Boundary</p>
+        <h2>RAG、微调和长上下文管理的是不同问题</h2>
+        <p class="lead">不要把它们理解成互相替代的三种模型技巧。点击下面三个场景，观察每种方案最适合管理什么。</p>
+
+        <div class="explore-lab">
+          <div class="lab-heading">
+            <span>Scenario explorer</span>
+            <h3>需求发生变化时，应该改变哪一层？</h3>
+          </div>
+          <div class="case-tabs">
+            <button class="case-button is-active" type="button" data-case-target="case-rag">知识持续变化</button>
+            <button class="case-button" type="button" data-case-target="case-finetune">行为与格式变化</button>
+            <button class="case-button" type="button" data-case-target="case-context">单次临时资料</button>
+          </div>
+
+          <div class="case-panel" id="case-rag">
+            <div class="case-verdict"><span>优先考虑</span><strong>RAG</strong></div>
+            <div class="case-reason">
+              <p>企业制度、产品说明和用户数据会持续变化，而且需要引用来源、删除旧版本并执行文档权限。</p>
+              <ul>
+                <li>知识更新通常只需要更新索引。</li>
+                <li>答案可以回到原始文档进行审计。</li>
+                <li>访问控制可以在检索层强制执行。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="case-panel" id="case-finetune" hidden>
+            <div class="case-verdict"><span>优先考虑</span><strong>微调</strong></div>
+            <div class="case-reason">
+              <p>目标是让模型稳定遵循公司的表达方式、输出固定 JSON、掌握任务步骤或形成领域行为习惯。</p>
+              <ul>
+                <li>微调更擅长改变“如何回答”。</li>
+                <li>它不适合频繁注入需要实时更新的事实。</li>
+                <li>真实系统常采用“微调管行为，RAG 管知识”。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="case-panel" id="case-context" hidden>
+            <div class="case-verdict"><span>优先考虑</span><strong>长上下文</strong></div>
+            <div class="case-reason">
+              <p>用户临时上传一份合同或一组资料，本次任务需要整体分析，而且材料规模可控。</p>
+              <ul>
+                <li>资料只服务当前请求，不一定值得长期建库。</li>
+                <li>材料过多时会增加 token 成本和延迟。</li>
+                <li>长上下文并不自动解决信息筛选和中间位置利用率问题。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <p>三者可以组合：RAG 管理动态知识，微调管理稳定行为，长上下文承载单次任务资料。真正的选型依据是知识是否变化、是否需要引用和权限、任务是否重复，以及成本与延迟约束。</p>
+
+        <div class="step-actions">
+          <button class="step-action" type="button" data-previous-step>← 回到信息流</button>
+          <button class="step-action primary" type="button" data-next-step>继续：理解失败归因 →</button>
+        </div>
+      </section>
+
+
+      <section class="day-step" data-step="2" hidden>
+        <p class="step-kicker">Step 03 · Failure Map</p>
+        <h2>先判断证据在哪里，再讨论谁出了问题</h2>
+        <p class="lead">“回答错了”不是一个足够具体的诊断。先确认正确证据是否进入了模型最终看到的上下文，再决定进入检索侧还是生成侧。</p>
+
+        <div class="trace-lab" data-mode="retrieval">
+          <div class="lab-heading">
+            <span>Trace explorer</span>
+            <h3>切换两种坏案例，观察第一检查点</h3>
+          </div>
+          <div class="trace-tabs">
+            <button class="trace-button is-active" type="button" data-trace-mode="retrieval">正确证据没有进最终上下文</button>
+            <button class="trace-button" type="button" data-trace-mode="generation">正确证据已经在上下文中</button>
+          </div>
+          <div class="trace-canvas">
+            <div class="trace-flow" role="img" aria-label="RAG 故障定位链路">
+              <div class="trace-stage" data-side="retrieval"><span>01</span><strong>数据 / ACL</strong></div>
+              <div class="trace-stage" data-side="retrieval"><span>02</span><strong>解析 / 分块</strong></div>
+              <div class="trace-stage" data-side="retrieval"><span>03</span><strong>召回 / 重排</strong></div>
+              <div class="trace-stage" data-side="generation"><span>04</span><strong>最终上下文</strong></div>
+              <div class="trace-stage" data-side="generation"><span>05</span><strong>答案生成</strong></div>
+            </div>
+            <div class="trace-explanation" data-trace-explanation="retrieval">
+              <div class="trace-copy">
+                <strong>先查检索链路</strong>
+                <p>依次确认文档存在、解析没有丢失、chunk 保留了必要上下文、初次召回命中，以及融合/重排没有把证据丢掉。</p>
+              </div>
+            </div>
+            <div class="trace-explanation" data-trace-explanation="generation" hidden>
+              <div class="trace-copy">
+                <strong>再查生成链路</strong>
+                <p>确认没有被截断，再观察 chunk 数量、证据位置、指令冲突、引用约束和模型是否能准确摘录证据。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p>因此，Lost in the Middle 不是每次的默认答案。它只是“证据已经进入上下文，但模型没有有效使用”这一类生成问题中的一种可能原因。检索失败和生成失败要靠 trace 分层，而不是凭感觉更换模型。</p>
+
+        <details class="optional-depth">
+          <summary>把排查顺序记成一句话</summary>
+          <div>
+            <div class="formula">数据存在？ → 正确解析？ → 初次召回？ → 重排保留？ → 最终上下文？ → 模型使用？</div>
+          </div>
+        </details>
+
+        <div class="step-actions">
+          <button class="step-action" type="button" data-previous-step>← 回到技术边界</button>
+          <button class="step-action primary" type="button" data-next-step>继续：形成自己的表达 →</button>
+        </div>
+      </section>
+
+      <section class="day-step" data-step="3" hidden>
+        <p class="step-kicker">Step 04 · Personal Synthesis</p>
+        <h2>Day 01 最终复述</h2>
+        <p class="lead">下面保留的是基于本次讨论修正后的版本。它既是学习记录，也可以继续压缩成面试时的 3 分钟表达。</p>
+
+        <div class="day-output">
+          <label for="dayNotes">我的 Day 01 最终理解</label>
+          <textarea id="dayNotes">RAG 主要解决模型参数知识固定、时效性不足，以及无法直接访问企业私有知识的问题。它把回答条件从 p(y | x) 扩展为 p(y | x, z)：先从可更新、可撤回、可追溯且受权限控制的外部知识中找到证据 z，再让模型依据证据回答。
+
+微调更适合改变稳定的回答行为、格式和任务范式，不适合频繁注入会变化的事实；长上下文适合承载单次任务已经拿到的资料，但资料过多会增加噪声、成本和注意力利用难度。三者并不互斥，可以由 RAG 管动态知识、微调管稳定行为、长上下文承载本次任务材料。
+
+当答案错误时，我不会先猜 embedding、chunk 或 Lost in the Middle，而是先看 trace，确认正确证据是否进入模型最终看到的上下文。若没有进入，就是检索侧失败，应沿数据与 ACL、解析与分块、召回与重排、上下文组装逐层排查；若证据已经进入但回答仍错，才进入生成侧，检查截断、证据位置与噪声、指令冲突、引用约束和模型使用证据的能力。Lost in the Middle 只是生成侧的一种可能原因，不是默认结论。</textarea>
+          <div class="focus-statement">
+            选型顺序：动态事实、引用与权限优先考虑 RAG；稳定行为与格式优先考虑微调；单次已知资料优先考虑长上下文，并允许三者组合。
+          </div>
+          <ul class="output-guide">
+            <li><strong>关键修正 01：</strong>检索失败不只是“召回了无关内容”，而是正确证据没有进入最终上下文。</li>
+            <li><strong>关键修正 02：</strong>生成失败的前提是正确证据已经进入上下文，但模型没有正确使用。</li>
+            <li><strong>关键修正 03：</strong>Lost in the Middle 需要在确认上下文和证据位置后再验证，不能作为第一反应。</li>
+          </ul>
+
+          <label>现在的掌握感觉</label>
+          <div class="confidence" role="group" aria-label="Day 01 掌握感觉">
+            <button type="button" data-confidence="fuzzy">还需要讨论</button>
+            <button type="button" data-confidence="understand">基本成形</button>
+            <button type="button" data-confidence="explain">可以口述</button>
+          </div>
+
+          <div class="step-actions">
+            <button class="step-action" type="button" data-previous-step>← 回到失败归因</button>
+            <button class="step-action" id="completeDay" type="button">记录 Day 01 学习结果</button>
+            <a class="step-action primary" href="../day-02/index.html">进入 Day 02 →</a>
+          </div>
+          <p class="completion-note" id="completionNote" hidden>Day 01 已完成：边界判断、失败归因和最终复述均已形成。下一学习入口为 Day 02：原始论文与朴素管道。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../../assets/day-session.js" defer></script>
+</body>
+</html>

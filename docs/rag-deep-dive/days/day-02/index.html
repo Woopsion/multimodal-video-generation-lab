@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Day 02 - 原始论文与朴素管道</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f1ea;
+      --surface: #fbfaf6;
+      --ink: #17201d;
+      --muted: #65706b;
+      --line: #c9cec8;
+      --teal: #087f75;
+      --teal-soft: #dbece8;
+      --orange: #c5532d;
+      --orange-soft: #f5e3da;
+      --yellow: #edc951;
+      --charcoal: #202927;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+    }
+
+    button, textarea { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; }
+    [hidden] { display: none !important; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 58px;
+      padding: 0 28px;
+      border-bottom: 1px solid #34403c;
+      background: var(--charcoal);
+      color: #f7f6f0;
+    }
+
+    .topbar a { color: #b8cec7; text-decoration: none; font-size: 13px; }
+    .topbar strong { justify-self: center; font-size: 14px; }
+    .top-progress { display: flex; align-items: center; gap: 10px; color: #b8cec7; font-size: 12px; }
+    .progress-track { width: 112px; height: 4px; background: #53615c; overflow: hidden; }
+    .progress-fill { width: 12%; height: 100%; background: var(--yellow); transition: width 180ms ease; }
+
+    .hero {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .hero-inner {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+      gap: 54px;
+      align-items: center;
+      padding: 54px 0 48px;
+    }
+
+    .eyebrow,
+    .section-label {
+      margin: 0 0 10px;
+      color: var(--orange);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+      letter-spacing: 0;
+    }
+
+    h1 { margin: 0; max-width: 680px; font-size: 48px; line-height: 1.15; }
+    h2 { margin: 0 0 14px; font-size: 34px; line-height: 1.24; }
+    h3 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 10px 0; }
+    .hero-copy { max-width: 660px; margin-top: 18px; color: var(--muted); font-size: 17px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .hero-meta span { padding: 5px 9px; border: 1px solid var(--line); background: var(--paper); font-size: 12px; }
+
+    .hero-map { position: relative; min-height: 310px; padding: 28px; border: 1px solid var(--ink); background: var(--paper); box-shadow: 10px 10px 0 #cfd7d2; }
+    .hero-map::before { content: "RAG / TWO-PHASE SYSTEM"; display: block; margin-bottom: 22px; color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 800; }
+    .mini-track { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 12px; align-items: center; margin: 18px 0; }
+    .mini-track > strong { color: var(--muted); font-size: 12px; }
+    .mini-flow { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .mini-node { flex: 1; min-width: 0; padding: 9px 7px; border: 1px solid var(--line); background: var(--surface); text-align: center; font-size: 11px; font-weight: 800; }
+    .mini-arrow { color: var(--orange); font-weight: 900; }
+    .map-bridge { margin: 22px 0 0 90px; padding: 10px 12px; border-left: 4px solid var(--yellow); background: #fff8d9; font-size: 12px; }
+
+    .workspace {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      gap: 42px;
+      align-items: start;
+      padding: 34px 0 90px;
+    }
+
+    .roadmap {
+      position: sticky;
+      top: 82px;
+      border-top: 4px solid var(--ink);
+      padding-top: 14px;
+    }
+
+    .roadmap-title { margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .stage-button {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      width: 100%;
+      min-height: 58px;
+      padding: 10px 8px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .stage-button:hover:not(:disabled), .stage-button.is-active { background: var(--teal-soft); }
+    .stage-button:disabled { color: #98a09c; cursor: not-allowed; }
+    .stage-no { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 900; }
+    .stage-copy strong, .stage-copy span { display: block; }
+    .stage-copy strong { font-size: 13px; }
+    .stage-copy span { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .roadmap-links { display: grid; gap: 7px; margin-top: 20px; font-size: 12px; }
+    .roadmap-links a { color: var(--teal); }
+
+    main { min-width: 0; }
+    .learning-section { animation: reveal 220ms ease both; }
+    @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .lead { color: var(--muted); font-size: 17px; }
+    .rule { height: 1px; margin: 28px 0; background: var(--line); }
+
+    .learning-contract { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--ink); margin: 24px 0 32px; }
+    .contract-cell { min-height: 128px; padding: 18px; border-right: 1px solid var(--ink); }
+    .contract-cell:last-child { border-right: 0; }
+    .contract-cell span { display: block; margin-bottom: 8px; color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .contract-cell strong { display: block; font-size: 15px; }
+    .contract-cell p { color: var(--muted); font-size: 12px; }
+
+    .architecture-band { margin: 32px 0; padding: 26px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .track-switch { display: inline-flex; border: 1px solid var(--ink); margin: 8px 0 22px; }
+    .track-switch button { min-width: 132px; padding: 9px 14px; border: 0; border-right: 1px solid var(--ink); background: var(--surface); cursor: pointer; }
+    .track-switch button:last-child { border-right: 0; }
+    .track-switch button.is-active { background: var(--ink); color: #fff; }
+    .architecture-flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .flow-node { position: relative; min-height: 118px; padding: 14px 12px; border: 1px solid var(--line); background: var(--surface); }
+    .flow-node::after { content: "→"; position: absolute; top: 43px; right: -12px; z-index: 2; color: var(--orange); font-weight: 900; }
+    .flow-node:last-child::after { content: ""; }
+    .flow-node span { display: block; color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .flow-node strong { display: block; margin-top: 7px; font-size: 14px; }
+    .flow-node p { color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .track-summary { margin: 14px 0 0; padding-left: 14px; border-left: 4px solid var(--teal); color: var(--muted); font-size: 13px; }
+
+    .phase-list { margin: 30px 0; border-top: 1px solid var(--line); }
+    .phase-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 70px; border-bottom: 1px solid var(--line); }
+    .phase-row > span:first-child { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-weight: 900; }
+    .phase-row strong { display: block; font-size: 14px; }
+    .phase-row p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .phase-status { padding: 4px 8px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; font-weight: 800; }
+    .phase-status.current { border-color: var(--orange); background: var(--orange-soft); color: var(--orange); }
+
+    .formula-group { display: grid; gap: 16px; margin: 28px 0; }
+    .formula-block { border: 1px solid var(--ink); background: #fffdf8; }
+    .formula-label { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--ink); color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; letter-spacing: 0.04em; }
+    .formula { margin: 0; padding: 20px; background: var(--charcoal); color: #f7f6f0; font-family: "Cascadia Mono", Consolas, monospace; font-size: 16px; line-height: 1.8; overflow-x: auto; white-space: nowrap; }
+    .formula em { color: var(--yellow); font-style: normal; }
+    .formula-caption { margin: 0; padding: 13px 14px 15px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .notation-guide { margin: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .notation-guide h3 { margin: 18px 0 6px; font-size: 17px; }
+    .notation-guide > p { margin-top: 0; color: var(--muted); font-size: 13px; }
+    .notation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .notation-item { min-height: 86px; padding: 14px; border-top: 1px solid var(--line); }
+    .notation-item:nth-child(odd) { border-right: 1px solid var(--line); }
+    .notation-item strong { display: block; margin-bottom: 5px; color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+    .notation-item p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .concept-callout { margin: 22px 0; padding: 18px 20px; border-left: 5px solid var(--teal); background: var(--teal-soft); }
+
+    .candidate-lab { margin: 28px 0; border: 1px solid var(--ink); background: var(--surface); }
+    .lab-head { padding: 18px 20px; border-bottom: 1px solid var(--ink); }
+    .lab-head span { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .lab-head p { margin-bottom: 0; font-size: 14px; }
+    .candidate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .candidate-button { min-height: 128px; padding: 16px; border: 0; border-right: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; }
+    .candidate-button:last-child { border-right: 0; }
+    .candidate-button.is-active { background: var(--orange-soft); }
+    .candidate-button span, .candidate-button strong { display: block; }
+    .candidate-button span { color: var(--muted); font-size: 11px; }
+    .candidate-button strong { margin: 6px 0; font-size: 14px; }
+    .probability { height: 5px; background: #d9ddd9; overflow: hidden; }
+    .probability i { display: block; height: 100%; background: var(--teal); }
+    .candidate-detail { min-height: 104px; padding: 18px 20px; border-top: 1px solid var(--line); }
+    .candidate-detail strong { color: var(--teal); }
+
+    .generation-lab { margin: 28px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 24px 0; }
+    .mode-switch { display: inline-flex; margin: 10px 0 22px; border: 1px solid var(--ink); }
+    .mode-switch button { min-width: 152px; padding: 9px 13px; border: 0; border-right: 1px solid var(--ink); background: var(--surface); cursor: pointer; }
+    .mode-switch button:last-child { border-right: 0; }
+    .mode-switch button.is-active { background: var(--ink); color: #fff; }
+    .generation-lane { display: flex; flex-wrap: wrap; gap: 8px; min-height: 92px; padding: 18px; border: 1px solid var(--line); background: var(--surface); }
+    .token-unit { display: grid; gap: 5px; min-width: 70px; padding: 9px 10px; border: 1px solid var(--line); text-align: center; }
+    .token-unit strong { font-family: "Noto Serif SC", "Songti SC", serif; font-size: 15px; }
+    .token-source { color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .token-source.alt { color: var(--orange); }
+    .mode-explanation { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+    .index-lab { margin: 28px 0; padding: 24px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .index-canvas { display: grid; grid-template-columns: 112px minmax(0, 1fr); min-height: 270px; border: 1px solid var(--ink); background: var(--surface); }
+    .index-canvas-label { padding: 18px 14px; border-right: 1px solid var(--ink); background: var(--charcoal); color: #f7f6f0; font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .index-canvas-label span { display: block; margin-top: 8px; color: var(--yellow); font-size: 10px; font-weight: 600; }
+    .source-paper { align-self: center; margin: 24px; padding: 22px; border: 1px solid var(--line); background: #fffdf8; }
+    .source-paper small { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-weight: 900; }
+    .source-paper h4 { margin: 7px 0 14px; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 22px; }
+    .source-paper p { margin: 8px 0; color: var(--muted); font-size: 13px; line-height: 1.75; }
+    .chunk-stack { display: grid; gap: 10px; padding: 18px; }
+    .chunk-record { display: grid; grid-template-columns: 92px minmax(0, 1fr); border: 1px solid var(--line); background: #fffdf8; }
+    .record-id { padding: 13px 12px; border-right: 1px solid var(--line); color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .record-body { padding: 12px 14px; }
+    .record-body p { margin: 0 0 8px; font-size: 13px; line-height: 1.65; }
+    .record-meta { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; }
+    .record-meta span { padding: 3px 6px; border: 1px solid var(--line); }
+    .online-lab { margin: 28px 0; border: 1px solid var(--ink); background: var(--surface); }
+    .online-pipeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--ink); }
+    .online-node { min-height: 108px; padding: 15px 13px; border: 0; border-right: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; }
+    .online-node:last-child { border-right: 0; }
+    .online-node.is-active { background: var(--teal-soft); }
+    .online-node span { display: block; color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .online-node strong { display: block; margin: 8px 0 5px; font-size: 14px; }
+    .online-node small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .online-detail { min-height: 220px; padding: 22px; }
+    .detail-kicker { color: var(--teal); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .online-detail h4 { margin: 7px 0 16px; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 22px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); }
+    .detail-cell { min-height: 112px; padding: 14px; border-right: 1px solid var(--line); }
+    .detail-cell:last-child { border-right: 0; }
+    .detail-cell span { display: block; margin-bottom: 7px; color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .detail-cell p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .decision-lab { margin: 28px 0; padding: 24px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+    .decision-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .decision-item { min-height: 154px; padding: 15px; border: 1px solid var(--line); background: var(--surface); }
+    .decision-item span { color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; font-weight: 900; }
+    .decision-item strong { display: block; margin: 9px 0 7px; font-size: 14px; }
+    .decision-item p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .decision-summary { margin: 14px 0 0; padding-left: 14px; border-left: 4px solid var(--orange); color: var(--muted); font-size: 13px; }
+    .decision-summary strong { color: var(--ink); }
+
+    .step-result { margin: 24px 0; padding: 18px 20px; border-left: 5px solid var(--yellow); background: #fff8d9; }
+    .answer-review { margin: 16px 0; padding: 16px 18px; border: 1px solid var(--line); background: var(--surface); }
+    .answer-review span { display: block; margin-bottom: 7px; color: var(--orange); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; font-weight: 900; }
+    .answer-review p { margin: 0; line-height: 1.75; }
+    .answer-review + p { margin-bottom: 0; }
+
+    .checkpoint { margin-top: 30px; padding: 22px; border: 1px solid var(--ink); background: #fffdf8; }
+    .checkpoint label { display: block; margin: 16px 0 7px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .checkpoint textarea { width: 100%; min-height: 130px; padding: 13px; resize: vertical; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+    .rating { display: inline-flex; border: 1px solid var(--line); }
+    .rating button { padding: 8px 12px; border: 0; border-right: 1px solid var(--line); background: transparent; cursor: pointer; }
+    .rating button:last-child { border-right: 0; }
+    .rating button.is-active { background: var(--teal); color: #fff; }
+    .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; }
+    .action { min-height: 42px; padding: 9px 15px; border: 1px solid var(--ink); background: transparent; cursor: pointer; font-weight: 800; }
+    .action.primary { background: var(--ink); color: #fff; }
+    .save-note { margin-top: 10px; color: var(--teal); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .topbar { grid-template-columns: 1fr auto; padding: 0 16px; }
+      .topbar strong { justify-self: start; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .topbar > a { display: none; }
+      .top-progress { white-space: nowrap; }
+      .progress-track { width: 54px; }
+      .formula { padding: 16px; font-size: 13px; }
+      .notation-grid { grid-template-columns: 1fr; }
+      .notation-item:nth-child(odd) { border-right: 0; }
+      .mode-switch { display: flex; width: 100%; }
+      .mode-switch button { flex: 1; min-width: 0; }
+      .hero-inner, .workspace { width: min(100% - 30px, 720px); }
+      .hero-inner { grid-template-columns: 1fr; gap: 32px; padding-top: 38px; }
+      h1 { font-size: 36px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+      .roadmap { position: static; min-width: 0; }
+      .roadmap > div:first-of-type { display: flex; min-width: 0; max-width: 100%; overflow-x: auto; }
+      .stage-button { flex: 0 0 180px; }
+      .roadmap-links { display: flex; flex-wrap: wrap; }
+      .learning-contract { grid-template-columns: 1fr; }
+      .contract-cell { border-right: 0; border-bottom: 1px solid var(--ink); }
+      .contract-cell:last-child { border-bottom: 0; }
+      .architecture-flow { grid-template-columns: 1fr; }
+      .flow-node { min-height: 0; }
+      .flow-node::after { content: "↓"; top: auto; right: 50%; bottom: -16px; }
+      .candidate-grid { grid-template-columns: 1fr; }
+      .candidate-button { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .candidate-button:last-child { border-bottom: 0; }
+      .index-canvas { grid-template-columns: 1fr; }
+      .index-canvas-label { border-right: 0; border-bottom: 1px solid var(--ink); }
+      .source-paper { margin: 16px; }
+      .chunk-record { grid-template-columns: 1fr; }
+      .record-id { border-right: 0; border-bottom: 1px solid var(--line); }
+      .online-pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .online-node:nth-child(2) { border-right: 0; }
+      .online-node:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .detail-grid { grid-template-columns: 1fr; }
+      .detail-cell { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .detail-cell:last-child { border-bottom: 0; }
+      .decision-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .decision-item { min-height: 0; }
+      .phase-row { grid-template-columns: 42px minmax(0, 1fr); padding: 10px 0; }
+      .phase-status { grid-column: 2; justify-self: start; }
+      .actions { display: grid; grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="../day-01/index.html">← Day 01 最终复述</a>
+    <strong>Day 02 · 原始论文与朴素管道</strong>
+    <div class="top-progress"><span id="progressText">ARCH / 06</span><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">RAG · DAY 02 / 14</p>
+        <h1>从概率模型，走到一条可解释的 RAG 管道</h1>
+        <p class="hero-copy">今天不从框架 API 开始。先看清原始 RAG 中检索器与生成器如何共同定义答案概率，再把论文视角翻译为现代工程里的离线索引和在线问答两条流水线。</p>
+        <div class="hero-meta">
+          <span>建议时长 2.5-3 小时</span>
+          <span>产出：端到端流程图</span>
+          <span>产出：8 个决策点</span>
+        </div>
+      </div>
+      <div class="hero-map" role="img" aria-label="RAG 离线索引与在线问答两阶段架构缩略图">
+        <div class="mini-track"><strong>OFFLINE</strong><div class="mini-flow"><span class="mini-node">文档</span><span class="mini-arrow">→</span><span class="mini-node">编码</span><span class="mini-arrow">→</span><span class="mini-node">索引</span></div></div>
+        <div class="mini-track"><strong>ONLINE</strong><div class="mini-flow"><span class="mini-node">问题 x</span><span class="mini-arrow">→</span><span class="mini-node">证据 z</span><span class="mini-arrow">→</span><span class="mini-node">答案 y</span></div></div>
+        <p class="map-bridge">共同边界：在线检索只能从离线阶段已经写入索引的表示中寻找证据。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <aside class="roadmap">
+      <p class="roadmap-title">DAY 02 LEARNING MAP</p>
+      <div>
+        <button class="stage-button is-active" type="button" data-stage-target="0"><span class="stage-no">00</span><span class="stage-copy"><strong>架构导览</strong><span>已开放</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>文档是隐变量</strong><span>已完成</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="2"><span class="stage-no">02</span><span class="stage-copy"><strong>Sequence / Token</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="3"><span class="stage-no">03</span><span class="stage-copy"><strong>离线索引</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="4"><span class="stage-no">04</span><span class="stage-copy"><strong>在线检索与生成</strong><span>已收口</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="5"><span class="stage-no">05</span><span class="stage-copy"><strong>决策点与复述</strong><span>已完成</span></span></button>
+      </div>
+      <div class="roadmap-links">
+        <a href="../../14-day-learning-plan.md">14 天总计划</a>
+        <a href="../../index.html">RAG 完整知识库</a>
+      </div>
+    </aside>
+
+    <main>
+      <section class="learning-section" data-stage="0">
+        <p class="section-label">00 · Orientation</p>
+        <h2>今天怎么学</h2>
+        <p class="lead">Day 02 的任务不是背出论文公式，也不是立刻写 LangChain。目标是建立一张能同时解释论文、代码和故障的端到端地图。</p>
+
+        <div class="learning-contract">
+          <div class="contract-cell"><span>LEARNING GOAL</span><strong>读懂检索器和生成器如何共同决定答案</strong><p>知道问题 x、文档 z、答案 y 分别处在哪个位置。</p></div>
+          <div class="contract-cell"><span>FINAL OUTPUT</span><strong>一张端到端流程图 + 8 个决策点</strong><p>后续每学完一个阶段，再逐项补齐，不提前抄答案。</p></div>
+          <div class="contract-cell"><span>ACCEPTANCE</span><strong>能从论文视角讲到冻结组件的现代管道</strong><p>并解释离线决策为什么会限制在线检索上限。</p></div>
+        </div>
+
+        <div class="architecture-band">
+          <p class="section-label">Basic architecture</p>
+          <h3>同一个系统，两条时间轴</h3>
+          <div class="track-switch" role="group" aria-label="RAG 架构时间轴">
+            <button class="is-active" type="button" data-track="offline">离线索引</button>
+            <button type="button" data-track="online">在线问答</button>
+          </div>
+
+          <div class="architecture-flow" id="architectureFlow" aria-live="polite"></div>
+          <p class="track-summary" id="trackSummary"></p>
+        </div>
+
+        <div class="phase-list" aria-label="Day 02 分阶段路线">
+          <div class="phase-row"><span>01</span><div><strong>文档 z 为什么是隐变量</strong><p>已形成“检索概率决定证据能否贡献”的认识。</p></div><span class="phase-status">已完成</span></div>
+          <div class="phase-row"><span>02</span><div><strong>RAG-Sequence 与 RAG-Token</strong><p>已能区分：边际化落在完整序列还是单个 token。</p></div><span class="phase-status">已收口</span></div>
+          <div class="phase-row"><span>03</span><div><strong>离线索引流水线</strong><p>已理解原始文档如何变成可检索记录。</p></div><span class="phase-status">已收口</span></div>
+          <div class="phase-row"><span>04</span><div><strong>在线检索与生成</strong><p>已区分召回候选与最终上下文。</p></div><span class="phase-status">已收口</span></div>
+          <div class="phase-row"><span>05</span><div><strong>8 个工程决策点</strong><p>已形成离线与在线两组诊断边界。</p></div><span class="phase-status">已完成</span></div>
+        </div>
+
+        <div class="actions">
+          <a class="action" href="../day-01/index.html">← 查看 Day 01 收口</a>
+          <button class="action primary" type="button" data-go-stage="1">开始 Step 01：文档是隐变量 →</button>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="1" hidden>
+        <p class="section-label">01 · Latent document</p>
+        <h2>检索文档 z，为什么叫“隐变量”？</h2>
+        <p class="lead">先只理解一个核心关系：用户给出问题 x，系统最后观察到答案 y，但哪一份文档 z 应该支撑这个答案，并不是用户直接标注给模型的输入，而是检索器需要推断的中间变量。</p>
+
+        <div class="formula">p(y | x) ≈ Σ<sub>z ∈ top-k</sub> <em>pη(z | x)</em> · pθ(y | x, z)</div>
+        <div class="concept-callout"><strong>暂时不用推导公式。</strong>先读它的结构：检索器给候选文档分配概率，生成器判断在问题与该文档条件下生成答案的概率，两者共同影响最终答案。</div>
+
+        <div class="candidate-lab">
+          <div class="lab-head"><span>DOCUMENT DISTRIBUTION</span><p>问题 x：电子产品已经拆封，还能申请退货吗？点击候选文档，观察检索器分配给 z 的权重。</p></div>
+          <div class="candidate-grid">
+            <button class="candidate-button is-active" type="button" data-document="return"><span>候选 z₁ · 0.62</span><strong>电子产品退货规则</strong><div class="probability"><i style="width:62%"></i></div></button>
+            <button class="candidate-button" type="button" data-document="shipping"><span>候选 z₂ · 0.25</span><strong>配送与签收说明</strong><div class="probability"><i style="width:25%"></i></div></button>
+            <button class="candidate-button" type="button" data-document="account"><span>候选 z₃ · 0.13</span><strong>账户与会员权益</strong><div class="probability"><i style="width:13%"></i></div></button>
+          </div>
+          <div class="candidate-detail" id="candidateDetail" aria-live="polite"></div>
+        </div>
+
+        <div class="step-result">
+          <strong>Step 01 最终结论</strong>
+          <p>文档 z 不是用户直接提供的已知输入，而是检索器根据问题 x 从文档空间中推断的概率分布。正确文档概率过低时，它可能掉出 top-k 或贡献过小；生成模型再强，也只能围绕错误或不足的证据回答，结果往往“看起来合理但没有回答到点子上”。</p>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>你的理解已经进入正确边界</h3>
+          <p>保留你在下方写下的原始表达，后续复习时重点检查自己是否先想到“证据有没有进入 top-k”，而不是先更换生成模型。</p>
+          <label for="day02Notes">我的当前理解</label>
+          <textarea id="day02Notes" placeholder="先写一两句话即可。我们会根据你的表达继续补当前缺口。"></textarea>
+          <label>现在的掌握感觉</label>
+          <div class="rating" role="group" aria-label="当前概念掌握感觉">
+            <button type="button" data-rating="fuzzy">还模糊</button>
+            <button type="button" data-rating="forming">正在成形</button>
+            <button type="button" data-rating="clear">能讲清楚</button>
+          </div>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="0">← 回到架构导览</button>
+            <button class="action" type="button" id="saveCheckpoint">保存原始表达</button>
+            <button class="action primary" type="button" data-go-stage="2">进入 Step 02 →</button>
+          </div>
+          <p class="save-note" id="saveNote" hidden>Step 01 的原始表达已保存在当前浏览器，可以进入 Step 02。</p>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="2" hidden>
+        <p class="section-label">02 · Marginalization granularity</p>
+        <h2>RAG-Sequence 与 RAG-Token，差异不在“检索几次”</h2>
+        <p class="lead">两者都把候选文档 z 当作隐变量。真正的差异是：对 z 的求和发生在整段答案概率之外，还是发生在每个 token 的生成概率之内。</p>
+
+        <div class="formula-group" aria-label="RAG-Sequence 与 RAG-Token 的概率公式">
+          <article class="formula-block">
+            <p class="formula-label">RAG-Sequence · 对整段答案进行边际化</p>
+            <div class="formula" aria-label="p sequence of y given x approximately equals the sum over z in top-k of x of p eta of z given x, times the product from i equals one to N of p theta of y i given x, z, and earlier tokens">p<sub>seq</sub>(y | x) ≈ Σ<sub>z ∈ top-k(x)</sub> p<sub>η</sub>(z | x) · ∏<sub>i=1</sub><sup>N</sup> p<sub>θ</sub>(y<sub>i</sub> | x, z, y<sub>&lt;i</sub>)</div>
+            <p class="formula-caption">读法：先假设<strong>同一份</strong>候选文档 z 支撑完整答案的全部 token，算出这条完整答案路径的概率；再把每份候选文档的路径贡献加起来。</p>
+          </article>
+          <article class="formula-block">
+            <p class="formula-label">RAG-Token · 对每一个 token 进行边际化</p>
+            <div class="formula" aria-label="p token of y given x approximately equals the product from i equals one to N of the sum over z in top-k of x of p eta of z given x times p theta of y i given x, z, and earlier tokens">p<sub>tok</sub>(y | x) ≈ ∏<sub>i=1</sub><sup>N</sup> Σ<sub>z ∈ top-k(x)</sub> p<sub>η</sub>(z | x) · p<sub>θ</sub>(y<sub>i</sub> | x, z, y<sub>&lt;i</sub>)</div>
+            <p class="formula-caption">读法：生成第 i 个 token 时，先把各候选文档对<strong>这个 token</strong>的贡献加起来；然后再把所有 token 的概率连乘。它不表示每个 token 都重新发起一次检索。</p>
+          </article>
+        </div>
+
+        <section class="notation-guide" aria-labelledby="notationTitle">
+          <h3 id="notationTitle">把公式拆成 6 个可读符号</h3>
+          <p>这里的 <code>top-k(x)</code> 是简写：检索器按 p<sub>η</sub>(z | x) 排名后保留下来的 k 份候选文档。</p>
+          <div class="notation-grid">
+            <div class="notation-item"><strong>x</strong><p>用户问题（query）。</p></div>
+            <div class="notation-item"><strong>y = (y₁, …, y<sub>N</sub>)</strong><p>最终答案；生成器按 token 自回归地产生它。</p></div>
+            <div class="notation-item"><strong>z</strong><p>候选检索文档，也是本节讨论的隐变量。</p></div>
+            <div class="notation-item"><strong>p<sub>η</sub>(z | x)</strong><p>检索器认为文档 z 与问题 x 相关的概率或权重。</p></div>
+            <div class="notation-item"><strong>p<sub>θ</sub>(y<sub>i</sub> | x, z, y<sub>&lt;i</sub>)</strong><p>给定问题、文档与已生成前文后，生成第 i 个 token 的概率。</p></div>
+            <div class="notation-item"><strong>Σ / Π / ≈</strong><p>Σ 是“对文档贡献求和”，Π 是“按 token 概率连乘”；≈ 是因为工程上只在 top-k 候选中近似求和，而非枚举全库。</p></div>
+          </div>
+        </section>
+
+        <div class="generation-lab">
+          <p class="section-label">Generation timeline</p>
+          <h3>观察文档贡献在生成过程中的位置</h3>
+          <div class="mode-switch" role="group" aria-label="RAG 边际化粒度">
+            <button class="is-active" type="button" data-generation-mode="sequence">RAG-Sequence</button>
+            <button type="button" data-generation-mode="token">RAG-Token</button>
+          </div>
+          <div class="generation-lane" id="generationLane" aria-live="polite"></div>
+          <p class="mode-explanation" id="generationExplanation"></p>
+        </div>
+
+        <div class="concept-callout">
+          <strong>先抓住括号位置。</strong>Sequence 是“每个候选文档分别解释完整答案，再对完整答案概率求和”；Token 是“每生成一个 token，都先对候选文档的贡献求和”。后者更灵活，但计算与解释都更复杂，也更容易在长答案中混合不同证据路径。
+        </div>
+
+        <div class="step-result">
+          <strong>Step 02 最终复述</strong>
+          <div class="answer-review">
+            <span>你的原始判断</span>
+            <p>“显然是 RAG-Token，因为最终生成的 y 的内容要综合结合检索出的 z₁、z₂ 文档的相关内容。”</p>
+          </div>
+          <p><strong>完善后的表述：</strong>RAG-Token 更容易让答案不同部分受到不同文档影响。对第 i 个 token，它先对 z₁、z₂ 等候选文档的生成贡献求和；因此“退货条件”对应的 token 可以主要由 z₁ 支撑，“会员补贴”对应的 token 可以主要由 z₂ 支撑。</p>
+          <p><strong>关键限定：</strong>RAG-Sequence 不是“只检索一篇文档”。它仍会对候选文档的完整答案路径求和；但在任意一条完整路径内部，同一份 z 要解释整段答案，所以跨文档分工的灵活性更低。</p>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 02 已收口</h3>
+          <p>你已经能用“Σ 相对 Π 的位置”解释两种 RAG 的差异，也能避免把 RAG-Sequence 误说成只看一篇文档。现在可以进入离线索引，但这一轮只建立“可检索单元”的边界。</p>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="0">← 回到架构导览</button>
+            <button class="action primary" type="button" data-go-stage="3">进入 Step 03 →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="3" hidden>
+        <p class="section-label">03 · Offline indexing / first boundary</p>
+        <h2>索引保存的不是“整份文档”，而是可检索记录</h2>
+        <p class="lead">一份 PDF、网页或制度文档只是知识来源。在线检索真正返回的，通常是由正文片段、向量表示和 metadata 共同构成的逻辑记录。今天先只看清这次形态变化。</p>
+
+        <div class="concept-callout">
+          <strong>先建立一条边界。</strong>离线阶段决定“未来能被检索到的最小证据单元”。原文中存在某条知识，不等于这条知识一定以完整、可定位、可召回的形式进入了索引。
+        </div>
+
+        <div class="index-lab">
+          <p class="section-label">Document transformation</p>
+          <h3>切换观察：知识源与检索单元不是同一个对象</h3>
+          <div class="mode-switch" role="group" aria-label="离线索引观察视角">
+            <button class="is-active" type="button" data-index-view="source">原始文档</button>
+            <button type="button" data-index-view="records">可检索记录</button>
+          </div>
+          <div class="index-canvas" id="indexCanvas" aria-live="polite"></div>
+          <p class="mode-explanation" id="indexExplanation"></p>
+        </div>
+
+        <div class="step-result">
+          <strong>这一轮只记住一句话</strong>
+          <p>RAG 检索的直接对象通常不是原始 PDF，而是离线阶段构造出的 chunk 记录；embedding 用于相似度搜索，正文用于提供证据，metadata 用于过滤、权限和追溯。它们在物理存储上可以分开，但在逻辑上共同描述一个可检索单元。</p>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 03 已收口</h3>
+          <p>原文连续写着“已经拆封仍可退货，但仅限签收后 7 天内”。如果切分后，前半句与“7 天”落在两个不同 chunk，而在线检索只召回前一个 chunk，生成器最可能缺少什么？这首先属于检索阶段的问题，还是生成阶段的问题？</p>
+          <label for="day02Step3Notes">我的原始判断（已保存）</label>
+          <textarea id="day02Step3Notes" readonly></textarea>
+          <div class="answer-review">
+            <span>标准复述</span>
+            <p>生成器缺少的是“签收后 7 天内”这一关键约束。问题首先出现在证据链路：正确知识虽然存在于原文甚至索引中，但没有进入本次召回结果，生成器拿到的是不完整证据。</p>
+          </div>
+          <p>更精确地说，现象属于召回/上下文缺失；根因可能来自离线切分，也可能来自在线排序与 top-k 设置。不能先把责任归给生成模型。</p>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="2">← 回看 Step 02</button>
+            <button class="action primary" type="button" data-go-stage="4">进入 Step 04 →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="4" hidden>
+        <p class="section-label">04 · Online retrieval and generation / first boundary</p>
+        <h2>检索到了，不等于模型最终看到了</h2>
+        <p class="lead">在线问答不是简单的“检索 → 生成”两步。候选文档被召回以后，系统还会过滤、截断、去重和排序，再组装成真正送给生成模型的 context。</p>
+
+        <div class="concept-callout">
+          <strong>先分清两个集合。</strong>retrieved candidates 是检索器返回的候选集合；final context 是上下文构造器最终交给模型的证据集合。正确 chunk 可以出现在前者，却消失在后者。
+        </div>
+
+        <div class="online-lab">
+          <div class="online-pipeline" role="group" aria-label="在线 RAG 流水线">
+            <button class="online-node is-active" type="button" data-online-stage="query"><span>01 / QUERY</span><strong>理解问题</strong><small>形成可检索查询</small></button>
+            <button class="online-node" type="button" data-online-stage="retrieve"><span>02 / RETRIEVE</span><strong>召回候选</strong><small>得到带排名的 top-k</small></button>
+            <button class="online-node" type="button" data-online-stage="context"><span>03 / CONTEXT</span><strong>组装证据</strong><small>过滤、排序与截断</small></button>
+            <button class="online-node" type="button" data-online-stage="generate"><span>04 / GENERATE</span><strong>生成答案</strong><small>依据最终上下文回答</small></button>
+          </div>
+          <div class="online-detail" id="onlineDetail" aria-live="polite"></div>
+        </div>
+
+        <div class="step-result">
+          <strong>这一轮只建立一个诊断边界</strong>
+          <p>检索器负责“哪些候选有机会进入答案”，上下文构造器负责“哪些证据真正进入模型输入”。评估 RAG 时必须分别观察 retrieved top-k 与 final context，不能只看最终答案。</p>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">Completed checkpoint</p>
+          <h3>Step 04 已收口</h3>
+          <p>包含“7 天退货期限”的 chunk 排在检索结果第 4 名，检索器返回 top-5；但上下文构造器因为 token 预算只保留前 3 名。此时检索是否成功？最应该先检查或调整哪个环节？</p>
+          <label for="day02Step4Notes">我的原始判断（已保存）</label>
+          <textarea id="day02Step4Notes" readonly></textarea>
+          <div class="answer-review">
+            <span>标准复述</span>
+            <p>以 candidate recall 为边界，检索已经成功：正确 chunk 位于返回的 top-5。证据随后被上下文构造器按 token 预算截断，因此应先检查 context selection、重排顺序和预算分配，而不是先更换 embedding 模型。</p>
+          </div>
+          <p>这说明必须分别记录 retrieved candidates 与 final context。只观察最终 prompt，会误以为检索器从未找回正确证据。</p>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="3">← 回看 Step 03</button>
+            <button class="action primary" type="button" data-go-stage="5">进入 Step 05 →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="learning-section" data-stage="5" hidden>
+        <p class="section-label">05 · Decision map / first synthesis</p>
+        <h2>把 RAG 管道变成 8 个可诊断的工程决策点</h2>
+        <p class="lead">专家式理解不是背组件名，而是知道每个边界做了什么选择、留下什么产物、应该用什么信号验证。先把离线与在线决策分组观察，再完成最后一次综合判断。</p>
+
+        <div class="concept-callout">
+          <strong>决策点不等于默认参数。</strong>一个可维护的决策点至少包含：选择依据、版本或配置、输入输出样本，以及能够判断它是否失效的指标。
+        </div>
+
+        <div class="decision-lab">
+          <p class="section-label">Eight decision points</p>
+          <h3>每次只看一条时间轴</h3>
+          <div class="mode-switch" role="group" aria-label="工程决策点分组">
+            <button class="is-active" type="button" data-decision-group="offline">离线决策 01-04</button>
+            <button type="button" data-decision-group="online">在线决策 05-08</button>
+          </div>
+          <div class="decision-grid" id="decisionGrid" aria-live="polite"></div>
+          <p class="decision-summary" id="decisionSummary"></p>
+        </div>
+
+        <div class="step-result">
+          <strong>Day 02 最终复述</strong>
+          <p>原始 RAG 把检索文档 z 看作隐变量：检索器用 p<sub>η</sub>(z|x) 给候选证据分配权重，生成器用 p<sub>θ</sub>(y|x,z) 判断在问题和证据条件下生成答案的概率。RAG-Sequence 在一条完整答案路径内固定同一份 z，再对文档路径求和；RAG-Token 则在每个 token 位置对文档贡献求和，因此能更灵活地混合多份证据。</p>
+          <p>工程实现分为离线索引和在线问答。离线阶段把原始资料解析、切分、编码并写成可检索记录；chunk 正文提供证据，embedding 用于相似度检索，metadata 支撑过滤、权限和追溯。在线阶段依次完成 query 构造、候选召回、context 组装和答案生成。retrieved candidates 与 final context 必须分开观察，因为正确证据可能已被召回，却在重排、过滤或 token 截断时消失。</p>
+          <p>排障时不应先换大模型，而应沿证据链逐层定位：先确认最新知识是否进入索引，再检查正确 chunk 是否进入 top-k，然后检查它是否进入 final context；只有证据完整而模型仍误读或违背约束时，才更接近生成失败。</p>
+        </div>
+
+        <div class="checkpoint">
+          <p class="section-label">Day 02 completed</p>
+          <h3>最后一次判断已收口</h3>
+          <p>退货政策已从“7 天”更新为“15 天”，但系统仍回答 7 天。为了最快区分“索引没更新”和“在线链路选错证据”，你会优先对比哪两类中间产物？</p>
+          <label for="day02Step5Notes">我的原始判断（已保存）</label>
+          <textarea id="day02Step5Notes" readonly></textarea>
+          <div class="answer-review">
+            <span>标准诊断答案</span>
+            <p>第一类是离线索引中的最新可检索记录：检查 15 天政策对应的 chunk 正文、版本和更新时间，证明新知识是否已经被解析并写入索引。第二类是本次在线请求的证据轨迹：对比 retrieved top-k 与 final context，证明系统召回并最终交给模型的是 15 天新证据，还是 7 天旧证据。</p>
+          </div>
+          <p>若索引中只有 7 天，根因在数据更新或索引生命周期；若索引已有 15 天但 top-k 没有它，检查 query、过滤、embedding 与排序；若 top-k 有而 final context 没有，检查重排、去重与 token 预算；若 final context 已有 15 天却仍回答 7 天，再检查生成约束和模型忠实度。</p>
+          <div class="answer-review">
+            <span>面试版表达</span>
+            <p>我会把 RAG 看成一条可观测的证据供应链，而不只是“向量库加大模型”。离线侧决定知识能否以正确粒度进入索引，在线侧决定正确证据能否经过召回和上下文构造真正到达生成模型。遇到错误答案时，我会按 indexed record → retrieved top-k → final context → answer 的顺序比较中间产物，从而区分索引陈旧、召回失败、上下文丢失和生成失败。</p>
+          </div>
+          <div class="actions">
+            <button class="action" type="button" data-go-stage="4">← 回看 Step 04</button>
+            <a class="action primary" href="../../14-day-learning-plan.md">查看 14 天总计划</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const storageKey = "rag-14-day-day-02-v2";
+      const memoryStore = {};
+      const trackData = {
+        offline: {
+          nodes: [
+            ["SOURCE", "原始文档", "PDF、网页、数据库或内部资料"],
+            ["PARSE", "解析与分块", "决定可被检索的最小单元"],
+            ["ENCODE", "文档编码器", "把 chunk 映射到向量表示"],
+            ["STORE", "向量索引", "保存表示、正文与 metadata"],
+            ["READY", "可检索语料", "等待在线问题到来"]
+          ],
+          summary: "离线阶段没有用户问题。它提前决定“系统以后有机会找到什么”，解析丢失或索引未更新都无法靠在线 prompt 补救。"
+        },
+        online: {
+          nodes: [
+            ["INPUT", "问题 x", "用户当前真正要解决的问题"],
+            ["RETRIEVE", "检索 pη(z|x)", "从索引中给候选证据分配权重"],
+            ["SELECT", "Top-k 文档 z", "用有限候选近似完整文档空间"],
+            ["GENERATE", "生成 pθ(y|x,z)", "依据问题和证据组织答案"],
+            ["OUTPUT", "答案 y", "输出答案、引用或拒答"]
+          ],
+          summary: "在线阶段只能消费离线索引留下的表示。检索器先缩小证据空间，生成器再在问题与候选文档条件下产生答案。"
+        }
+      };
+      const documentData = {
+        return: ["z₁ 更可能成为有效证据", "它直接包含“电子产品、拆封、退货条件”等回答问题所需的信息，因此检索概率最高。但 0.62 不是“已被证明正确”，只是检索器当前的判断。"],
+        shipping: ["z₂ 是词面相关但证据不足", "它可能出现“电子产品”和“签收”，却没有解释拆封后的退货条件。若它被排在首位，生成器看到的证据质量会下降。"],
+        account: ["z₃ 与问题关系较弱", "它属于同一业务知识库，但不能支撑当前答案。候选文档不是预先给定的标准答案，而是一个带概率的分布。"]
+      };
+      const generationData = {
+        sequence: {
+          tokens: [["可以", "z₁"], ["退货", "z₁"], ["，但", "z₁"], ["拆封后", "z₁"], ["需保持", "z₁"], ["商品完好", "z₁"]],
+          explanation: "在每一个候选文档路径中，同一个 z 负责解释完整答案的全部 token；最后再对这些完整序列概率求和。"
+        },
+        token: {
+          tokens: [["可以", "z₁"], ["退货", "z₁"], ["，会员", "z₂"], ["还可", "z₂"], ["获得", "z₂"], ["运费补贴", "z₂"]],
+          explanation: "每个 token 的概率都先对候选文档求和，因此答案的不同位置可以受到不同文档贡献，灵活性更高。"
+        }
+      };
+
+      const indexData = {
+        source: {
+          label: "SOURCE",
+          hint: "一份完整知识源",
+          html: '<article class="source-paper"><small>POLICY / RETURN-2026</small><h4>电子产品售后规则</h4><p>用户签收后 7 天内可申请退货。</p><p>商品已经拆封的，仍需保持配件齐全且无明显使用痕迹。</p><p>符合条件的会员还可申请首重运费补贴。</p></article>',
+          explanation: "这是人类阅读的原始文档。它包含多条知识，但尚未说明检索器以后按什么粒度找到其中某一条。"
+        },
+        records: {
+          label: "INDEX",
+          hint: "三个逻辑检索单元",
+          html: '<div class="chunk-stack"><article class="chunk-record"><div class="record-id">chunk_021</div><div class="record-body"><p>用户签收后 7 天内可申请退货。</p><div class="record-meta"><span>vector: [0.13, -0.08, …]</span><span>topic: return</span><span>version: 2026</span></div></div></article><article class="chunk-record"><div class="record-id">chunk_022</div><div class="record-body"><p>商品已经拆封的，仍需保持配件齐全且无明显使用痕迹。</p><div class="record-meta"><span>vector: [0.09, 0.21, …]</span><span>topic: opened-item</span><span>source: RETURN-2026</span></div></div></article><article class="chunk-record"><div class="record-id">chunk_023</div><div class="record-body"><p>符合条件的会员还可申请首重运费补贴。</p><div class="record-meta"><span>vector: [-0.04, 0.17, …]</span><span>topic: member-benefit</span><span>acl: member</span></div></div></article></div>',
+          explanation: "同一份原文被转成多个可检索记录。每条记录保留正文，并关联 embedding 与 metadata；在线阶段只能从这些已经建立的记录中召回证据。"
+        }
+      };
+
+      const onlineData = {
+        query: ["01 / QUERY", "把用户问题变成检索输入", "拆封的电子产品，最晚几天内能退？", "原始 query 或经过改写、扩展的 query", "风险：改写可能丢失限定词或引入错误意图"],
+        retrieve: ["02 / RETRIEVE", "从索引中召回并排序候选", "query embedding + metadata filters", "top-k：z₁ 退货资格、z₂ 商品状态、z₃ 会员补贴……", "风险：正确证据未进入 top-k，属于召回问题"],
+        context: ["03 / CONTEXT", "把候选变成模型真正看到的证据", "retrieved top-k + token 预算 + 权限规则", "去重、过滤、重排、截断后的 final context", "风险：正确证据已召回，却在组装时被删除"],
+        generate: ["04 / GENERATE", "依据最终上下文组织答案", "问题 + final context + system instructions", "带引用的回答，或证据不足时拒答", "风险：证据完整但模型误读，才更接近生成失败"],
+      };
+
+      const decisionData = {
+        offline: {
+          summary: "离线决策决定检索上限：知识若在解析、切分或更新时丢失，在线阶段无法凭空补回。",
+          items: [["01", "数据源与解析", "选择哪些资料进入系统，并验证 OCR、表格和结构是否保真。"], ["02", "Chunk 边界", "决定检索最小单元、大小、重叠与语义边界。"], ["03", "Embedding 表示", "记录模型、版本、维度与归一化方式，保证查询和文档空间一致。"], ["04", "索引生命周期", "定义写入、版本、更新、删除与 metadata/权限字段。"]]
+        },
+        online: {
+          summary: "在线决策决定证据路径：正确记录可能在 query、召回、context 或生成任一边界失效。",
+          items: [["05", "Query 构造", "决定使用原问题、改写、多查询或结构化过滤条件。"], ["06", "候选召回", "选择检索方式、过滤器和 top-k，并测量 candidate recall。"], ["07", "Context 组装", "处理重排、去重、权限、token 预算与证据顺序。"], ["08", "生成与输出", "约束引用、拒答、格式和忠实度，并保留最终 prompt。"]]
+        }
+      };
+      let state = loadState();
+      const stageButtons = [...document.querySelectorAll("[data-stage-target]")];
+      const sections = [...document.querySelectorAll("[data-stage]")];
+      const notes = document.querySelector("#day02Notes");
+      const step3Notes = document.querySelector("#day02Step3Notes");
+      const step4Notes = document.querySelector("#day02Step4Notes");
+      const step5Notes = document.querySelector("#day02Step5Notes");
+
+      document.querySelectorAll("[data-go-stage]").forEach(button => {
+        button.addEventListener("click", () => showStage(Number(button.dataset.goStage), true));
+      });
+      stageButtons.forEach(button => {
+        button.addEventListener("click", () => showStage(Number(button.dataset.stageTarget), true));
+      });
+      document.querySelectorAll("[data-track]").forEach(button => {
+        button.addEventListener("click", () => renderTrack(button.dataset.track));
+      });
+      document.querySelectorAll("[data-document]").forEach(button => {
+        button.addEventListener("click", () => renderDocument(button.dataset.document));
+      });
+      document.querySelectorAll("[data-generation-mode]").forEach(button => {
+        button.addEventListener("click", () => renderGeneration(button.dataset.generationMode));
+      });
+      document.querySelectorAll("[data-index-view]").forEach(button => {
+        button.addEventListener("click", () => renderIndex(button.dataset.indexView));
+      });
+      document.querySelectorAll("[data-online-stage]").forEach(button => {
+        button.addEventListener("click", () => renderOnline(button.dataset.onlineStage));
+      });
+      document.querySelectorAll("[data-decision-group]").forEach(button => {
+        button.addEventListener("click", () => renderDecisionGroup(button.dataset.decisionGroup));
+      });
+      document.querySelectorAll("[data-rating]").forEach(button => {
+        button.addEventListener("click", () => {
+          state.rating = button.dataset.rating;
+          renderRating();
+          saveState();
+        });
+      });
+      notes.addEventListener("input", event => {
+        state.notes = event.target.value;
+        saveState();
+      });
+      step3Notes.addEventListener("input", event => {
+        state.step3Notes = event.target.value;
+        saveState();
+      });
+      step4Notes.addEventListener("input", event => {
+        state.step4Notes = event.target.value;
+        saveState();
+      });
+      step5Notes.addEventListener("input", event => {
+        state.step5Notes = event.target.value;
+        saveState();
+      });
+      document.querySelector("#saveCheckpoint").addEventListener("click", () => {
+        saveState();
+        document.querySelector("#saveNote").hidden = false;
+      });
+
+      notes.value = state.notes || "";
+      step3Notes.value = state.step3Notes || "";
+      step4Notes.value = state.step4Notes || "";
+      step5Notes.value = state.step5Notes || "";
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 5), false);
+      renderTrack(state.track || "offline");
+      renderDocument(state.document || "return");
+      renderGeneration(state.generationMode || "sequence");
+      renderIndex(state.indexView || "source");
+      renderOnline(state.onlineStage || "query");
+      renderDecisionGroup(state.decisionGroup || "offline");
+      renderRating();
+
+      function showStage(stage, shouldScroll) {
+        state.stage = stage;
+        sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
+        stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
+        document.querySelector("#progressText").textContent = ["ARCH / 06", "01 / 06", "02 / 06", "03 / 06", "04 / 06", "DONE / 06"][stage];
+        document.querySelector("#progressFill").style.width = ["12%", "24%", "36%", "52%", "68%", "100%"][stage];
+        saveState();
+        if (shouldScroll) window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 58, behavior: "smooth" });
+      }
+
+      function renderTrack(track) {
+        const data = trackData[track];
+        state.track = track;
+        document.querySelectorAll("[data-track]").forEach(button => button.classList.toggle("is-active", button.dataset.track === track));
+        document.querySelector("#architectureFlow").innerHTML = data.nodes.map(node =>
+          '<div class="flow-node"><span>' + node[0] + '</span><strong>' + node[1] + '</strong><p>' + node[2] + '</p></div>'
+        ).join("");
+        document.querySelector("#trackSummary").textContent = data.summary;
+        saveState();
+      }
+
+      function renderDocument(documentId) {
+        const data = documentData[documentId];
+        state.document = documentId;
+        document.querySelectorAll("[data-document]").forEach(button => button.classList.toggle("is-active", button.dataset.document === documentId));
+        document.querySelector("#candidateDetail").innerHTML = '<strong>' + data[0] + '</strong><p>' + data[1] + '</p>';
+        saveState();
+      }
+
+      function renderGeneration(mode) {
+        const data = generationData[mode];
+        state.generationMode = mode;
+        document.querySelectorAll("[data-generation-mode]").forEach(button => button.classList.toggle("is-active", button.dataset.generationMode === mode));
+        document.querySelector("#generationLane").innerHTML = data.tokens.map(token => {
+          const sourceClass = token[1] === "z₂" ? "token-source alt" : "token-source";
+          return '<span class="token-unit"><strong>' + token[0] + '</strong><span class="' + sourceClass + '">' + token[1] + '</span></span>';
+        }).join("");
+        document.querySelector("#generationExplanation").textContent = data.explanation;
+        saveState();
+      }
+
+      function renderIndex(view) {
+        const data = indexData[view];
+        state.indexView = view;
+        document.querySelectorAll("[data-index-view]").forEach(button => button.classList.toggle("is-active", button.dataset.indexView === view));
+        document.querySelector("#indexCanvas").innerHTML = '<div class="index-canvas-label">' + data.label + '<span>' + data.hint + '</span></div>' + data.html;
+        document.querySelector("#indexExplanation").textContent = data.explanation;
+        saveState();
+      }
+
+      function renderOnline(stage) {
+        const data = onlineData[stage];
+        state.onlineStage = stage;
+        document.querySelectorAll("[data-online-stage]").forEach(button => button.classList.toggle("is-active", button.dataset.onlineStage === stage));
+        document.querySelector("#onlineDetail").innerHTML = '<span class="detail-kicker">' + data[0] + '</span><h4>' + data[1] + '</h4><div class="detail-grid"><div class="detail-cell"><span>INPUT</span><p>' + data[2] + '</p></div><div class="detail-cell"><span>OUTPUT</span><p>' + data[3] + '</p></div><div class="detail-cell"><span>FAILURE SIGNAL</span><p>' + data[4] + '</p></div></div>';
+        saveState();
+      }
+
+      function renderDecisionGroup(group) {
+        const data = decisionData[group];
+        state.decisionGroup = group;
+        document.querySelectorAll("[data-decision-group]").forEach(button => button.classList.toggle("is-active", button.dataset.decisionGroup === group));
+        document.querySelector("#decisionGrid").innerHTML = data.items.map(item => '<article class="decision-item"><span>DECISION ' + item[0] + '</span><strong>' + item[1] + '</strong><p>' + item[2] + '</p></article>').join("");
+        document.querySelector("#decisionSummary").textContent = data.summary;
+        saveState();
+      }
+
+      function renderRating() {
+        document.querySelectorAll("[data-rating]").forEach(button => button.classList.toggle("is-active", button.dataset.rating === state.rating));
+      }
+
+      function defaultState() {
+        return {
+          stage: 0,
+          track: "offline",
+          document: "return",
+          generationMode: "sequence",
+          indexView: "source",
+          onlineStage: "query",
+          decisionGroup: "offline",
+          notes: "",
+          step3Notes: "",
+          step4Notes: "",
+          step5Notes: "",
+          rating: ""
+        };
+      }
+
+      function loadState() {
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          return saved ? { ...defaultState(), ...JSON.parse(saved) } : defaultState();
+        } catch (error) {
+          return { ...defaultState(), ...memoryStore };
+        }
+      }
+
+      function saveState() {
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (error) {
+          Object.assign(memoryStore, state);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

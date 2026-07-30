@@ -1,50 +1,68 @@
 # Day 14 - Week2 复盘与 VLM 小助手设计
 
-> 当前阶段：Day14 Step 02。已完成 Week2 知识地图，当前定义通用多模态 Demo 的任务、输入输出和失败边界。
+> 当前阶段：Day14 已按“学习型最小 MVP 设计”收口。真实 Demo 编码和 10 张图片评测延期到后续实现阶段。
 
 ## 学习目标
 
-- 把 Day8-Day13 的零散知识串成完整的 VLM 数据流。
-- 从用户任务反推输入、输出、模型、提示词和评测方案。
-- 形成一个可执行的 `vlm-visual-assistant` 技术方案，而不是只做模型调用。
+- 把 Day8-Day13 串成完整的 VLM 数据流。
+- 从学习目标反推输入、输出、模型和失败边界。
+- 形成可执行的 `vlm-visual-assistant` 最小技术方案。
 
 ## 主学习入口
 
 - HTML 教学文档：`docs/day-14-week2-review-vlm-assistant/index.html`
-- 方案草稿：`demos/vlm-visual-assistant/design.md`
+- 技术方案：`demos/vlm-visual-assistant/design.md`
 
-## 分阶段计划
-
-1. Step 01：重建 Week2 知识地图。
-2. Step 02：定义小助手的用户、任务和输入输出契约。
-3. Step 03：根据约束选择模型与推理策略。
-4. Step 04：设计截图、图表、普通照片测试集。
-5. Step 05：形成可实现、可评测的技术方案。
-
-## Step 01：知识地图结论
-
-Day8-Day13 不是六个孤立主题，而是一条从视觉 token 到视觉助手的系统链路：
+## Step 01：Week2 知识地图
 
 ```text
 image -> patch tokens -> CLIP representation -> retrieval / alignment
       -> image tokens + question tokens -> LLM -> answer
 ```
 
-Day12 主要观察已经训练好的 VLM 如何完成推理，Day13 主要观察视觉问答能力如何通过数据和参数更新训练出来。
+- Day8：图片切 patch 并形成视觉 token 序列。
+- Day9-Day11：CLIP 图文对齐、检索应用和论文依据。
+- Day12：观察训练完成的 VLM 如何执行推理。
+- Day13：观察视觉问答能力如何通过数据、loss 和参数更新训练出来。
 
-## Step 02：通用多模态 Demo 需求基线
+## Step 02：需求契约
 
-目标是做一个用于学习和验证的通用视觉问答 Demo，而不是生产级无限范围助手。
-
-- 输入：单张图片路径 + 文本问题，允许可选任务模式。
+- 目标：用于学习和验证的通用视觉问答 Demo。
+- 输入：单张图片路径 + 文本问题 + 可选任务模式。
 - 任务：软件截图、基础图表、普通照片。
-- 输出：自然语言回答 + 模型、设备、耗时等运行信息。
-- 失败：图片无效、资源不足、视觉信息不足时要明确返回边界。
-- 暂不支持：多图对比、视频、音频、外部动作执行和专业领域可靠性承诺。
+- 输出：回答 + 模型、设备、dtype、耗时和错误信息。
+- 边界：暂不支持多图、视频、音频、外部动作和专业领域承诺。
 
-这里的“支持多模态”具体指图片模态与文本模态共同参与一次推理，不等于第一版同时接入所有媒体类型。
-## 当前检查点
+## Step 03：模型与运行策略
 
-1. 为什么通用多模态 Demo 仍然必须限制第一版的输入和任务范围？
-2. 为什么结果中除了回答文本，还要记录模型、设备和推理耗时？
-3. 当图片信息不足时，模型应该如何表达边界？
+- 模型：`HuggingFaceTB/SmolVLM-256M-Instruct`。
+- 原因：Day12 已验证、权重较轻、适合本地反复实验。
+- CUDA：优先 `bfloat16`。
+- CPU：回退 `float32`。
+- 默认离线，不静默下载权重。
+
+## Step 04：评测计划
+
+原计划为截图 4 张、图表 3 张、普通照片 3 张，并为每张图片记录问题、期望要点和失败条件。
+
+该 10 张图片测试集尚未整理，明确延期到真实 Demo 实现阶段。本次不将其标记为已经完成。
+
+## Step 05：最小技术方案
+
+```text
+validate input
+-> build task-aware prompt
+-> processor
+-> model.generate
+-> decode new tokens
+-> normalize result
+-> record runtime metadata and JSONL evaluation
+```
+
+完整模块和失败处理记录在 `demos/vlm-visual-assistant/design.md`。
+
+## Day14 收口
+
+- 已完成：Week2 复盘、需求定义、模型选择和最小 MVP 技术方案。
+- 已延期：真实 Demo 编码、10 张测试图片和完整评测。
+- 下一步：Day15 扩散模型基本原理。

@@ -128,7 +128,7 @@
 
       .roadmap { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin: 20px 0; border: 1px solid var(--line); background: var(--line); }
       .road-step { min-width: 0; padding: 17px 15px; background: var(--surface); }
-      .road-step.current { background: var(--cyan-soft); }
+      .road-step.current, .road-step.done { background: var(--cyan-soft); }
       .road-num { color: var(--amber); font-family: Consolas, monospace; font-size: 13px; }
       .road-step h3 { margin: 6px 0 8px; font-size: 17px; }
       .road-step p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
@@ -243,9 +243,9 @@
           <h1>Week2 复盘与 VLM 小助手设计</h1>
           <p class="hero-copy">今天不再单独学习一个模型组件，而是把 ViT、CLIP、检索、VLM 推理与 LLaVA 训练串成完整系统，再从真实需求反推一个可实现、可评测的视觉问答助手。</p>
           <div class="hero-status" aria-label="Day14 learning status">
-            <span class="status-mark active">Step 02 当前阶段</span>
-            <span class="status-mark">先复盘，再设计</span>
-            <span class="status-mark">暂不直接写 Demo</span>
+            <span class="status-mark active">Day14 已收口</span>
+            <span class="status-mark">最小 MVP 设计完成</span>
+            <span class="status-mark">编码与评测后续实施</span>
           </div>
         </div>
         <div class="hero-visual" aria-label="Week2 knowledge to VLM assistant system map">
@@ -291,9 +291,10 @@
           <a href="#pipeline">2.1 统一数据流</a>
           <a href="#boundaries">2.2 能力与边界</a>
           <a href="#step02-contract">3. Step 02 需求契约</a>
-          <a href="#checkpoint">4. 当前检查点</a>
-          <a href="#next">5. 后续步骤预告</a>
-          <a href="#sources">6. 本地入口</a>
+          <a href="#step03-05-final">4. Step 03-05 技术方案</a>
+          <a href="#checkpoint">5. Day14 收口</a>
+          <a href="#next">6. 后续实施任务</a>
+          <a href="#sources">7. 本地入口</a>
         </nav>
 
         <main>
@@ -301,17 +302,17 @@
             <h2>0. 今天解决什么</h2>
             <p class="lead">Day14 的核心不是“把本周内容再看一遍”，而是回答一个工程问题：如果现在要做一个 VLM 图像问答助手，Day8-Day13 的知识分别会在哪个决策点发挥作用？</p>
             <div class="callout"><strong>学习顺序：</strong>知识地图 → 用户任务 → 输入输出契约 → 模型与约束 → 测试集 → 技术方案。没有前面的需求定义，后面的模型选择就只是猜测。</div>
-            <div class="callout amber"><strong>当前边界：</strong>初始化阶段只完成 Step 01。暂不直接创建应用代码，也不提前把模型选择写死；后续每一步都要由你的理解和回答推动。</div>
+            <div class="callout amber"><strong>收口边界：</strong>Day14 完成学习型最小 MVP 的方案设计；真实 Demo 编码和 10 张图片评测明确延期，不视为已经执行。</div>
           </section>
 
           <section id="roadmap">
             <h2>1. 分阶段计划</h2>
             <div class="roadmap">
-              <article class="road-step"><span class="road-num">STEP 01</span><h3>知识地图</h3><p>把 ViT、CLIP、VLM、LLaVA 串成系统数据流。</p></article>
-              <article class="road-step current"><span class="road-num">STEP 02</span><h3>需求契约</h3><p>确定用户、任务、输入、输出和拒答边界。</p></article>
-              <article class="road-step"><span class="road-num">STEP 03</span><h3>模型决策</h3><p>根据能力、资源、速度和离线要求选型。</p></article>
-              <article class="road-step"><span class="road-num">STEP 04</span><h3>测试设计</h3><p>组织截图、图表、照片与明确评分标准。</p></article>
-              <article class="road-step"><span class="road-num">STEP 05</span><h3>技术方案</h3><p>形成可实现、可观测、可评测的设计稿。</p></article>
+              <article class="road-step done"><span class="road-num">STEP 01 · DONE</span><h3>知识地图</h3><p>把 ViT、CLIP、VLM、LLaVA 串成系统数据流。</p></article>
+              <article class="road-step done"><span class="road-num">STEP 02 · DONE</span><h3>需求契约</h3><p>确定用户、任务、输入、输出和拒答边界。</p></article>
+              <article class="road-step done"><span class="road-num">STEP 03 · DONE</span><h3>模型决策</h3><p>复用 Day12 已验证的 SmolVLM-256M 基线。</p></article>
+              <article class="road-step deferred"><span class="road-num">STEP 04 · DEFERRED</span><h3>测试设计</h3><p>评分框架已定义，10 张图片留到真实实现阶段。</p></article>
+              <article class="road-step done"><span class="road-num">STEP 05 · DONE</span><h3>技术方案</h3><p>完成模块边界、运行策略和失败处理设计。</p></article>
             </div>
           </section>
 
@@ -447,37 +448,53 @@ response = {
             <p><code>task_mode</code> 默认使用 <code>auto</code>，让通用问答保持简单；评测时可以显式指定 <code>screenshot</code>、<code>chart</code> 或 <code>photo</code>，便于采用不同提示词和评分规则。</p>
             <div class="callout coral"><strong>不承诺“什么都能答”：</strong>通用 Demo 的价值是让三类代表性任务走过同一条 VLM 推理链路，并真实记录成功与失败，而不是隐藏模型能力边界。</div>
           </section>
+          <section id="step03-05-final">
+            <h2>4. Step 03-05：最小 MVP 技术方案</h2>
+            <p class="lead">为了按学习目标收口，不再继续扩大模型比较和产品设计。第一版直接复用 Day12 已验证的轻量模型，并把系统边界写清楚。</p>
+            <table class="compare">
+              <thead><tr><th>决策项</th><th>最小方案</th><th>原因</th></tr></thead>
+              <tbody>
+                <tr><td>模型</td><td><code>HuggingFaceTB/SmolVLM-256M-Instruct</code></td><td>已经本地验证，轻量且失败边界已知。</td></tr>
+                <tr><td>设备</td><td>CUDA + bfloat16，失败时回退 CPU + float32</td><td>兼顾本地速度和可运行性。</td></tr>
+                <tr><td>入口</td><td>CLI 或最小界面</td><td>聚焦图片、问题、生成和结果记录。</td></tr>
+                <tr><td>任务</td><td>截图、图表、普通照片</td><td>覆盖三类代表性通用视觉能力。</td></tr>
+                <tr><td>记录</td><td>回答 + 模型 + 设备 + 耗时 + 错误</td><td>结果可复现、可比较、可诊断。</td></tr>
+              </tbody>
+            </table>
+            <pre><code>validate image and question
+-> build task-aware prompt
+-> processor(image, prompt)
+-> model.generate
+-> decode new tokens
+-> normalize answer
+-> save runtime metadata and JSONL result</code></pre>
+            <div class="callout"><strong>完成标准：</strong>当前已经形成可直接进入编码的模块边界、模型选择、设备策略、输入输出和失败处理方案。</div>
+            <div class="callout amber"><strong>明确延期：</strong>10 张测试图片尚未整理，真实 Demo 也尚未编码。这两项保留到后续实现任务，不计入本次已完成内容。</div>
+          </section>
           <section id="checkpoint">
-            <h2>4. 当前检查点</h2>
-            <p>Step 02 要确认的是：我们设计的是可学习、可运行、可评测的通用 Demo，而不是无限范围的多模态产品。</p>
-            <div class="quiz" data-answer="b">
-              <h3>下面哪一个最符合第一版需求？</h3>
-              <div class="quiz-options">
-                <button type="button" class="quiz-option" data-choice="a">A. 一开始同时支持图片、视频、音频、多图对比和自动操作电脑。</button>
-                <button type="button" class="quiz-option" data-choice="b">B. 接收单张图片和文本问题，覆盖三类通用视觉任务，并返回回答与运行信息。</button>
-                <button type="button" class="quiz-option" data-choice="c">C. 只输入图片并永远生成固定格式的图片描述，不允许用户提问。</button>
-              </div>
-              <p class="quiz-feedback" id="quizFeedback">请选择一个需求边界。</p>
-            </div>
-            <ol>
-              <li>为什么“通用多模态 Demo”仍然需要明确支持范围？</li>
-              <li>除了自然语言回答，你认为输出中为什么还要保留模型名称、设备和推理耗时？</li>
-              <li>当图片信息不足时，助手应该猜测答案，还是明确说明无法确认？为什么？</li>
-            </ol>
+            <h2>5. Day14 收口</h2>
+            <div class="callout"><strong>Day14 已收口：</strong>完成 Week2 知识复盘、通用多模态 Demo 的需求契约、轻量模型选择和最小 MVP 技术方案。</div>
+            <ul>
+              <li>能够解释 ViT、CLIP、VLM 和 LLaVA 在同一系统中的职责。</li>
+              <li>能够说明学习型 MVP 为什么必须限制输入模态和任务范围。</li>
+              <li>能够给出图片 + 问题到回答与运行记录的完整数据流。</li>
+              <li>能够区分已经完成的设计与尚未执行的编码、测试工作。</li>
+            </ul>
+            <p>下一学习阶段进入 Day15：扩散模型基本原理。</p>
           </section>
 
           <section id="next">
-            <h2>5. 后续步骤预告</h2>
-            <p class="lead">后续不是继续堆概念，而是逐步做出工程决策。每一步都会更新本页和设计草稿。</p>
+            <h2>6. 后续实施任务</h2>
+            <p class="lead">下面内容不是 Day14 已完成项，将在需要真正实现 Demo 时继续。</p>
             <div class="preview-grid">
-              <article class="preview-item"><h3>Step 03 · 模型决策</h3><p>在本地资源、任务质量、速度和维护成本之间做取舍。</p></article>
-              <article class="preview-item"><h3>Step 04 · 测试集</h3><p>为截图、图表、照片定义问题、期望要点和失败条件。</p></article>
-              <article class="preview-item"><h3>Step 05 · 技术方案</h3><p>确定模块、数据流、错误处理、结果记录与验收方式。</p></article>
+              <article class="preview-item"><h3>真实 Demo 编码</h3><p>把设计方案落实为 CLI 或最小界面，并复用 Day12 推理代码。</p></article>
+              <article class="preview-item"><h3>10 张测试图片</h3><p>整理截图 4 张、图表 3 张、普通照片 3 张及期望要点。</p></article>
+              <article class="preview-item"><h3>完整评测</h3><p>记录正确要点、遗漏、幻觉、耗时和设备差异。</p></article>
             </div>
           </section>
 
           <section id="sources">
-            <h2>6. 本地入口</h2>
+            <h2>7. 本地入口</h2>
             <ul class="source-list">
               <li><a href="../../notes/day-14-week2-review-vlm-assistant.md">Day14 状态笔记</a></li>
               <li><a href="../../demos/vlm-visual-assistant/design.md">VLM 小助手设计草稿</a></li>
@@ -628,20 +645,6 @@ response = {
 
       buttons.forEach((button) => button.addEventListener("click", () => selectDay(button.dataset.day)));
 
-      const quiz = document.querySelector(".quiz");
-      const feedback = document.getElementById("quizFeedback");
-      const options = Array.from(document.querySelectorAll(".quiz-option"));
-      options.forEach((option) => {
-        option.addEventListener("click", () => {
-          const correct = option.dataset.choice === quiz.dataset.answer;
-          options.forEach((item) => item.classList.remove("correct", "wrong"));
-          option.classList.add(correct ? "correct" : "wrong");
-          feedback.className = "quiz-feedback " + (correct ? "ok" : "no");
-          feedback.textContent = correct
-            ? "正确。第一版需求清楚地限定了图片 + 文本问题、三类任务和可追踪输出，这样才能学习和评测。"
-            : "还不准确。重新检查第一版的输入范围、三类任务和输出契约，不要把 Demo 扩张成无限产品。";
-        });
-      });
     </script>
   </body>
 </html>

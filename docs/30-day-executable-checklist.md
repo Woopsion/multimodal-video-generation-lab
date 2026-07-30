@@ -192,17 +192,19 @@ logs/
 ### Day 14：第二周复盘与 VLM 小助手设计
 
 - [x] 产出：`docs/day-14-week2-review-vlm-assistant/index.html` 作为 Day14 交互式教学入口。
-- [ ] 整理：合并本周笔记到 `notes/week-02-vlm.md`。
-- [ ] 设计：规划 `vlm-visual-assistant` 的输入、输出和模型选择。
-- [ ] 实践：整理 10 张测试图片，包含截图、图表、普通照片。
-- [ ] 产出：`demos/vlm-visual-assistant/design.md`。
-- [ ] 验收：能完成一个图像问答 demo 的技术方案。
+- [x] 整理：合并本周笔记到 `notes/week-02-vlm.md`。
+- [x] 设计：规划 `vlm-visual-assistant` 的输入、输出和模型选择。
+- [ ] 后续实现（延期）：整理 10 张测试图片，包含截图、图表、普通照片。
+- [x] 产出：`demos/vlm-visual-assistant/design.md`。
+- [x] 验收：能完成一个图像问答 demo 的技术方案。
 
 ---
 
 ## Week 3：Diffusion、Stable Diffusion 与图像生成
 
 ### Day 15：扩散模型基本原理
+
+- [x] 产出：`docs/day-15-diffusion-basics/index.html` 作为 Day15 交互式教学入口。
 
 - [ ] 学习：前向加噪、反向去噪、噪声预测、采样步数。
 - [ ] 学习：理解 DDPM、DDIM 的基本区别。
