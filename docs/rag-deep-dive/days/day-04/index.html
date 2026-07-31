@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Day 04 - Embedding 与双塔训练</title>
+  <style>
+    :root { --paper:#f2f0e9; --surface:#fffdf7; --ink:#13201f; --muted:#67716d; --line:#c8cec7; --mint:#087b70; --mint-soft:#d9eeea; --cobalt:#3656a8; --cobalt-soft:#dfe6fa; --signal:#e45c2d; --signal-soft:#f8dfd3; --acid:#dfc849; --night:#182421; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Noto Sans SC","Microsoft YaHei",sans-serif; line-height:1.7; }
+    button, textarea { font:inherit; }
+    button { color:inherit; }
+    a { color:inherit; }
+    [hidden] { display:none!important; }
+    .topbar { position:sticky; top:0; z-index:20; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:58px; padding:0 28px; border-bottom:1px solid var(--ink); background:rgba(242,240,233,.96); backdrop-filter:blur(10px); }
+    .topbar>a { color:var(--mint); font-size:12px; font-weight:900; text-decoration:none; }
+    .topbar strong { font-size:13px; }
+    .top-progress { display:flex; justify-content:flex-end; align-items:center; gap:10px; color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .progress-track { width:92px; height:5px; background:#d8dcd7; overflow:hidden; }
+    .progress-fill { width:14%; height:100%; background:var(--signal); transition:width 180ms ease; }
+    .hero { overflow:hidden; border-bottom:1px solid var(--ink); background:var(--surface); }
+    .hero-inner { display:grid; grid-template-columns:minmax(0,1fr) minmax(350px,.95fr); gap:58px; align-items:center; width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:56px 0 52px; }
+    .eyebrow,.section-label { margin:0; color:var(--signal); font-family:"Cascadia Mono",Consolas,monospace; font-size:11px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; }
+    h1,h2,h3,h4 { font-family:"Noto Serif SC","Songti SC",serif; }
+    h1 { max-width:690px; margin:11px 0 20px; font-size:clamp(40px,5vw,57px); line-height:1.12; }
+    h2 { margin:8px 0 18px; font-size:31px; line-height:1.3; }
+    h3 { margin:8px 0 14px; font-size:21px; }
+    .hero-copy,.lead { color:var(--muted); font-size:15px; }
+    .hero-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+    .hero-meta span { padding:5px 9px; border:1px solid var(--line); color:var(--muted); font-size:10px; font-weight:900; }
+    .vector-board { position:relative; min-height:318px; padding:22px; border:1px solid var(--ink); background:var(--night); box-shadow:12px 12px 0 var(--cobalt-soft); overflow:hidden; }
+    .vector-board::before { content:""; position:absolute; inset:-35% -20%; background:repeating-linear-gradient(120deg,transparent 0 24px,rgba(127,235,215,.07) 25px 26px); transform:rotate(-8deg); }
+    .board-label { position:relative; color:#a6e5db; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; letter-spacing:.08em; }
+    .vector-space { position:relative; display:grid; place-items:center; min-height:240px; }
+    .axis { position:absolute; background:rgba(248,253,247,.36); }
+    .axis.x { width:84%; height:1px; }
+    .axis.y { width:1px; height:83%; }
+    .orbit { position:absolute; width:204px; height:204px; border:1px solid rgba(223,230,250,.5); border-radius:50%; }
+    .orbit::after { content:""; position:absolute; inset:31px; border:1px dashed rgba(223,230,250,.32); border-radius:50%; }
+    .vec-dot { position:absolute; display:grid; place-items:center; width:58px; height:58px; border-radius:50%; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .vec-dot.q { top:45px; right:66px; border:2px solid var(--acid); background:#423f23; color:#fff9c6; }
+    .vec-dot.d1 { bottom:39px; left:62px; border:2px solid var(--mint); background:#163f3a; color:#c7fff6; }
+    .vec-dot.d2 { bottom:62px; right:108px; border:2px solid #a9bdf8; background:#303e6d; color:#eff2ff; }
+    .vec-caption { position:absolute; right:0; bottom:0; color:#dae6e2; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; }
+    .workspace { display:grid; grid-template-columns:234px minmax(0,1fr); gap:48px; width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:48px 0 84px; }
+    .roadmap { position:sticky; top:84px; align-self:start; }
+    .roadmap-title { margin:0 0 10px; color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .stage-button { display:grid; grid-template-columns:36px minmax(0,1fr); width:100%; min-height:66px; padding:11px 10px; border:0; border-top:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; }
+    .stage-button:last-child { border-bottom:1px solid var(--line); }
+    .stage-button.is-active { background:var(--mint-soft); }
+    .stage-button:disabled { color:var(--muted); cursor:not-allowed; opacity:.62; }
+    .stage-no { color:var(--signal); font-family:"Cascadia Mono",Consolas,monospace; font-size:11px; font-weight:900; }
+    .stage-copy strong,.stage-copy span { display:block; }
+    .stage-copy strong { font-size:13px; }
+    .stage-copy span { margin-top:2px; color:var(--muted); font-size:10px; }
+    .roadmap-links { display:grid; gap:7px; margin-top:18px; }
+    .roadmap-links a { color:var(--mint); font-size:11px; font-weight:900; }
+    main { min-width:0; }
+    .learning-section { animation:reveal 220ms ease both; }
+    @keyframes reveal { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    .learning-contract { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:24px 0 32px; border:1px solid var(--ink); }
+    .contract-cell { min-height:128px; padding:17px; border-right:1px solid var(--ink); }
+    .contract-cell:last-child { border-right:0; }
+    .contract-cell span { display:block; margin-bottom:8px; color:var(--signal); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .contract-cell strong { display:block; font-size:14px; }
+    .contract-cell p { margin:8px 0 0; color:var(--muted); font-size:11px; }
+    .concept-callout { margin:22px 0; padding:18px 20px; border-left:5px solid var(--mint); background:var(--mint-soft); }
+    .architecture-lab { margin:28px 0; border:1px solid var(--ink); background:var(--surface); }
+    .lab-head { padding:18px 20px; border-bottom:1px solid var(--ink); }
+    .lab-head h3 { margin-bottom:6px; }
+    .lab-head p { margin:0; color:var(--muted); font-size:12px; }
+    .mode-switch { display:inline-flex; margin-top:13px; border:1px solid var(--ink); }
+    .mode-switch button { min-width:150px; padding:9px 12px; border:0; border-right:1px solid var(--ink); background:transparent; cursor:pointer; }
+    .mode-switch button:last-child { border-right:0; }
+    .mode-switch button.is-active { background:var(--ink); color:#fff; }
+    .architecture-canvas { min-height:300px; padding:22px; background:#e7e9e3; }
+    .architecture-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:13px 20px; border-top:1px solid var(--ink); background:#f7f8f3; }
+    .flow-button { min-height:34px; padding:6px 10px; border:1px solid var(--ink); background:var(--surface); cursor:pointer; font-size:11px; font-weight:900; }
+    .flow-button.primary { background:var(--cobalt); border-color:var(--cobalt); color:#fff; }
+    .flow-button:disabled { cursor:not-allowed; opacity:.45; }
+    .flow-counter { margin-left:auto; color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; font-weight:900; }
+    .flow-narration { min-height:48px; margin:0; padding:13px 20px; border-top:1px solid var(--line); border-left:4px solid var(--cobalt); background:var(--cobalt-soft); color:#29385e; font-size:12px; }
+    .architecture-note { margin:0; padding:14px 20px; border-top:1px solid var(--ink); color:var(--muted); font-size:12px; }
+    .tower-scene { display:grid; grid-template-columns:minmax(0,1.1fr) 42px minmax(0,.9fr); align-items:stretch; gap:12px; width:min(800px,100%); min-height:230px; margin:0 auto; }
+    .tower-column { display:grid; gap:10px; padding:16px; border:1px solid var(--ink); background:#fff; }
+    .tower-column.doc { background:#f4f7ff; }
+    .tower-kicker { color:var(--cobalt); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .tower-column.doc .tower-kicker { color:var(--mint); }
+    .tower-card { position:relative; padding:10px; border:1px solid var(--line); background:var(--surface); font-size:11px; transition:transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, outline-color 180ms ease; }
+    .tower-card strong { display:block; margin-bottom:2px; font-size:12px; }
+    .tower-arrow { display:grid; place-items:center; color:var(--signal); font-size:22px; font-weight:900; }
+    .score-strip { position:relative; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; transition:transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, outline-color 180ms ease; }
+    .score-chip { padding:8px 4px; border:1px solid var(--line); background:var(--surface); color:var(--muted); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; text-align:center; transition:background 180ms ease, transform 180ms ease; }
+    .score-chip.hot { border-color:var(--signal); background:var(--signal-soft); color:var(--signal); }
+    .cross-scene { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; width:min(800px,100%); min-height:230px; margin:0 auto; }
+    .cross-card { position:relative; padding:16px; border:1px solid var(--ink); background:#fff; transition:transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, outline-color 180ms ease; }
+    .cross-card.is-query { background:#fff8da; }
+    .cross-card.is-repeat { background:var(--signal-soft); }
+    .cross-card span { display:block; color:var(--signal); font-family:"Cascadia Mono",Consolas,monospace; font-size:9px; font-weight:900; }
+    .cross-card strong { display:block; margin:10px 0; font-size:15px; }
+    .cross-card p { margin:0; color:var(--muted); font-size:11px; }
+    .cross-formula { margin-top:12px; padding:8px; background:var(--night); color:#fff; font-family:"Cascadia Mono",Consolas,monospace; font-size:10px; }
+    .flow-focusable.is-focus { z-index:1; outline:3px solid rgba(228,92,45,.78); outline-offset:2px; box-shadow:0 10px 20px rgba(19,32,31,.16); transform:translateY(-3px); animation:flow-focus .36s ease both; }
+    .flow-focusable.is-focus::after { content:"NOW"; position:absolute; top:-10px; right:8px; padding:2px 5px; background:var(--signal); color:#fff; font-family:"Cascadia Mono",Consolas,monospace; font-size:8px; font-weight:900; letter-spacing:.08em; animation:label-in .24s ease both; }
+    .flow-focusable.is-complete { opacity:.58; }
+    .flow-focusable.is-focus .score-chip { transform:translateY(-2px); }
+    @keyframes flow-focus { from { transform:translateY(4px); filter:saturate(.7); } to { transform:translateY(-3px); filter:saturate(1); } }
+    @keyframes label-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .phase-list { margin:30px 0; border-top:1px solid var(--line); }
+    .phase-row { display:grid; grid-template-columns:48px minmax(0,1fr) auto; gap:14px; align-items:center; min-height:68px; border-bottom:1px solid var(--line); }
+    .phase-row>span:first-child { color:var(--signal); font-family:"Cascadia Mono",Consolas,monospace; font-weight:900; }
+    .phase-row strong { display:block; font-size:13px; }
+    .phase-row p { margin:2px 0 0; color:var(--muted); font-size:11px; }
+    .phase-status { padding:4px 8px; border:1px solid var(--line); color:var(--muted); font-size:9px; font-weight:900; }
+    .phase-status.current { border-color:var(--signal); background:var(--signal-soft); color:var(--signal); }
+    .step-result { margin:24px 0; padding:18px 20px; border-left:5px solid var(--acid); background:#fff8d5; }
+    .checkpoint { margin-top:30px; padding:22px; border:1px solid var(--ink); background:var(--surface); }
+    .checkpoint label { display:block; margin:16px 0 7px; color:var(--muted); font-size:11px; font-weight:900; }
+    .checkpoint textarea { width:100%; min-height:155px; padding:13px; resize:vertical; border:1px solid var(--line); background:#fff; color:var(--ink); }
+    .hint-list { margin:16px 0; padding:14px 17px 14px 34px; border-left:4px solid var(--cobalt); background:var(--cobalt-soft); font-size:12px; }
+    .hint-list li { margin:5px 0; }
+    .actions { display:flex; justify-content:space-between; gap:12px; margin-top:22px; }
+    .action { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:9px 15px; border:1px solid var(--ink); background:transparent; color:var(--ink); cursor:pointer; font-weight:900; text-decoration:none; }
+    .action.primary { background:var(--ink); color:#fff; }
+    .save-note { margin-top:10px; color:var(--mint); font-size:11px; }
+    @media (max-width:900px) {
+      .topbar { grid-template-columns:1fr auto; padding:0 16px; }
+      .topbar>a { display:none; }
+      .topbar strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .progress-track { width:54px; }
+      .hero-inner,.workspace { width:min(100% - 30px,720px); }
+      .hero-inner { grid-template-columns:1fr; gap:30px; padding-top:38px; }
+      .workspace { grid-template-columns:1fr; gap:28px; }
+      .roadmap { position:static; min-width:0; }
+      .roadmap>div:first-of-type { display:flex; max-width:100%; overflow-x:auto; }
+      .stage-button { flex:0 0 174px; }
+      .learning-contract,.tower-scene,.cross-scene { grid-template-columns:1fr; }
+      .contract-cell { border-right:0; border-bottom:1px solid var(--ink); }
+      .contract-cell:last-child { border-bottom:0; }
+      .tower-arrow { min-height:30px; transform:rotate(90deg); }
+      .actions { display:grid; grid-template-columns:1fr; }
+      .architecture-controls { display:grid; grid-template-columns:1fr 1fr; }
+      .flow-counter { grid-column:1 / -1; margin-left:0; }
+      .mode-switch { display:flex; width:100%; }
+      .mode-switch button { flex:1; min-width:0; }
+      .phase-row { grid-template-columns:42px minmax(0,1fr); padding:10px 0; }
+      .phase-status { grid-column:2; justify-self:start; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="../day-03/index.html">← Day 03 最终复述</a>
+    <strong>Day 04 · Embedding 与双塔训练</strong>
+    <div class="top-progress"><span id="progressText">ARCH / 07</span><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div></div>
+  </header>
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">RAG · DAY 04 / 14</p>
+        <h1>把问题与证据，放进一个可检索的几何空间</h1>
+        <p class="hero-copy">Day 3 已把源文件变成可索引的证据记录。今天开始追问：为什么用户问题与这些记录能被比较、在百万级候选中被快速召回，以及这份速度到底牺牲了什么。</p>
+        <div class="hero-meta"><span>建议时长 2.5–3 小时</span><span>产出：InfoNCE 推导</span><span>产出：Embedding 选型记录</span></div>
+      </div>
+      <div class="vector-board" role="img" aria-label="查询向量 q 与文档向量 d 在共享向量空间中靠近的示意">
+        <span class="board-label">SHARED VECTOR SPACE / d DIMENSIONS</span>
+        <div class="vector-space"><i class="axis x"></i><i class="axis y"></i><i class="orbit"></i><b class="vec-dot q">q</b><b class="vec-dot d1">d₁</b><b class="vec-dot d2">d₂</b><small class="vec-caption">near = candidate, not truth</small></div>
+      </div>
+    </div>
+  </section>
+  <div class="workspace">
+    <aside class="roadmap">
+      <p class="roadmap-title">DAY 04 LEARNING MAP</p>
+      <div>
+        <button class="stage-button is-active" type="button" data-stage-target="0"><span class="stage-no">00</span><span class="stage-copy"><strong>任务导览</strong><span>已开放</span></span></button>
+        <button class="stage-button" type="button" data-stage-target="1"><span class="stage-no">01</span><span class="stage-copy"><strong>双塔的离线化</strong><span>当前讨论</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">02</span><span class="stage-copy"><strong>相似度与向量形状</strong><span>待开放</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">03</span><span class="stage-copy"><strong>InfoNCE 与负例</strong><span>待开放</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">04</span><span class="stage-copy"><strong>假负例与训练边界</strong><span>待开放</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">05</span><span class="stage-copy"><strong>Pooling、前缀与选型</strong><span>待开放</span></span></button>
+        <button class="stage-button" type="button" disabled><span class="stage-no">06</span><span class="stage-copy"><strong>复述与验收</strong><span>待开放</span></span></button>
+      </div>
+      <div class="roadmap-links"><a href="../../14-day-learning-plan.md">14 天总计划</a><a href="../../index.html">RAG 完整知识库</a></div>
+    </aside>
+    <main>
+      <section class="learning-section" data-stage="0">
+        <p class="section-label">00 · Orientation</p>
+        <h2>今天先理解“为何能检索”，再讨论“如何训练”</h2>
+        <p class="lead">Embedding 不是把一段文本压缩成一串数字这么简单。它是一个可被检索系统使用的表示契约：相同语义应更接近、可独立编码的向量应能被高效索引、而最终精确判断仍可能需要更丰富的交互。</p>
+        <div class="learning-contract">
+          <div class="contract-cell"><span>LEARNING GOAL</span><strong>看清双塔的速度来源</strong><p>区分“文档可离线编码”与“每次查询必须在线计算”的边界。</p></div>
+          <div class="contract-cell"><span>FINAL OUTPUT</span><strong>能读懂训练目标</strong><p>后续会逐符号推导 InfoNCE，并解释负例如何塑造向量空间。</p></div>
+          <div class="contract-cell"><span>ACCEPTANCE</span><strong>能说明取舍</strong><p>能解释双塔为什么用于召回、Cross-Encoder 为什么常用于小候选集精排。</p></div>
+        </div>
+        <div class="concept-callout"><strong>今天的学习边界：</strong>先只建立检索架构的最短数据流。InfoNCE、pooling、归一化、指令前缀与硬负例都会在你回答当前问题后逐步开放，而不是现在背结论。</div>
+        <div class="architecture-lab">
+          <div class="lab-head"><p class="section-label">Interactive architecture map</p><h3>相同的 query 与 document，怎样得到分数？</h3><p>切换视图，观察计算究竟发生在离线还是在线。</p><div class="mode-switch" role="group" aria-label="双塔与交叉编码器架构比较"><button class="is-active" type="button" data-architecture-mode="bi">双塔 / Bi-Encoder</button><button type="button" data-architecture-mode="cross">Cross-Encoder</button></div></div>
+          <div class="architecture-canvas" id="architectureCanvas" aria-live="polite"></div>
+          <div class="architecture-controls" role="group" aria-label="架构数据流逐步演示"><button class="flow-button" type="button" id="flowPrev">← 上一步</button><button class="flow-button primary" type="button" id="flowNext">下一步 →</button><button class="flow-button" type="button" id="flowReplay">从头演示</button><span class="flow-counter" id="flowCounter"></span></div>
+          <p class="flow-narration" id="flowNarration" aria-live="polite"></p>
+          <p class="architecture-note" id="architectureNote"></p>
+        </div>
+        <div class="phase-list" aria-label="Day 04 阶段路线">
+          <div class="phase-row"><span>01</span><div><strong>双塔为何能离线预计算</strong><p>先回答百万 chunk 下的计算位置与交互取舍。</p></div><span class="phase-status current">当前</span></div>
+          <div class="phase-row"><span>02</span><div><strong>向量如何被比较</strong><p>之后再进入点积、余弦、归一化与 embedding 形状。</p></div><span class="phase-status">锁定</span></div>
+          <div class="phase-row"><span>03</span><div><strong>训练目标如何制造几何关系</strong><p>之后逐步打开 InfoNCE、in-batch negatives 与假负例。</p></div><span class="phase-status">锁定</span></div>
+        </div>
+        <div class="actions"><a class="action" href="../day-03/index.html">← 回看 Day 03 收口</a><button class="action primary" type="button" data-go-stage="1">进入 Step 01：双塔的离线化 →</button></div>
+      </section>
+      <section class="learning-section" data-stage="1" hidden>
+        <p class="section-label">01 · Independent encoding</p>
+        <h2>双塔的关键不是“两套模型”，而是 query 与 document 能否独立完成编码</h2>
+        <p class="lead">先不背任何训练公式。只把注意力放在一个工程问题：在线请求到来之前，哪些计算已经可以做完；而哪些计算必须等 query 出现才有意义。</p>
+        <div class="step-result"><strong>场景</strong><p>企业知识库有 100 万个 chunk，用户查询到返回 top-k 的预算约 100ms。你可以提前处理文档库，但无法提前知道用户下一次会问什么。</p></div>
+        <div class="checkpoint">
+          <p class="section-label">One discussion only</p>
+          <h3>用“能离线的、必须在线的、换来的代价”回答</h3>
+          <p>为什么双塔能预先保存 <code>dᵢ = f<sub>d</sub>(dᵢ)</code>，而 Cross-Encoder 的精确分数 <code>s(q,dᵢ) = g(q,dᵢ)</code> 不能在 query 到来前完整预计算？双塔为了离线化，牺牲了哪一类 query-document 交互？</p>
+          <label for="day04Step1Notes">我的理解</label>
+          <textarea id="day04Step1Notes" placeholder="可按三段写：1）离线能做什么；2）在线必须做什么；3）双塔失去了什么交互能力。不要急着写公式。"></textarea>
+          <ul class="hint-list"><li>比较的是“文档自身的表示”能否在没有 query 时确定。</li><li>请区分“不能完整预计算精确分数”与“什么都不能缓存”这两个说法。</li><li>不要只写“Cross-Encoder 慢”；说明它为什么慢、慢在哪里。</li></ul>
+          <div class="actions"><button class="action" type="button" data-go-stage="0">← 回看架构</button><button class="action primary" type="button" id="saveStep1">保存当前回答</button></div>
+          <p class="save-note" id="step1SaveNote" hidden>已保存。把你的回答发给我；我会只针对这一题补全，并开启下一步。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const storageKey = "rag-14-day-day-04-v1";
+      const memoryStore = {};
+      const architectureData = {
+        bi: {
+          html: '<div class="tower-scene"><div class="tower-column doc"><span class="tower-kicker">OFFLINE / CATALOG</span><div class="tower-card flow-focusable" data-flow-step="0"><strong>100 万 chunks</strong>每份文档独立进入 document encoder。</div><div class="tower-card flow-focusable" data-flow-step="1"><strong>dᵢ = f<sub>d</sub>(documentᵢ)</strong>预先存储向量与 metadata，建立 ANN 索引。</div></div><div class="tower-arrow">⇄</div><div class="tower-column"><span class="tower-kicker">ONLINE / QUERY</span><div class="tower-card flow-focusable" data-flow-step="2"><strong>query → q = f<sub>q</sub>(query)</strong>请求到来后只编码当前 query。</div><div class="score-strip flow-focusable" data-flow-step="3"><span class="score-chip">q · d₁</span><span class="score-chip hot">q · d₂</span><span class="score-chip">q · d₃</span></div><div class="tower-card flow-focusable" data-flow-step="4"><strong>ANN → top-k</strong>在已建索引的向量中快速找候选。</div></div></div>',
+          note: '双塔的关键是文档向量不依赖未来的 query，因此可以离线生成并建索引；在线只需生成 q，再用近似最近邻或向量相似度找候选。',
+          steps: ['离线阶段：每个 chunk 单独经过 document encoder。此时没有 query 也能确定 dᵢ。', '离线阶段：把 dᵢ、metadata 与索引一起保存。真正省掉的是“文档重新编码”的重复工作。', '在线阶段：用户 query 到来后，只需编码一次得到 q。', '在线阶段：用 q 与已经存好的 dᵢ 做快速相似度搜索；此处可使用 ANN 近似索引。', '输出阶段：只把 top-k 候选交给后续重排或生成，而不是让全库都参与精细计算。']
+        },
+        cross: {
+          html: '<div class="cross-scene"><div class="cross-card is-query flow-focusable" data-flow-step="0"><span>ONLINE INPUT</span><strong>query q</strong><p>用户问题到来之后，才知道需要与哪种语义、词序和细粒度关系交互。</p></div><div class="cross-card is-repeat flow-focusable" data-flow-step="1"><span>PAIR 1 … 1,000,000</span><strong>g(q, dᵢ)</strong><p>q 与每个候选 dᵢ 一起进入同一个 Transformer，进行 token-level cross-attention。</p><div class="cross-formula">scoreᵢ = g(q, dᵢ)</div></div><div class="cross-card is-repeat flow-focusable" data-flow-step="2"><span>EXACT BUT ONLINE</span><strong>N 次成对计算</strong><p>可以缓存部分文档侧预处理，但精确的 q–dᵢ 交互结果依赖 q，不能预先完整得到。</p></div></div>',
+          note: 'Cross-Encoder 保留更细的 query-document token 交互，所以通常得分更准；代价是 query 出现后要对每个候选重新做成对计算，不能像双塔一样为全库预建精确分数索引。',
+          steps: ['在线阶段：query 出现后，模型才知道要与文档 token 建立什么交互。', '精确打分：每个 q–dᵢ 对共同进入模型，query token 与 document token 可以彼此关注。', '规模代价：如果有 100 万个文档候选，就需要大量在线成对计算；文档侧可以缓存部分预处理，但精确交互分数无法完整离线化。']
+        }
+      };
+      let state = loadState();
+      const sections = [...document.querySelectorAll("[data-stage]")];
+      const stageButtons = [...document.querySelectorAll("[data-stage-target]")];
+      const notes = document.querySelector("#day04Step1Notes");
+      const flowPrev = document.querySelector("#flowPrev");
+      const flowNext = document.querySelector("#flowNext");
+      const flowReplay = document.querySelector("#flowReplay");
+      stageButtons.forEach(button => button.addEventListener("click", () => showStage(Number(button.dataset.stageTarget), true)));
+      document.querySelectorAll("[data-go-stage]").forEach(button => button.addEventListener("click", () => showStage(Number(button.dataset.goStage), true)));
+      document.querySelectorAll("[data-architecture-mode]").forEach(button => button.addEventListener("click", () => renderArchitecture(button.dataset.architectureMode)));
+      flowPrev.addEventListener("click", () => { state.flowStep = Math.max(0, Number(state.flowStep || 0) - 1); renderFlow(); });
+      flowNext.addEventListener("click", () => { const steps = (architectureData[state.architectureMode] || architectureData.bi).steps; state.flowStep = Math.min(steps.length - 1, Number(state.flowStep || 0) + 1); renderFlow(); });
+      flowReplay.addEventListener("click", () => { state.flowStep = 0; renderFlow(); });
+      notes.addEventListener("input", event => { state.step1Notes = event.target.value; saveState(); });
+      document.querySelector("#saveStep1").addEventListener("click", () => { saveState(); document.querySelector("#step1SaveNote").hidden = false; });
+      notes.value = state.step1Notes || "";
+      showStage(Math.min(Math.max(Number(state.stage) || 0, 0), 1), false);
+      renderArchitecture(state.architectureMode || "bi", false);
+      function showStage(stage, shouldScroll) {
+        state.stage = stage;
+        sections.forEach(section => { section.hidden = Number(section.dataset.stage) !== stage; });
+        stageButtons.forEach(button => button.classList.toggle("is-active", Number(button.dataset.stageTarget) === stage));
+        document.querySelector("#progressText").textContent = ["ARCH / 07", "01 / 07"][stage];
+        document.querySelector("#progressFill").style.width = ["14%", "28%"][stage];
+        saveState();
+        if (shouldScroll) window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 72, behavior:"smooth" });
+      }
+      function renderArchitecture(mode, resetFlow = true) {
+        const data = architectureData[mode] || architectureData.bi;
+        state.architectureMode = mode;
+        if (resetFlow) state.flowStep = 0;
+        document.querySelector("#architectureCanvas").innerHTML = data.html;
+        document.querySelector("#architectureNote").textContent = data.note;
+        document.querySelectorAll("[data-architecture-mode]").forEach(button => button.classList.toggle("is-active", button.dataset.architectureMode === mode));
+        renderFlow();
+        saveState();
+      }
+      function renderFlow() {
+        const data = architectureData[state.architectureMode] || architectureData.bi;
+        const last = data.steps.length - 1;
+        const current = Math.min(last, Math.max(0, Number(state.flowStep) || 0));
+        state.flowStep = current;
+        document.querySelectorAll("#architectureCanvas [data-flow-step]").forEach(node => {
+          const step = Number(node.dataset.flowStep);
+          node.classList.toggle("is-focus", step === current);
+          node.classList.toggle("is-complete", step < current);
+          if (step === current) node.setAttribute("aria-current", "step"); else node.removeAttribute("aria-current");
+        });
+        document.querySelector("#flowNarration").textContent = data.steps[current];
+        document.querySelector("#flowCounter").textContent = "STEP " + (current + 1) + " / " + data.steps.length;
+        flowPrev.disabled = current === 0;
+        flowNext.disabled = current === last;
+        flowNext.textContent = current === last ? "已到结论" : "下一步 →";
+        saveState();
+      }
+      function defaultState() { return { stage:0, architectureMode:"bi", flowStep:0, step1Notes:"" }; }
+      function loadState() {
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          if (!saved) return defaultState();
+          const parsed = JSON.parse(saved);
+          const migrated = { ...defaultState(), ...parsed };
+          if (String(parsed.step1Notes || "").trim() && !Number.isFinite(Number(parsed.stage))) migrated.stage = 1;
+          return migrated;
+        } catch (error) { return { ...defaultState(), ...memoryStore }; }
+      }
+      function saveState() { try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch (error) { Object.assign(memoryStore, state); } }
+    })();
+  </script>
+</body>
+</html>
