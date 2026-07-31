@@ -248,6 +248,7 @@
           <a href="#step01">2. Step 01 前向加噪</a>
           <a href="#motivation">2.1 为什么人为加噪</a>
           <a href="#gaussian">2.2 正态分布与高斯噪声</a>
+          <a href="#exam-bridge">2.2.1 从考研公式到图片噪声</a>
           <a href="#epsilon">2.3 ε 到底是什么</a>
           <a href="#noise-lab">2.4 噪声实验</a>
           <a href="#formula">2.5 核心公式</a>
@@ -300,6 +301,34 @@ random noise -> 稍微去噪 -> 再稍微去噪 -> ... -> image</code></pre>
             <h3 id="gaussian">2.2 正态分布与高斯噪声</h3>
             <p>正态分布也叫高斯分布。它描述一种连续随机变量：数值大多集中在均值附近，离均值越远，出现概率通常越低，整体形状像一口对称的钟。</p>
             <div class="equation">f(x) = 1 / (σ√2π) · exp( -(x-μ)² / (2σ²) )</div>
+            <h3 id="exam-bridge">2.2.1 这就是考研数学中的正态分布公式</h3>
+            <p>你对这个式子感到“熟悉又陌生”是正常的：公式本身就是考研数学一中一维正态随机变量 <code>X ~ N(μ, σ²)</code> 的概率密度函数；陌生的是，扩散模型把它用在了整张图片组成的高维随机向量上。</p>
+            <table class="notation">
+              <thead><tr><th>公式部分</th><th>统计学含义</th><th>直觉</th></tr></thead>
+              <tbody>
+                <tr><td><code>μ</code></td><td>均值</td><td>随机变量最集中的中心位置。若 <code>μ = 0</code>，正负扰动整体平衡，不会系统性把图像推向更亮或更暗。</td></tr>
+                <tr><td><code>σ²</code></td><td>方差</td><td>控制波动幅度。方差越大，随机数越分散，钟形曲线越宽、越矮。</td></tr>
+                <tr><td><code>(x-μ)²</code></td><td>离均值的平方距离</td><td>对称地惩罚偏离中心的数值；正方向和负方向距离相同，密度相同。</td></tr>
+                <tr><td><code>exp(-...)</code></td><td>指数衰减</td><td>离中心越远，密度下降得越快，因此极端大噪声很少出现但并非不可能。</td></tr>
+                <tr><td><code>1 / (σ√2π)</code></td><td>归一化系数</td><td>把整条曲线下的总面积调成 1，使它能够表示一个完整的概率分布。</td></tr>
+              </tbody>
+            </table>
+            <div class="callout yellow"><strong>必须分清：</strong><code>f(x)</code> 是“概率密度”，不是“恰好取到 x 的概率”。连续随机变量精确取某个点的概率为 0；真正的区间概率要看曲线下的面积：<code>P(a &lt; X &lt; b) = ∫ₐᵇ f(x) dx</code>。</div>
+            <p>例如令 <code>Z ~ N(0,1)</code>，则 <code>P(-1 &lt; Z &lt; 1) ≈ 0.6827</code>。这正是钟形图中央一倍标准差范围约占 68% 的来源。它不是说“<code>f(0)=68%</code>”，而是说从 -1 到 1 这段面积约为 68%。</p>
+            <div class="two-column">
+              <article class="concept"><h3>考研中的标准化</h3><p>若 <code>X ~ N(μ,σ²)</code>，则 <code>Z = (X-μ)/σ ~ N(0,1)</code>。减去 μ 是把中心移到 0；除以 σ 是把尺度统一到标准差为 1。</p></article>
+              <article class="concept"><h3>扩散中的默认选择</h3><p>经典 DDPM 的原始噪声直接使用标准正态分布：均值 0、方差 1。代码中的 <code>randn_like(x₀)</code> 就是在做这件事。</p></article>
+            </div>
+            <h3>从一个随机数，扩展到一整张图片</h3>
+            <p>统计题里通常把 <code>X</code> 看成一个数，例如一次测量误差。图片张量 <code>x₀.shape = [C,H,W]</code> 却包含许多数字。为了使用同样的思想，可以先把图片“拉平”为 <code>d</code> 维向量；此时一份噪声也成为 <code>ε = (ε₁, ε₂, ..., ε_d)</code>。</p>
+            <div class="equation">ε ~ N(0, I)　⇔　εᵢ ~ N(0,1)，i = 1, 2, ..., d</div>
+            <p>这里的 <code>0</code> 是 d 维零向量；<code>I</code> 是 d×d 的单位矩阵，表示协方差矩阵的对角线都是 1、非对角线都是 0。当前可以把它理解为：每个位置的噪声都按同一个 <code>N(0,1)</code> 抽取，并且在这个基础模型中不预设两个位置之间的相关性。</p>
+            <pre><code># 一维统计学：抽取一个标准正态随机数
+z = sample_from_N(0, 1)
+
+# 扩散模型：对图片每个通道、每个空间位置抽一个标准正态随机数
+epsilon = randn_like(x0)  # epsilon.shape 与 x0.shape 完全相同</code></pre>
+            <div class="callout"><strong>把两者连起来：</strong>考研中的 <code>Z ~ N(0,1)</code> 是一格噪声；扩散模型中的 <code>ε ~ N(0,I)</code> 是许多格标准正态噪声拼成的一整张噪声图。随后前向公式按同一位置逐元素混合 <code>x₀</code> 与 <code>ε</code>。</div>
             <div class="math-grid">
               <div class="gaussian-figure">
                 <svg viewBox="0 0 720 320" role="img" aria-label="标准正态分布与一个、两个、三个标准差范围">
